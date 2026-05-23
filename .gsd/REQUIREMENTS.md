@@ -80,42 +80,42 @@
 
 | Requirement | Phase | Status |
 | ----------- | ----- | ------ |
-| WFLO-01 | Unmapped | Pending |
-| WFLO-02 | Unmapped | Pending |
-| WFLO-03 | Unmapped | Pending |
-| WFLO-04 | Unmapped | Pending |
-| INPT-01 | Unmapped | Pending |
-| INPT-02 | Unmapped | Pending |
-| INPT-03 | Unmapped | Pending |
-| INPT-04 | Unmapped | Pending |
-| INPT-05 | Unmapped | Pending |
-| INPT-06 | Unmapped | Pending |
-| INPT-07 | Unmapped | Pending |
-| INPT-08 | Unmapped | Pending |
-| JOBS-01 | Unmapped | Pending |
-| JOBS-02 | Unmapped | Pending |
-| JOBS-03 | Unmapped | Pending |
-| JOBS-04 | Unmapped | Pending |
-| JOBS-05 | Unmapped | Pending |
-| JOBS-06 | Unmapped | Pending |
-| JOBS-07 | Unmapped | Pending |
-| JOBS-08 | Unmapped | Pending |
-| OUTP-01 | Unmapped | Pending |
-| OUTP-02 | Unmapped | Pending |
-| OUTP-03 | Unmapped | Pending |
-| OUTP-04 | Unmapped | Pending |
-| AUTH-01 | Unmapped | Pending |
-| AUTH-02 | Unmapped | Pending |
-| AUTH-03 | Unmapped | Pending |
-| AUTH-04 | Unmapped | Pending |
+| WFLO-01 | Phase 2 | Pending |
+| WFLO-02 | Phase 2 | Pending |
+| WFLO-03 | Phase 2 | Pending |
+| WFLO-04 | Phase 2 | Pending |
+| INPT-01 | Phase 3 | Pending |
+| INPT-02 | Phase 3 | Pending |
+| INPT-03 | Phase 3 | Pending |
+| INPT-04 | Phase 3 | Pending |
+| INPT-05 | Phase 3 | Pending |
+| INPT-06 | Phase 3 | Pending |
+| INPT-07 | Phase 3 | Pending |
+| INPT-08 | Phase 3 | Pending |
+| JOBS-01 | Phase 4 | Pending |
+| JOBS-02 | Phase 4 | Pending |
+| JOBS-03 | Phase 4 | Pending |
+| JOBS-04 | Phase 4 | Pending |
+| JOBS-05 | Phase 4 | Pending |
+| JOBS-06 | Phase 4 | Pending |
+| JOBS-07 | Phase 4 | Pending |
+| JOBS-08 | Phase 4 | Pending |
+| OUTP-01 | Phase 5 | Pending |
+| OUTP-02 | Phase 5 | Pending |
+| OUTP-03 | Phase 5 | Pending |
+| OUTP-04 | Phase 5 | Pending |
+| AUTH-01 | Phase 1 | Pending |
+| AUTH-02 | Phase 1 | Pending |
+| AUTH-03 | Phase 1 | Pending |
+| AUTH-04 | Phase 1 | Pending |
 
 **Coverage:**
 
 - v1 requirements: 28 total
-- Mapped to phases: 0
-- Unmapped: 28 ⚠️
+- Mapped to phases: 28
+- Unmapped: 0 ✓
 
 ---
 
 _Requirements defined: 2026-05-23_
-_Last updated: 2026-05-23 after initial definition_
+_Last updated: 2026-05-23 after roadmap mapping_
