@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { InviteGate } from "./features/access/InviteGate";
 import { RunpodKeySettings } from "./features/access/RunpodKeySettings";
+import { RunpodProxySmoke } from "./features/access/RunpodProxySmoke";
 import { getRunpodKey } from "./lib/runpodKeyStorage";
 
 export function App() {
@@ -17,6 +18,7 @@ export function App() {
       <p>Invited session active.</p>
       <RunpodKeySettings onKeyChanged={setRunpodKey} />
       <p>Runpod key configured: {runpodKey ? "Yes" : "No"}</p>
+      {runpodKey ? <RunpodProxySmoke apiKey={runpodKey} /> : null}
     </main>
   );
 }
