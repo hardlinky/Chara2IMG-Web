@@ -33,13 +33,15 @@ Decimal phases appear between their surrounding integers in numeric order.
 3. A remembered API key is restored only on the same browser/device when the user opted in.
 4. Runpod lifecycle requests can be forwarded by the backend without long-term server-side key persistence.
 
-**Plans**: 3 plans
+**Plans**: 5 plans
 
 Plans:
 
-- [ ] 01-01: Build server-side invited-user session boundary and secure access endpoints
-- [ ] 01-02: Implement invite-gated client UX and browser-scoped BYOK settings behavior
-- [ ] 01-03: Implement thin Runpod proxy with validated forwarding and secret-safe handling
+- [ ] 01-01: Scaffold minimal TypeScript and Hono baseline for access-boundary work
+- [ ] 01-02: Build server-side invited-user session middleware and secure access endpoints
+- [ ] 01-03: Implement invite-gated client UX and browser-scoped BYOK settings behavior
+- [ ] 01-04: Implement thin Runpod proxy core with validated forwarding and key-safe handling
+- [ ] 01-05: Add typed client proxy smoke flow and tests proving boundary behavior
 
 ### Phase 2: Workflow Import and Template Reuse
 
@@ -125,7 +127,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 | ----- | -------------- | ------ | --------- |
-| 1. Access and Proxy Boundary | 0/3 | Not started | - |
+| 1. Access and Proxy Boundary | 0/5 | Not started | - |
 | 2. Workflow Import and Template Reuse | 0/2 | Not started | - |
 | 3. Dynamic Input Editing | 0/2 | Not started | - |
 | 4. Job Lifecycle and Run Management | 0/3 | Not started | - |
