@@ -2,6 +2,7 @@ import type { Hono } from "hono";
 import { requireInvitedSession } from "../middleware/session";
 import { cancelRequestSchema, purgeQueueRequestSchema, retryRequestSchema, runRequestSchema, statusRequestSchema } from "../schemas/runpodProxy";
 import { forwardRunpodRequest } from "../lib/runpodClient";
+import { redactSecrets } from "../lib/redaction";
 
 function toProxyResponse(response: Response, body: string): Response {
   return new Response(body, {
@@ -10,6 +11,14 @@ function toProxyResponse(response: Response, body: string): Response {
       "Content-Type": response.headers.get("Content-Type") ?? "application/json"
     }
   });
+}
+
+function toSafeProxyError(error: unknown): { ok: false; error: string; details: unknown } {
+  return {
+    ok: false,
+    error: "Runpod request failed",
+    details: redactSecrets({ message: error instanceof Error ? error.message : String(error) })
+  };
 }
 
 export function registerRunpodProxyRoutes(app: Hono): void {
@@ -23,14 +32,18 @@ export function registerRunpodProxyRoutes(app: Hono): void {
       return c.json({ ok: false, error: "Invalid run request" }, 400);
     }
 
-    const response = await forwardRunpodRequest({
-      endpointId: parsed.data.endpointId,
-      apiKey: parsed.data.apiKey,
-      operation: "run",
-      body: { input: parsed.data.input }
-    });
+    try {
+      const response = await forwardRunpodRequest({
+        endpointId: parsed.data.endpointId,
+        apiKey: parsed.data.apiKey,
+        operation: "run",
+        body: { input: parsed.data.input }
+      });
 
-    return toProxyResponse(response, await response.text());
+      return toProxyResponse(response, await response.text());
+    } catch (error) {
+      return c.json(toSafeProxyError(error), 502);
+    }
   });
 
   app.post("/api/runpod/status", async (c) => {
@@ -41,14 +54,18 @@ export function registerRunpodProxyRoutes(app: Hono): void {
       return c.json({ ok: false, error: "Invalid status request" }, 400);
     }
 
-    const response = await forwardRunpodRequest({
-      endpointId: parsed.data.endpointId,
-      apiKey: parsed.data.apiKey,
-      operation: "status",
-      body: { id: parsed.data.id }
-    });
+    try {
+      const response = await forwardRunpodRequest({
+        endpointId: parsed.data.endpointId,
+        apiKey: parsed.data.apiKey,
+        operation: "status",
+        body: { id: parsed.data.id }
+      });
 
-    return toProxyResponse(response, await response.text());
+      return toProxyResponse(response, await response.text());
+    } catch (error) {
+      return c.json(toSafeProxyError(error), 502);
+    }
   });
 
   app.post("/api/runpod/cancel", async (c) => {
@@ -59,14 +76,18 @@ export function registerRunpodProxyRoutes(app: Hono): void {
       return c.json({ ok: false, error: "Invalid cancel request" }, 400);
     }
 
-    const response = await forwardRunpodRequest({
-      endpointId: parsed.data.endpointId,
-      apiKey: parsed.data.apiKey,
-      operation: "cancel",
-      body: { id: parsed.data.id }
-    });
+    try {
+      const response = await forwardRunpodRequest({
+        endpointId: parsed.data.endpointId,
+        apiKey: parsed.data.apiKey,
+        operation: "cancel",
+        body: { id: parsed.data.id }
+      });
 
-    return toProxyResponse(response, await response.text());
+      return toProxyResponse(response, await response.text());
+    } catch (error) {
+      return c.json(toSafeProxyError(error), 502);
+    }
   });
 
   app.post("/api/runpod/retry", async (c) => {
@@ -77,14 +98,18 @@ export function registerRunpodProxyRoutes(app: Hono): void {
       return c.json({ ok: false, error: "Invalid retry request" }, 400);
     }
 
-    const response = await forwardRunpodRequest({
-      endpointId: parsed.data.endpointId,
-      apiKey: parsed.data.apiKey,
-      operation: "retry",
-      body: { id: parsed.data.id }
-    });
+    try {
+      const response = await forwardRunpodRequest({
+        endpointId: parsed.data.endpointId,
+        apiKey: parsed.data.apiKey,
+        operation: "retry",
+        body: { id: parsed.data.id }
+      });
 
-    return toProxyResponse(response, await response.text());
+      return toProxyResponse(response, await response.text());
+    } catch (error) {
+      return c.json(toSafeProxyError(error), 502);
+    }
   });
 
   app.post("/api/runpod/purge-queue", async (c) => {
@@ -95,13 +120,17 @@ export function registerRunpodProxyRoutes(app: Hono): void {
       return c.json({ ok: false, error: "Invalid purge-queue request" }, 400);
     }
 
-    const response = await forwardRunpodRequest({
-      endpointId: parsed.data.endpointId,
-      apiKey: parsed.data.apiKey,
-      operation: "purge-queue",
-      body: {}
-    });
+    try {
+      const response = await forwardRunpodRequest({
+        endpointId: parsed.data.endpointId,
+        apiKey: parsed.data.apiKey,
+        operation: "purge-queue",
+        body: {}
+      });
 
-    return toProxyResponse(response, await response.text());
+      return toProxyResponse(response, await response.text());
+    } catch (error) {
+      return c.json(toSafeProxyError(error), 502);
+    }
   });
 }
