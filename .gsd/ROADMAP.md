@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Access and Proxy Boundary** - Invited users can securely reach Runpod through the web app with BYOK handling.
 - [x] **Phase 2: Workflow Import and Template Reuse** - Users can load, validate, and retain full workflow templates for repeated runs.
 - [x] **Phase 3: Dynamic Input Editing** - Users can edit workflow-derived controls and produce a job-ready payload reliably.
-- [ ] **Phase 4: Job Lifecycle and Run Management** - Users can submit, monitor, control, and revisit recent runs.
+- [x] **Phase 4: Job Lifecycle and Run Management** - Users can submit, monitor, control, and revisit recent runs.
 - [ ] **Phase 5: Outputs and Gallery Review** - Users can review completed job outputs with job provenance in a gallery flow.
 
 ## Phase Details
@@ -97,9 +97,9 @@ Plans:
 
 Plans:
 
-- [ ] 04-01: Implement job submission contracts and Runpod lifecycle state tracking
-- [ ] 04-02: Build polling, timeout, and cancellation behavior around recent jobs
-- [ ] 04-03: Add rerun, load-inputs, remove, and recent-history management flows
+- [x] 04-01: Implement job submission contracts and Runpod lifecycle state tracking
+- [x] 04-02: Build polling, timeout, and cancellation behavior around recent jobs
+- [x] 04-03: Add rerun, load-inputs, remove, and recent-history management flows
 
 ### Phase 5: Outputs and Gallery Review
 
@@ -130,5 +130,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 1. Access and Proxy Boundary | 5/5 | Complete | 2026-05-23 |
 | 2. Workflow Import and Template Reuse | 2/2 | Complete | 2026-05-23 |
 | 3. Dynamic Input Editing | 2/2 | Complete | 2026-05-23 |
-| 4. Job Lifecycle and Run Management | 0/3 | Not started | - |
+| 4. Job Lifecycle and Run Management | 3/3 | Complete | 2026-05-24 |
 | 5. Outputs and Gallery Review | 0/2 | Not started | - |

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { DynamicInputControl, DynamicInputWarning } from "../../src/shared/contracts/inputs";
 import { DynamicInputEditorView } from "../../src/client/features/inputs/DynamicInputEditor";
-import { applyOrderingOverlay } from "../../src/client/features/inputs/useDynamicInputEditor";
+import { applyExternalDraftValues, applyOrderingOverlay } from "../../src/client/features/inputs/useDynamicInputEditor";
 
 function createControls(): DynamicInputControl[] {
   return [
@@ -93,5 +93,43 @@ describe("dynamic input editor", () => {
     });
 
     expect(overlayOrdered.map((control) => control.id)).toEqual(["b:number:steps", "a:text:value"]);
+  });
+
+  it("loads external draft values when the template fingerprint matches", () => {
+    const controls = createControls();
+    const result = applyExternalDraftValues({
+      currentTemplateFingerprint: "fp-1",
+      sourceTemplateFingerprint: "fp-1",
+      controls,
+      externalDraftValues: {
+        [controls[0].id]: "Mika"
+      }
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+
+    expect(result.draftValues[controls[0].id]).toBe("Mika");
+    expect(result.draftValues[controls[1].id]).toBe(28);
+  });
+
+  it("blocks external draft values when the template fingerprint differs", () => {
+    const result = applyExternalDraftValues({
+      currentTemplateFingerprint: "fp-1",
+      sourceTemplateFingerprint: "fp-2",
+      controls: createControls(),
+      externalDraftValues: {
+        "a:text:value": "Mika"
+      }
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      return;
+    }
+
+    expect(result.reason).toContain("mismatch");
   });
 });

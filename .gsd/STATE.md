@@ -5,14 +5,14 @@
 See: .gsd/PROJECT.md (updated 2026-05-23)
 
 **Core value:** Enable reliable full-parity web generation workflows against Runpod serverless ComfyUI, with user-supplied API keys and no always-on ComfyUI host.
-**Current focus:** Phase 4 - Job Lifecycle and Run Management (ready for planning)
+**Current focus:** Phase 5 - Outputs and Gallery Review (ready for planning)
 
 ## Current Position
 
-Phase: 3 of 5 (Dynamic Input Editing)
-Plan: 2 of 2 in current phase
+Phase: 4 of 5 (Job Lifecycle and Run Management)
+Plan: 3 of 3 in current phase
 Status: Phase execution complete, verification passed
-Last activity: 2026-05-23 - Completed 03-02 run-time apply-back and validation flow
+Last activity: 2026-05-24 - Completed 04-03 recent jobs browser and editor bridge flow
 
 Progress: [██████████] 100%
 
@@ -31,10 +31,11 @@ Progress: [██████████] 100%
 | 1 | 5 | 117 min | 23 min |
 | 2 | 2 | 53 min | 27 min |
 | 3 | 2 | 70 min | 35 min |
+| 4 | 3 | 190 min | 63 min |
 
 **Recent Trend:**
 
-- Last 5 plans: 03-02, 03-01, 02-02, 02-01, 01-05 completed
+- Last 5 plans: 04-03, 04-02, 04-01, 03-02, 03-01 completed
 - Trend: Stable
 
 ## Accumulated Context
@@ -55,10 +56,10 @@ None.
 
 ### Blockers/Concerns
 
-- Phase 4 planning should confirm Runpod polling, timeout, and cancellation semantics for the app contract.
+- Phase 5 planning should confirm output provenance and gallery browsing semantics.
 
 ## Session Continuity
 
-Last session: 2026-05-23
-Stopped at: Completed Phase 3 execution and verification; ready for Phase 4 planning
+Last session: 2026-05-24
+Stopped at: Completed Phase 4 execution and verification; ready for Phase 5 planning
 Resume file: None

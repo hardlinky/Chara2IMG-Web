@@ -1,0 +1,118 @@
+import {
+  RUNPOD_JOB_STATUSES,
+  isActiveRunpodStatus,
+  isTerminalRunpodStatus,
+  toTerminalReason,
+  type RecentJobRecord,
+  type RecentJobSubmissionInput,
+  type RunpodJobStatus
+} from "../../../shared/contracts/jobs";
+
+export const JOB_POLL_INTERVAL_MS = 5000;
+export const JOB_OBSERVATION_TIMEOUT_MS = 30 * 60 * 1000;
+
+export function getJobAgeMs(submittedAt: string, now: number = Date.now()): number {
+  return Math.max(0, now - Date.parse(submittedAt));
+}
+
+export function hasJobObservationTimedOut(job: Pick<RecentJobRecord, "submittedAt" | "lifecycle">, now: number = Date.now()): boolean {
+  return !job.lifecycle.isTerminal && getJobAgeMs(job.submittedAt, now) >= JOB_OBSERVATION_TIMEOUT_MS;
+}
+
+export function isCancellableJobStatus(status: string): boolean {
+  return isActiveRunpodStatus(status);
+}
+
+export function isTerminalJobSnapshot(job: Pick<RecentJobRecord, "lifecycle">): boolean {
+  return job.lifecycle.isTerminal || isTerminalRunpodStatus(job.lifecycle.status);
+}
+
+export function buildLifecycleSnapshotFromStatus(status: string, now: string = new Date().toISOString()): RecentJobRecord["lifecycle"] {
+  const terminal = isTerminalRunpodStatus(status);
+
+  return {
+    status,
+    isTerminal: terminal,
+    terminalReason: terminal ? toTerminalReason(status) : undefined,
+    lastCheckedAt: now,
+    finishedAt: terminal ? now : undefined,
+    warning: null,
+    executionTimeMs: undefined,
+    failureReason: null
+  };
+}
+
+export function buildTerminalLifecycleSnapshot(args: {
+  status: string;
+  terminalReason: RecentJobRecord["lifecycle"]["terminalReason"];
+  finishedAt?: string;
+  failureReason?: string | null;
+}): RecentJobRecord["lifecycle"] {
+  const finishedAt = args.finishedAt ?? new Date().toISOString();
+  return {
+    status: args.status,
+    isTerminal: true,
+    terminalReason: args.terminalReason,
+    lastCheckedAt: finishedAt,
+    finishedAt,
+    warning: null,
+    executionTimeMs: undefined,
+    failureReason: args.failureReason ?? null
+  };
+}
+
+export function classifyTimeoutLifecycle(job: RecentJobRecord, now: number = Date.now()): RecentJobRecord["lifecycle"] | null {
+  if (!hasJobObservationTimedOut(job, now)) {
+    return null;
+  }
+
+  const finishedAt = new Date(now).toISOString();
+  return {
+    status: "TIMED_OUT",
+    isTerminal: true,
+    terminalReason: "timed-out",
+    lastCheckedAt: finishedAt,
+    finishedAt,
+    warning: null,
+    executionTimeMs: undefined,
+    failureReason: "Client observation timeout"
+  };
+}
+
+export function classifyKnownJob404Lifecycle(job: RecentJobRecord, now: number = Date.now()): RecentJobRecord["lifecycle"] {
+  const finishedAt = new Date(now).toISOString();
+  return {
+    status: job.lifecycle.status,
+    isTerminal: true,
+    terminalReason: "expired-or-not-found",
+    lastCheckedAt: finishedAt,
+    finishedAt,
+    warning: null,
+    executionTimeMs: undefined,
+    failureReason: "Runpod status returned 404"
+  };
+}
+
+export function formatSubmittedAtRelative(submittedAt: string, now: number = Date.now()): string {
+  const deltaMs = Math.max(0, now - Date.parse(submittedAt));
+  const minutes = Math.floor(deltaMs / 60000);
+  const hours = Math.floor(minutes / 60);
+
+  if (hours > 0) {
+    return `${hours}h ago`;
+  }
+
+  if (minutes > 0) {
+    return `${minutes}m ago`;
+  }
+
+  return "just now";
+}
+
+export function normalizeActiveStatus(status: string): RunpodJobStatus | string {
+  if (RUNPOD_JOB_STATUSES.includes(status as RunpodJobStatus)) {
+    return status;
+  }
+
+  return status;
+}

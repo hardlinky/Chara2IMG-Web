@@ -1,0 +1,110 @@
+import type { RecentJobRecord, RecentJobSubmissionInput } from "../../shared/contracts/jobs";
+import { isActiveRunpodStatus, isTerminalRunpodStatus, toTerminalReason, type RecentJobProvenance } from "../../shared/contracts/jobs";
+import { runViaProxy, type RunpodRunResponse } from "./api/runpodProxyClient";
+import { upsertRecentJob } from "./recentJobsStorage";
+import type { DynamicInputDraftValues } from "../../shared/contracts/inputs";
+
+export type RunSubmissionSnapshot = {
+  templateFingerprint: string;
+  draftValues: DynamicInputDraftValues;
+  submittedInput: Record<string, unknown>;
+};
+
+export type RunSubmissionDependencies = {
+  submitRun?: typeof runViaProxy;
+  saveRecentJob?: typeof upsertRecentJob;
+};
+
+function toPlainObject(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  return value as Record<string, unknown>;
+}
+
+function extractJobId(response: RunpodRunResponse): string {
+  const directId = response.id ?? response.jobId;
+  if (typeof directId === "string" && directId.trim()) {
+    return directId;
+  }
+
+  const nestedData = toPlainObject(response.data);
+  const nestedId = nestedData?.id ?? nestedData?.jobId;
+  if (typeof nestedId === "string" && nestedId.trim()) {
+    return nestedId;
+  }
+
+  throw new Error("Run submission response did not include a job id.");
+}
+
+function extractStatus(response: RunpodRunResponse): string {
+  const directStatus = response.status;
+  if (typeof directStatus === "string" && directStatus.trim()) {
+    return directStatus;
+  }
+
+  const nestedData = toPlainObject(response.data);
+  const nestedStatus = nestedData?.status;
+  return typeof nestedStatus === "string" && nestedStatus.trim() ? nestedStatus : "IN_QUEUE";
+}
+
+function buildLifecycleSnapshot(status: string): RecentJobRecord["lifecycle"] {
+  const terminal = isTerminalRunpodStatus(status);
+  return {
+    status,
+    isTerminal: terminal,
+    terminalReason: terminal ? toTerminalReason(status) : undefined,
+    lastCheckedAt: new Date().toISOString(),
+    finishedAt: terminal ? new Date().toISOString() : undefined,
+    warning: null,
+    executionTimeMs: undefined,
+    failureReason: null
+  };
+}
+
+export async function submitRunAndPersistRecentJob(args: {
+  endpointId: string;
+  apiKey: string;
+  submittedInput: Record<string, unknown>;
+  snapshot: RunSubmissionSnapshot;
+  dependencies?: RunSubmissionDependencies;
+}): Promise<RunpodRunResponse> {
+  const submitRun = args.dependencies?.submitRun ?? runViaProxy;
+  const saveRecentJob = args.dependencies?.saveRecentJob ?? upsertRecentJob;
+
+  const response = await submitRun({
+    endpointId: args.endpointId,
+    apiKey: args.apiKey,
+    input: args.submittedInput
+  });
+
+  const jobId = extractJobId(response);
+  const status = extractStatus(response);
+
+  const recentJobInput: RecentJobSubmissionInput = {
+    jobId,
+    endpointId: args.endpointId,
+    templateFingerprint: args.snapshot.templateFingerprint,
+    draftValues: args.snapshot.draftValues,
+    submittedInput: args.snapshot.submittedInput,
+    lifecycle: buildLifecycleSnapshot(status),
+    lastResponse: response,
+    lastError: null
+  };
+
+  await saveRecentJob(recentJobInput);
+  return response;
+}
+
+export function getTerminalStatusLabel(status: string): string {
+  if (isTerminalRunpodStatus(status)) {
+    return status;
+  }
+
+  if (isActiveRunpodStatus(status)) {
+    return status;
+  }
+
+  return "UNKNOWN";
+}

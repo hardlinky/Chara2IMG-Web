@@ -6,8 +6,12 @@ import { DynamicInputEditor } from "./features/inputs/DynamicInputEditor";
 import { ActiveWorkflowTemplate } from "./features/workflows/ActiveWorkflowTemplate";
 import { WorkflowImport } from "./features/workflows/WorkflowImport";
 import { useActiveWorkflowTemplate } from "./features/workflows/useActiveWorkflowTemplate";
-import { runViaProxy } from "./lib/api/runpodProxyClient";
+import { submitRunAndPersistRecentJob } from "./lib/jobSubmission";
 import { getRunpodKey } from "./lib/runpodKeyStorage";
+import { formatSubmittedAtRelative } from "./features/jobs/jobStatus";
+import { useRecentJobs } from "./features/jobs/useRecentJobs";
+import { RecentJobsPanel } from "./features/jobs/RecentJobsPanel";
+import type { DynamicInputDraftValues } from "../shared/contracts/inputs";
 
 function toRunpodWorkflowInput(payload: Record<string, unknown>): Record<string, unknown> {
   if ("workflow" in payload) {
@@ -25,10 +29,22 @@ export function App() {
   const [runEndpointId, setRunEndpointId] = useState("");
   const [runResult, setRunResult] = useState("");
   const [runError, setRunError] = useState("");
+  const [jobActionMessage, setJobActionMessage] = useState("");
+  const [editorApi, setEditorApi] = useState<{
+    applyExternalDraftValues: (
+      sourceTemplateFingerprint: string,
+      externalDraftValues: DynamicInputDraftValues
+    ) => Promise<{ ok: true; draftValues: DynamicInputDraftValues } | { ok: false; reason: string }>;
+  } | null>(null);
   const { activeTemplate, isLoading, error, persistTemplate, clearTemplate } =
     useActiveWorkflowTemplate();
+  const recentJobs = useRecentJobs({ endpointId: runEndpointId, apiKey: runpodKey ?? undefined });
 
-  async function onRunPayloadBuilt(payload: Record<string, unknown>): Promise<void> {
+  async function onRunPayloadBuilt(snapshot: {
+    payload: Record<string, unknown>;
+    draftValues: DynamicInputDraftValues;
+    templateFingerprint: string;
+  }): Promise<void> {
     if (!runpodKey || !runEndpointId) {
       setRunError("Set Runpod key and endpoint ID before running.");
       return;
@@ -36,15 +52,47 @@ export function App() {
 
     try {
       setRunError("");
-      const response = await runViaProxy({
+      const response = await submitRunAndPersistRecentJob({
         endpointId: runEndpointId,
         apiKey: runpodKey,
-        input: toRunpodWorkflowInput(payload)
+        submittedInput: toRunpodWorkflowInput(snapshot.payload),
+        snapshot: {
+          templateFingerprint: snapshot.templateFingerprint,
+          draftValues: snapshot.draftValues,
+          submittedInput: toRunpodWorkflowInput(snapshot.payload)
+        }
       });
+      await recentJobs.handleNewSubmission();
       setRunResult(JSON.stringify(response));
     } catch (submitError) {
       setRunError(submitError instanceof Error ? submitError.message : "Run submission failed.");
     }
+  }
+
+  async function onLoadInputs(jobId: string): Promise<void> {
+    if (!activeTemplate) {
+      setJobActionMessage("Load a workflow template before loading prior inputs.");
+      return;
+    }
+
+    const job = await recentJobs.loadJobInputs(jobId);
+    if (!job) {
+      setJobActionMessage("Selected job is no longer available.");
+      return;
+    }
+
+    if (!editorApi) {
+      setJobActionMessage("Input editor is not ready yet.");
+      return;
+    }
+
+    const result = await editorApi.applyExternalDraftValues(job.provenance.templateFingerprint, job.provenance.draftValues);
+    if (!result.ok) {
+      setJobActionMessage(result.reason);
+      return;
+    }
+
+    setJobActionMessage(`Loaded inputs from ${job.jobId}.`);
   }
 
   if (!invited) {
@@ -74,9 +122,32 @@ export function App() {
         }}
       />
       <p>Workflow template loaded: {activeTemplate ? "Yes" : "No"}</p>
-      {activeTemplate ? <DynamicInputEditor activeTemplate={activeTemplate} onRunPayloadBuilt={onRunPayloadBuilt} /> : null}
+      {activeTemplate ? (
+        <DynamicInputEditor
+          activeTemplate={activeTemplate}
+          onRunPayloadBuilt={onRunPayloadBuilt}
+          onEditorReady={(api) => setEditorApi(api)}
+        />
+      ) : null}
       {runError ? <p role="alert">{runError}</p> : null}
       {runResult ? <pre>{runResult}</pre> : null}
+      {jobActionMessage ? <p role="status">{jobActionMessage}</p> : null}
+      <RecentJobsPanel
+        jobs={recentJobs.jobs}
+        warningJobIds={recentJobs.warningJobIds}
+        cancelingJobIds={recentJobs.cancelingJobIds}
+        statusFilter={recentJobs.statusFilter}
+        page={recentJobs.page}
+        pageCount={recentJobs.pageCount}
+        pageNumbers={recentJobs.pageNumbers}
+        onStatusFilterChange={recentJobs.setStatusFilter}
+        onPageChange={recentJobs.setPage}
+        onCancel={(jobId) => void recentJobs.cancelJob(jobId)}
+        onRerun={(jobId) => void recentJobs.rerunJob(jobId)}
+        onLoadInputs={(jobId) => void onLoadInputs(jobId)}
+        onRemoveVisible={(jobId) => void recentJobs.removeVisibleJob(jobId)}
+        formatSubmittedAtRelative={formatSubmittedAtRelative}
+      />
     </main>
   );
 }

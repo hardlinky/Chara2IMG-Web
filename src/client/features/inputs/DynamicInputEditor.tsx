@@ -1,4 +1,4 @@
-import { ChangeEvent } from "react";
+import { ChangeEvent, useEffect } from "react";
 import type {
   DynamicInputControl,
   DynamicInputDraftValues,
@@ -239,12 +239,31 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
 
 type DynamicInputEditorProps = {
   activeTemplate: WorkflowTemplateRecord;
-  onRunPayloadBuilt?: (payload: Record<string, unknown>) => Promise<void>;
+  onRunPayloadBuilt?: (snapshot: {
+    payload: Record<string, unknown>;
+    draftValues: DynamicInputDraftValues;
+    templateFingerprint: string;
+  }) => Promise<void>;
   onRunValidationFailed?: (errors: DynamicInputInlineError[]) => void;
+  onEditorReady?: (api: {
+    applyExternalDraftValues: (sourceTemplateFingerprint: string, externalDraftValues: DynamicInputDraftValues) => Promise<{
+      ok: true;
+      draftValues: DynamicInputDraftValues;
+    } | {
+      ok: false;
+      reason: string;
+    }>;
+  }) => void;
 };
 
 export function DynamicInputEditor(props: DynamicInputEditorProps) {
   const editor = useDynamicInputEditor(props.activeTemplate);
+
+  useEffect(() => {
+    props.onEditorReady?.({
+      applyExternalDraftValues: editor.applyExternalDraft
+    });
+  }, [editor.applyExternalDraft, props.onEditorReady]);
 
   function onRun(): void {
     const result = editor.attemptRun();
@@ -253,7 +272,11 @@ export function DynamicInputEditor(props: DynamicInputEditorProps) {
       return;
     }
 
-    void props.onRunPayloadBuilt?.(result.payload);
+    void props.onRunPayloadBuilt?.({
+      payload: result.payload,
+      draftValues: editor.draftValues,
+      templateFingerprint: props.activeTemplate.fingerprint
+    });
   }
 
   return (

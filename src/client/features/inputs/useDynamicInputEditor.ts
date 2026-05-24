@@ -33,6 +33,38 @@ function buildDefaultDraftValues(controls: DynamicInputControl[]): DynamicInputD
   return defaults;
 }
 
+export type ExternalDraftApplyResult =
+  | {
+      ok: true;
+      draftValues: DynamicInputDraftValues;
+    }
+  | {
+      ok: false;
+      reason: string;
+    };
+
+export function applyExternalDraftValues(args: {
+  currentTemplateFingerprint: string;
+  sourceTemplateFingerprint: string;
+  controls: DynamicInputControl[];
+  externalDraftValues: DynamicInputDraftValues;
+}): ExternalDraftApplyResult {
+  if (args.currentTemplateFingerprint !== args.sourceTemplateFingerprint) {
+    return {
+      ok: false,
+      reason: "Workflow template mismatch."
+    };
+  }
+
+  return {
+    ok: true,
+    draftValues: {
+      ...buildDefaultDraftValues(args.controls),
+      ...args.externalDraftValues
+    }
+  };
+}
+
 function valueEquals(left: DynamicInputValue, right: DynamicInputValue): boolean {
   return JSON.stringify(left) === JSON.stringify(right);
 }
@@ -260,6 +292,49 @@ export function useDynamicInputEditor(activeTemplate: WorkflowTemplateRecord | n
     await clearInputDraftValues(activeTemplate.fingerprint);
   }, [activeTemplate, derivation.controls]);
 
+  const applyExternalDraft = useCallback(
+    async (sourceTemplateFingerprint: string, externalDraftValues: DynamicInputDraftValues) => {
+      if (!activeTemplate) {
+        return {
+          ok: false as const,
+          reason: "No active template loaded."
+        };
+      }
+
+      const result = applyExternalDraftValues({
+        currentTemplateFingerprint: activeTemplate.fingerprint,
+        sourceTemplateFingerprint,
+        controls: derivation.controls,
+        externalDraftValues
+      });
+
+      if (!result.ok) {
+        return result;
+      }
+
+      const nextDraftValues = result.draftValues;
+      const nextInlineErrors = derivation.controls.reduce<Record<string, string>>((accumulator, control) => {
+        const validation = validateInlineControl(control, nextDraftValues[control.id] ?? control.defaultValue);
+        if (!validation.valid) {
+          accumulator[control.id] = validation.errors[0]?.message ?? "Invalid value.";
+        }
+        return accumulator;
+      }, {});
+
+      setDraftValues(nextDraftValues);
+      setInlineErrorsByControlId(nextInlineErrors);
+      setRunBlockingMessage(null);
+      setLastSuccessfulRunDraft(nextDraftValues);
+      await saveInputDraftValues(activeTemplate.fingerprint, nextDraftValues);
+
+      return {
+        ok: true as const,
+        draftValues: nextDraftValues
+      };
+    },
+    [activeTemplate, derivation.controls]
+  );
+
   const attemptRun = useCallback((): RunAttemptResult => {
     if (!activeTemplate) {
       return {
@@ -331,6 +406,7 @@ export function useDynamicInputEditor(activeTemplate: WorkflowTemplateRecord | n
     setValue,
     setOverlayPosition,
     resetToTemplateDefaults,
+    applyExternalDraft,
     attemptRun,
     hasDraftDiffFromTemplate: hasDraftDiffFromDefaults(derivation.controls, draftValues)
   };

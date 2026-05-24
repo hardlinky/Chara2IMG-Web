@@ -25,14 +25,14 @@
 
 ### Jobs
 
-- [ ] **JOBS-01**: User can submit a job to a Runpod serverless ComfyUI endpoint using the current workflow and inputs.
-- [ ] **JOBS-02**: User can see the current status of each submitted job.
-- [ ] **JOBS-03**: The app polls Runpod job status until the job completes, fails, is cancelled, or times out.
-- [ ] **JOBS-04**: User can cancel a running or queued job.
-- [ ] **JOBS-05**: User can rerun a prior job using that job's saved workflow inputs.
-- [ ] **JOBS-06**: User can load a prior job's saved inputs back into the Input tab.
-- [ ] **JOBS-07**: User can remove a job from the visible job list.
-- [ ] **JOBS-08**: The app keeps enough job history in the web app for invited users to manage recent runs during normal usage.
+- [x] **JOBS-01**: User can submit a job to a Runpod serverless ComfyUI endpoint using the current workflow and inputs.
+- [x] **JOBS-02**: User can see the current status of each submitted job.
+- [x] **JOBS-03**: The app polls Runpod job status until the job completes, fails, is cancelled, or times out.
+- [x] **JOBS-04**: User can cancel a running or queued job.
+- [x] **JOBS-05**: User can rerun a prior job using that job's saved workflow inputs.
+- [x] **JOBS-06**: User can load a prior job's saved inputs back into the Input tab.
+- [x] **JOBS-07**: User can remove a job from the visible job list.
+- [x] **JOBS-08**: The app keeps enough job history in the web app for invited users to manage recent runs during normal usage.
 
 ### Outputs
 
@@ -92,14 +92,14 @@
 | INPT-06 | Phase 3 | Complete |
 | INPT-07 | Phase 3 | Complete |
 | INPT-08 | Phase 3 | Complete |
-| JOBS-01 | Phase 4 | Pending |
-| JOBS-02 | Phase 4 | Pending |
-| JOBS-03 | Phase 4 | Pending |
-| JOBS-04 | Phase 4 | Pending |
-| JOBS-05 | Phase 4 | Pending |
-| JOBS-06 | Phase 4 | Pending |
-| JOBS-07 | Phase 4 | Pending |
-| JOBS-08 | Phase 4 | Pending |
+| JOBS-01 | Phase 4 | Complete |
+| JOBS-02 | Phase 4 | Complete |
+| JOBS-03 | Phase 4 | Complete |
+| JOBS-04 | Phase 4 | Complete |
+| JOBS-05 | Phase 4 | Complete |
+| JOBS-06 | Phase 4 | Complete |
+| JOBS-07 | Phase 4 | Complete |
+| JOBS-08 | Phase 4 | Complete |
 | OUTP-01 | Phase 5 | Pending |
 | OUTP-02 | Phase 5 | Pending |
 | OUTP-03 | Phase 5 | Pending |
