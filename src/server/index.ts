@@ -1,9 +1,12 @@
 import { Hono } from "hono";
 import { serve } from "@hono/node-server";
+import { serveStatic } from "@hono/node-server/serve-static";
 import { fileURLToPath } from "node:url";
 import { registerAccessRoutes } from "./routes/access";
 import { registerRunpodProxyRoutes } from "./routes/runpodProxy";
 import { applySecurityMiddleware } from "./middleware/security";
+
+const CLIENT_DIST_ROOT = "./dist/client";
 
 export function createServerApp(): Hono {
   const app = new Hono();
@@ -13,6 +16,16 @@ export function createServerApp(): Hono {
   applySecurityMiddleware(app);
   registerAccessRoutes(app);
   registerRunpodProxyRoutes(app);
+
+  app.use(
+    "/*",
+    serveStatic({
+      root: CLIENT_DIST_ROOT,
+      rewriteRequestPath: (path) => (path === "/" ? "/index.html" : path)
+    })
+  );
+
+  app.get("*", serveStatic({ root: CLIENT_DIST_ROOT, path: "./index.html" }));
 
   return app;
 }
