@@ -9,6 +9,16 @@ import { useActiveWorkflowTemplate } from "./features/workflows/useActiveWorkflo
 import { runViaProxy } from "./lib/api/runpodProxyClient";
 import { getRunpodKey } from "./lib/runpodKeyStorage";
 
+function toRunpodWorkflowInput(payload: Record<string, unknown>): Record<string, unknown> {
+  if ("workflow" in payload) {
+    return payload;
+  }
+
+  return {
+    workflow: payload
+  };
+}
+
 export function App() {
   const [invited, setInvited] = useState(false);
   const [runpodKey, setRunpodKey] = useState(getRunpodKey());
@@ -29,7 +39,7 @@ export function App() {
       const response = await runViaProxy({
         endpointId: runEndpointId,
         apiKey: runpodKey,
-        input: payload
+        input: toRunpodWorkflowInput(payload)
       });
       setRunResult(JSON.stringify(response));
     } catch (submitError) {
