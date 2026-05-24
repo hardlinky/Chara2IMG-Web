@@ -6,6 +6,7 @@ import { DynamicInputEditor } from "./features/inputs/DynamicInputEditor";
 import { ActiveWorkflowTemplate } from "./features/workflows/ActiveWorkflowTemplate";
 import { WorkflowImport } from "./features/workflows/WorkflowImport";
 import { useActiveWorkflowTemplate } from "./features/workflows/useActiveWorkflowTemplate";
+import { OutputsTab } from "./features/outputs/OutputsTab";
 import { submitRunAndPersistRecentJob } from "./lib/jobSubmission";
 import { getRunpodKey } from "./lib/runpodKeyStorage";
 import { formatSubmittedAtRelative } from "./features/jobs/jobStatus";
@@ -24,6 +25,7 @@ function toRunpodWorkflowInput(payload: Record<string, unknown>): Record<string,
 }
 
 export function App() {
+  const [activeTab, setActiveTab] = useState<"run" | "outputs">("run");
   const [invited, setInvited] = useState(false);
   const [runpodKey, setRunpodKey] = useState(getRunpodKey());
   const [runEndpointId, setRunEndpointId] = useState("");
@@ -109,51 +111,66 @@ export function App() {
     <main>
       <h1>Chara2Img Web</h1>
       <p>Invited session active.</p>
-      <RunpodKeySettings onKeyChanged={setRunpodKey} />
-      <p>Runpod key configured: {runpodKey ? "Yes" : "No"}</p>
-      <label htmlFor="run-endpoint-id">Run Endpoint ID</label>
-      <input
-        id="run-endpoint-id"
-        value={runEndpointId}
-        onChange={(event) => setRunEndpointId(event.target.value)}
-      />
-      {runpodKey ? <RunpodProxySmoke apiKey={runpodKey} /> : null}
-      <WorkflowImport onImported={persistTemplate} />
-      <ActiveWorkflowTemplate
-        activeTemplate={activeTemplate}
-        isLoading={isLoading}
-        error={error}
-        onClear={() => {
-          void clearTemplate();
-        }}
-      />
-      <p>Workflow template loaded: {activeTemplate ? "Yes" : "No"}</p>
-      {activeTemplate ? (
-        <DynamicInputEditor
-          activeTemplate={activeTemplate}
-          onRunPayloadBuilt={onRunPayloadBuilt}
-          onEditorReady={(api) => setEditorApi(api)}
-        />
-      ) : null}
-      {runError ? <p role="alert">{runError}</p> : null}
-      {runResult ? <pre>{runResult}</pre> : null}
-      {jobActionMessage ? <p role="status">{jobActionMessage}</p> : null}
-      <RecentJobsPanel
-        jobs={recentJobs.jobs}
-        warningJobIds={recentJobs.warningJobIds}
-        cancelingJobIds={recentJobs.cancelingJobIds}
-        statusFilter={recentJobs.statusFilter}
-        page={recentJobs.page}
-        pageCount={recentJobs.pageCount}
-        pageNumbers={recentJobs.pageNumbers}
-        onStatusFilterChange={recentJobs.setStatusFilter}
-        onPageChange={recentJobs.setPage}
-        onCancel={(jobId) => void recentJobs.cancelJob(jobId)}
-        onRerun={(jobId) => void recentJobs.rerunJob(jobId)}
-        onLoadInputs={(jobId) => void onLoadInputs(jobId)}
-        onRemoveVisible={(jobId) => void recentJobs.removeVisibleJob(jobId)}
-        formatSubmittedAtRelative={formatSubmittedAtRelative}
-      />
+      <div>
+        <button type="button" onClick={() => setActiveTab("run")} disabled={activeTab === "run"}>
+          Run
+        </button>
+        <button type="button" onClick={() => setActiveTab("outputs")} disabled={activeTab === "outputs"}>
+          Outputs
+        </button>
+      </div>
+
+      {activeTab === "run" ? (
+        <>
+          <RunpodKeySettings onKeyChanged={setRunpodKey} />
+          <p>Runpod key configured: {runpodKey ? "Yes" : "No"}</p>
+          <label htmlFor="run-endpoint-id">Run Endpoint ID</label>
+          <input
+            id="run-endpoint-id"
+            value={runEndpointId}
+            onChange={(event) => setRunEndpointId(event.target.value)}
+          />
+          {runpodKey ? <RunpodProxySmoke apiKey={runpodKey} /> : null}
+          <WorkflowImport onImported={persistTemplate} />
+          <ActiveWorkflowTemplate
+            activeTemplate={activeTemplate}
+            isLoading={isLoading}
+            error={error}
+            onClear={() => {
+              void clearTemplate();
+            }}
+          />
+          <p>Workflow template loaded: {activeTemplate ? "Yes" : "No"}</p>
+          {activeTemplate ? (
+            <DynamicInputEditor
+              activeTemplate={activeTemplate}
+              onRunPayloadBuilt={onRunPayloadBuilt}
+              onEditorReady={(api) => setEditorApi(api)}
+            />
+          ) : null}
+          {runError ? <p role="alert">{runError}</p> : null}
+          {runResult ? <pre>{runResult}</pre> : null}
+          {jobActionMessage ? <p role="status">{jobActionMessage}</p> : null}
+          <RecentJobsPanel
+            jobs={recentJobs.jobs}
+            warningJobIds={recentJobs.warningJobIds}
+            cancelingJobIds={recentJobs.cancelingJobIds}
+            statusFilter={recentJobs.statusFilter}
+            page={recentJobs.page}
+            pageCount={recentJobs.pageCount}
+            pageNumbers={recentJobs.pageNumbers}
+            onStatusFilterChange={recentJobs.setStatusFilter}
+            onPageChange={recentJobs.setPage}
+            onCancel={(jobId) => void recentJobs.cancelJob(jobId)}
+            onRerun={(jobId) => void recentJobs.rerunJob(jobId)}
+            onLoadInputs={(jobId) => void onLoadInputs(jobId)}
+            onRemoveVisible={(jobId) => void recentJobs.removeVisibleJob(jobId)}
+            formatSubmittedAtRelative={formatSubmittedAtRelative}
+          />
+        </>
+      ) : (
+        <OutputsTab clusters={recentJobs.completedOutputClusters} />
+      )}
     </main>
   );
 }
