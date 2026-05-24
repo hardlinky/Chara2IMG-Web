@@ -14,14 +14,14 @@
 
 ### Dynamic Inputs
 
-- [ ] **INPT-01**: User can see input controls generated from supported workflow nodes in the loaded workflow.
-- [ ] **INPT-02**: User can edit text and multiline text inputs derived from the workflow.
-- [ ] **INPT-03**: User can edit numeric inputs derived from the workflow, including integer and decimal values.
-- [ ] **INPT-04**: User can edit boolean inputs derived from the workflow.
-- [ ] **INPT-05**: User can edit paired dimension inputs derived from the workflow.
-- [ ] **INPT-06**: User can provide image inputs for workflow nodes that require image data.
-- [ ] **INPT-07**: The app applies edited input values back into a job-ready workflow payload before submission.
-- [ ] **INPT-08**: The app preserves workflow input grouping and ordering well enough for the user to work with the template reliably.
+- [x] **INPT-01**: User can see input controls generated from supported workflow nodes in the loaded workflow.
+- [x] **INPT-02**: User can edit text and multiline text inputs derived from the workflow.
+- [x] **INPT-03**: User can edit numeric inputs derived from the workflow, including integer and decimal values.
+- [x] **INPT-04**: User can edit boolean inputs derived from the workflow.
+- [x] **INPT-05**: User can edit paired dimension inputs derived from the workflow.
+- [x] **INPT-06**: User can provide image inputs for workflow nodes that require image data.
+- [x] **INPT-07**: The app applies edited input values back into a job-ready workflow payload before submission.
+- [x] **INPT-08**: The app preserves workflow input grouping and ordering well enough for the user to work with the template reliably.
 
 ### Jobs
 
@@ -84,14 +84,14 @@
 | WFLO-02 | Phase 2 | Pending |
 | WFLO-03 | Phase 2 | Pending |
 | WFLO-04 | Phase 2 | Pending |
-| INPT-01 | Phase 3 | Pending |
-| INPT-02 | Phase 3 | Pending |
-| INPT-03 | Phase 3 | Pending |
-| INPT-04 | Phase 3 | Pending |
-| INPT-05 | Phase 3 | Pending |
-| INPT-06 | Phase 3 | Pending |
-| INPT-07 | Phase 3 | Pending |
-| INPT-08 | Phase 3 | Pending |
+| INPT-01 | Phase 3 | Complete |
+| INPT-02 | Phase 3 | Complete |
+| INPT-03 | Phase 3 | Complete |
+| INPT-04 | Phase 3 | Complete |
+| INPT-05 | Phase 3 | Complete |
+| INPT-06 | Phase 3 | Complete |
+| INPT-07 | Phase 3 | Complete |
+| INPT-08 | Phase 3 | Complete |
 | JOBS-01 | Phase 4 | Pending |
 | JOBS-02 | Phase 4 | Pending |
 | JOBS-03 | Phase 4 | Pending |
