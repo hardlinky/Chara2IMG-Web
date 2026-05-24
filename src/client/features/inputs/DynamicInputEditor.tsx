@@ -183,7 +183,7 @@ function renderInputControl(
             type="range"
             min={min}
             max={max}
-            step={0.01}
+            step={0.05}
             value={loraValue.strength}
             onChange={(event) =>
               setValue(control.id, {
@@ -197,7 +197,7 @@ function renderInputControl(
             type="number"
             min={min}
             max={max}
-            step={0.01}
+            step={0.05}
             value={loraValue.strength}
             onChange={(event) =>
               setValue(control.id, {
