@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { RecentJobRecord } from "../../../shared/contracts/jobs";
 import { cancelViaProxy, statusViaProxy } from "../../lib/api/runpodProxyClient";
 import { submitRunAndPersistRecentJob } from "../../lib/jobSubmission";
+import { projectRecentJobOutputClusters } from "../../lib/jobOutputProjection";
 import { getRecentJob, hideRecentJob, listRecentJobs, updateRecentJobLifecycle } from "../../lib/recentJobsStorage";
 import {
   JOB_POLL_INTERVAL_MS,
@@ -308,6 +309,7 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
   }, [pollNow]);
 
   const visibleJobs = useMemo(() => jobs.filter((job) => job.hiddenAt === null).sort(sortNewestFirst), [jobs]);
+  const completedOutputClusters = useMemo(() => projectRecentJobOutputClusters(visibleJobs), [visibleJobs]);
   const filteredJobs = useMemo(() => filterJobsByStatus(visibleJobs, statusFilter), [statusFilter, visibleJobs]);
   const pageCount = Math.max(1, Math.ceil(filteredJobs.length / RECENT_JOB_PAGE_SIZE));
 
@@ -327,6 +329,7 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
   return {
     jobs: pagedJobs,
     visibleJobs,
+    completedOutputClusters,
     filteredJobs,
     page,
     pageCount,
