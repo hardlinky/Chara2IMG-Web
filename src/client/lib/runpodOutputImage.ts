@@ -1,8 +1,10 @@
-export type RunpodImagePreview = {
+export type RunpodOutputImage = {
   dataUrl: string;
   mimeType: "image/png" | "image/jpeg" | "image/webp" | "image/gif";
   sourcePath: string;
 };
+
+export type RunpodImagePreview = RunpodOutputImage;
 
 function decodeBase64(input: string): Uint8Array | null {
   try {
@@ -25,7 +27,7 @@ function decodeBase64(input: string): Uint8Array | null {
   }
 }
 
-function detectMimeType(bytes: Uint8Array): RunpodImagePreview["mimeType"] | null {
+function detectMimeType(bytes: Uint8Array): RunpodOutputImage["mimeType"] | null {
   if (bytes.length >= 8 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) {
     return "image/png";
   }
@@ -55,7 +57,7 @@ function detectMimeType(bytes: Uint8Array): RunpodImagePreview["mimeType"] | nul
   return null;
 }
 
-function fromDataUrl(value: string, sourcePath: string): RunpodImagePreview | null {
+function fromDataUrl(value: string, sourcePath: string): RunpodOutputImage | null {
   const match = /^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/.exec(value.trim());
   if (!match) {
     return null;
@@ -79,7 +81,7 @@ function fromDataUrl(value: string, sourcePath: string): RunpodImagePreview | nu
   };
 }
 
-function fromBase64(value: string, sourcePath: string): RunpodImagePreview | null {
+function fromBase64(value: string, sourcePath: string): RunpodOutputImage | null {
   const normalized = value.trim();
   if (normalized.length < 80) {
     return null;
@@ -107,39 +109,41 @@ function fromBase64(value: string, sourcePath: string): RunpodImagePreview | nul
   };
 }
 
-function inspectValue(value: unknown, path: string, depth: number): RunpodImagePreview | null {
+function inspectAllImages(value: unknown, path: string, depth: number, results: RunpodOutputImage[]): void {
   if (depth > 7) {
-    return null;
+    return;
   }
 
   if (typeof value === "string") {
-    return fromDataUrl(value, path) ?? fromBase64(value, path);
+    const image = fromDataUrl(value, path) ?? fromBase64(value, path);
+    if (image) {
+      results.push(image);
+    }
+    return;
   }
 
   if (!value || typeof value !== "object") {
-    return null;
+    return;
   }
 
   if (Array.isArray(value)) {
     for (let index = 0; index < value.length; index += 1) {
-      const found = inspectValue(value[index], `${path}[${index}]`, depth + 1);
-      if (found) {
-        return found;
-      }
+      inspectAllImages(value[index], `${path}[${index}]`, depth + 1, results);
     }
-    return null;
+    return;
   }
 
   for (const [key, nextValue] of Object.entries(value)) {
-    const found = inspectValue(nextValue, `${path}.${key}`, depth + 1);
-    if (found) {
-      return found;
-    }
+    inspectAllImages(nextValue, `${path}.${key}`, depth + 1, results);
   }
+}
 
-  return null;
+export function extractRunpodOutputImages(response: unknown): RunpodOutputImage[] {
+  const results: RunpodOutputImage[] = [];
+  inspectAllImages(response, "$", 0, results);
+  return results;
 }
 
 export function extractRunpodImagePreview(response: unknown): RunpodImagePreview | null {
-  return inspectValue(response, "$", 0);
+  return extractRunpodOutputImages(response)[0] ?? null;
 }
