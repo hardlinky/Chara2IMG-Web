@@ -40,6 +40,7 @@ describe("OutputLightbox", () => {
     );
 
     expect(html).toContain("outputs-image-grid");
+    expect(html).toContain("outputs-lightbox");
     expect(html).toContain("Open job-1 image 1");
     expect(html).toContain("Open job-1 image 2");
     expect(html).toContain("outputs-image-tile-hidden");

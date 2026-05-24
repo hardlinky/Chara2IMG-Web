@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { AppShell } from "./components/app-shell/AppShell";
+import type { AppTabDefinition } from "./components/app-shell/TopTabRail";
 import { InviteGate } from "./features/access/InviteGate";
 import { RunpodKeySettings } from "./features/access/RunpodKeySettings";
 import { RunpodProxySmoke } from "./features/access/RunpodProxySmoke";
@@ -26,6 +28,13 @@ function toRunpodWorkflowInput(payload: Record<string, unknown>): Record<string,
     workflow: payload
   };
 }
+
+const APP_TABS: AppTabDefinition[] = [
+  { id: "setup", label: "Setup", iconInactive: "[ ]", iconActive: "[x]" },
+  { id: "input", label: "Input", iconInactive: "[ ]", iconActive: "[x]" },
+  { id: "jobs", label: "Jobs", iconInactive: "[ ]", iconActive: "[x]" },
+  { id: "output", label: "Output", iconInactive: "[ ]", iconActive: "[x]" }
+];
 
 export function App() {
   const [activeTab, setActiveTab] = useState<"setup" | "input" | "jobs" | "output">("setup");
@@ -128,90 +137,102 @@ export function App() {
   }
 
   return (
-    <main>
-      <h1>{`Chara2IMG Web ${APP_VERSION_LABEL}`}</h1>
-      <p>Invited session active.</p>
-      <div>
-        <button type="button" onClick={() => setActiveTab("setup")} disabled={activeTab === "setup"}>
-          Setup
-        </button>
-        <button type="button" onClick={() => setActiveTab("input")} disabled={activeTab === "input"}>
-          Input
-        </button>
-        <button type="button" onClick={() => setActiveTab("jobs")} disabled={activeTab === "jobs"}>
-          Jobs
-        </button>
-        <button type="button" onClick={() => setActiveTab("output")} disabled={activeTab === "output"}>
-          Output
-        </button>
-      </div>
-
-      {activeTab === "setup" ? (
+    <AppShell
+      tabs={APP_TABS}
+      activeTab={activeTab}
+      onTabChange={setActiveTab}
+      headerRowOne={
         <>
-          <RunpodKeySettings onKeyChanged={setRunpodKey} />
-          <p>Runpod key configured: {runpodKey ? "Yes" : "No"}</p>
-          <label htmlFor="run-endpoint-id">Run Endpoint ID</label>
-          <input
-            id="run-endpoint-id"
-            value={runEndpointId}
-            onChange={(event) => updateEndpointId(event.target.value)}
-          />
-          {runpodKey ? (
-            <RunpodProxySmoke
-              apiKey={runpodKey}
-              endpointId={runEndpointId}
-              onEndpointIdChange={updateEndpointId}
-            />
-          ) : null}
-          <WorkflowImport onImported={persistTemplate} />
-          <ActiveWorkflowTemplate
-            activeTemplate={activeTemplate}
-            isLoading={isLoading}
-            error={error}
-            onClear={() => {
-              void clearTemplate();
-            }}
-          />
+          <h1>{`Chara2IMG Web ${APP_VERSION_LABEL}`}</h1>
+          <p className="app-header-status">Invited session active.</p>
         </>
-      ) : activeTab === "input" ? (
+      }
+      headerRowTwo={
         <>
-          <p>Workflow template loaded: {activeTemplate ? "Yes" : "No"}</p>
-          {activeTemplate ? (
-            <DynamicInputEditor
+          <span>{`Runpod key: ${runpodKey ? "Configured" : "Missing"}`}</span>
+          <span>{`Endpoint: ${runEndpointId || "Not set"}`}</span>
+          <span>{`Template: ${activeTemplate ? "Loaded" : "Not loaded"}`}</span>
+        </>
+      }
+      panels={{
+        setup: (
+          <div className="section-stack">
+            <RunpodKeySettings onKeyChanged={setRunpodKey} />
+            <section className="card field">
+              <label htmlFor="run-endpoint-id">Run Endpoint ID</label>
+              <input
+                className="input"
+                id="run-endpoint-id"
+                value={runEndpointId}
+                onChange={(event) => updateEndpointId(event.target.value)}
+              />
+            </section>
+            {runpodKey ? (
+              <RunpodProxySmoke
+                apiKey={runpodKey}
+                endpointId={runEndpointId}
+                onEndpointIdChange={updateEndpointId}
+              />
+            ) : null}
+            <WorkflowImport onImported={persistTemplate} />
+            <ActiveWorkflowTemplate
               activeTemplate={activeTemplate}
-              onRunPayloadBuilt={onRunPayloadBuilt}
-              onEditorReady={(api) => setEditorApi(api)}
+              isLoading={isLoading}
+              error={error}
+              onClear={() => {
+                void clearTemplate();
+              }}
             />
-          ) : (
-            <p>Import a workflow in Setup before editing inputs.</p>
-          )}
-          {runError ? <p role="alert">{runError}</p> : null}
-          {runResult ? <pre>{runResult}</pre> : null}
-        </>
-      ) : activeTab === "jobs" ? (
-        <>
-          {jobActionMessage ? <p role="status">{jobActionMessage}</p> : null}
-          <RecentJobsPanel
-            jobs={recentJobs.jobs}
-            warningJobIds={recentJobs.warningJobIds}
-            cancelingJobIds={recentJobs.cancelingJobIds}
-            statusFilter={recentJobs.statusFilter}
-            page={recentJobs.page}
-            pageCount={recentJobs.pageCount}
-            pageNumbers={recentJobs.pageNumbers}
-            onStatusFilterChange={recentJobs.setStatusFilter}
-            onPageChange={recentJobs.setPage}
-            onCancel={(jobId) => void recentJobs.cancelJob(jobId)}
-            onRerun={(jobId) => void recentJobs.rerunJob(jobId)}
-            onLoadInputs={(jobId) => void onLoadInputs(jobId)}
-            onRemoveVisible={(jobId) => void recentJobs.removeVisibleJob(jobId)}
-            formatSubmittedAtRelative={formatSubmittedAtRelative}
-          />
-        </>
-      ) : (
-        <OutputsTab clusters={recentJobs.completedOutputClusters} />
-      )}
-    </main>
+          </div>
+        ),
+        input: (
+          <div className="section-stack">
+            <p>Workflow template loaded: {activeTemplate ? "Yes" : "No"}</p>
+            {activeTemplate ? (
+              <DynamicInputEditor
+                activeTemplate={activeTemplate}
+                onRunPayloadBuilt={onRunPayloadBuilt}
+                onEditorReady={(api) => setEditorApi(api)}
+              />
+            ) : (
+              <p>Import a workflow in Setup before editing inputs.</p>
+            )}
+            {runError ? (
+              <p role="alert" className="status-inline" data-tone="error">
+                {runError}
+              </p>
+            ) : null}
+            {runResult ? <pre className="card">{runResult}</pre> : null}
+          </div>
+        ),
+        jobs: (
+          <div className="section-stack">
+            {jobActionMessage ? (
+              <p role="status" className="status-inline" data-tone="success">
+                {jobActionMessage}
+              </p>
+            ) : null}
+            <RecentJobsPanel
+              jobs={recentJobs.jobs}
+              warningJobIds={recentJobs.warningJobIds}
+              cancelingJobIds={recentJobs.cancelingJobIds}
+              statusFilter={recentJobs.statusFilter}
+              page={recentJobs.page}
+              pageCount={recentJobs.pageCount}
+              pageNumbers={recentJobs.pageNumbers}
+              onStatusFilterChange={recentJobs.setStatusFilter}
+              onPageChange={recentJobs.setPage}
+              onCancel={(jobId) => void recentJobs.cancelJob(jobId)}
+              onRerun={(jobId) => void recentJobs.rerunJob(jobId)}
+              onLoadInputs={(jobId) => void onLoadInputs(jobId)}
+              onRemoveVisible={(jobId) => void recentJobs.removeVisibleJob(jobId)}
+              formatSubmittedAtRelative={formatSubmittedAtRelative}
+            />
+          </div>
+        ),
+        output: <OutputsTab clusters={recentJobs.completedOutputClusters} />
+      }}
+    />
   );
 }
 

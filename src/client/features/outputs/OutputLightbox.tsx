@@ -23,7 +23,7 @@ export function OutputLightbox({ images, imagePrefix, maxVisible = images.length
         wheelToZoom: true
       }}
     >
-      <div className="outputs-image-grid">
+      <div className="outputs-lightbox outputs-image-grid">
         {images.map((image, index) => (
           <Item
             key={`${image.sourcePath}-${index}`}

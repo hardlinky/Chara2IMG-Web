@@ -28,13 +28,15 @@ export function RunpodKeySettings(props: RunpodKeySettingsProps) {
   }
 
   return (
-    <section>
+    <section className="setup-card">
       <h2>Runpod API Key</h2>
       <p>Bring your own key. Keep it in memory by default, or remember on this browser.</p>
 
-      <form onSubmit={onSave}>
-        <label htmlFor="runpod-api-key">Runpod API key</label>
+      <form className="setup-form" onSubmit={onSave}>
+        <label className="field" htmlFor="runpod-api-key">
+          Runpod API key
         <input
+          className="input"
           id="runpod-api-key"
           name="runpod-api-key"
           type="password"
@@ -43,6 +45,7 @@ export function RunpodKeySettings(props: RunpodKeySettingsProps) {
           autoComplete="off"
           required
         />
+        </label>
 
         <label htmlFor="remember-on-this-browser">
           <input
@@ -54,13 +57,21 @@ export function RunpodKeySettings(props: RunpodKeySettingsProps) {
           Remember on this browser
         </label>
 
-        <button type="submit">Save key</button>
-        <button type="button" onClick={onClear}>
-          Clear key
-        </button>
+        <div className="setup-actions">
+          <button className="btn btn-primary" type="submit">
+            Save key
+          </button>
+          <button className="btn btn-destructive" type="button" onClick={onClear}>
+            Clear key
+          </button>
+        </div>
       </form>
 
-      {savedMessage ? <p role="status">{savedMessage}</p> : null}
+      {savedMessage ? (
+        <p role="status" className="status-inline" data-tone="success">
+          {savedMessage}
+        </p>
+      ) : null}
     </section>
   );
 }

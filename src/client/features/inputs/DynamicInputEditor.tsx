@@ -8,6 +8,7 @@ import type {
 } from "../../../shared/contracts/inputs";
 import type { WorkflowTemplateRecord } from "../../../shared/contracts/workflow";
 import { useDynamicInputEditor } from "./useDynamicInputEditor";
+import "../../styles/setupInput.css";
 
 type DynamicInputEditorViewProps = {
   controls: DynamicInputControl[];
@@ -51,7 +52,7 @@ function renderInputControl(
   hasInlineError: boolean
 ) {
   const value = draftValues[control.id] ?? control.defaultValue;
-  const className = hasInlineError ? "input-invalid" : undefined;
+  const className = hasInlineError ? "input input-invalid" : "input";
 
   switch (control.kind) {
     case "text":
@@ -66,7 +67,7 @@ function renderInputControl(
     case "multiline":
       return (
         <textarea
-          className={className}
+          className={hasInlineError ? "textarea input-invalid" : "textarea"}
           rows={4}
           value={typeof value === "string" ? value : ""}
           onChange={(event) => setValue(control.id, event.target.value)}
@@ -84,7 +85,7 @@ function renderInputControl(
     case "boolean":
       return (
         <input
-          className={className}
+          className={hasInlineError ? "interactive input-invalid" : "interactive"}
           type="checkbox"
           checked={Boolean(value)}
           onChange={(event) => setValue(control.id, event.target.checked)}
@@ -97,8 +98,8 @@ function renderInputControl(
           : { width: 0, height: 0 };
 
       return (
-        <div>
-          <label>
+        <div className="input-dimension-grid">
+          <label className="field">
             Width
             <input
               className={className}
@@ -112,7 +113,7 @@ function renderInputControl(
               }}
             />
           </label>
-          <label>
+          <label className="field">
             Height
             <input
               className={className}
@@ -133,7 +134,7 @@ function renderInputControl(
       const imageValue = value && typeof value === "object" && "dataUrl" in value ? String(value.dataUrl) : "";
 
       return (
-        <div>
+        <div className="input-image-controls">
           <input
             className={className}
             type="file"
@@ -149,7 +150,7 @@ function renderInputControl(
               });
             }}
           />
-          <button type="button" onClick={() => setValue(control.id, null)}>
+          <button className="btn btn-destructive" type="button" onClick={() => setValue(control.id, null)}>
             Remove
           </button>
           {imageValue ? <img alt={`${control.name} preview`} src={imageValue} width={128} /> : null}
@@ -166,9 +167,9 @@ function renderInputControl(
       const max = control.constraints.max ?? 5;
 
       return (
-        <div>
+        <div className="input-lora-grid">
           <input
-            className={className}
+            className={hasInlineError ? "interactive input-invalid" : "interactive"}
             type="checkbox"
             checked={loraValue.enabled}
             onChange={(event) =>
@@ -179,7 +180,7 @@ function renderInputControl(
             }
           />
           <input
-            className={className}
+            className={hasInlineError ? "input input-invalid" : "input"}
             type="range"
             min={min}
             max={max}
@@ -228,12 +229,13 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
   }
 
   return (
-    <section>
+    <section className="input-card">
       <h2>Dynamic Inputs</h2>
       <p>Edit the workflow-derived input values below.</p>
 
-      <label>
+      <label className="field">
         <input
+          className="interactive"
           type="checkbox"
           checked={props.showSourceMapping}
           onChange={(event) => props.setShowSourceMapping(event.target.checked)}
@@ -242,13 +244,15 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
       </label>
 
       {props.hasDraftDiffFromTemplate ? (
-        <button type="button" onClick={() => void props.resetToTemplateDefaults()}>
-          Reset to template defaults
-        </button>
+        <div className="input-actions">
+          <button className="btn btn-secondary" type="button" onClick={() => void props.resetToTemplateDefaults()}>
+            Reset to template defaults
+          </button>
+        </div>
       ) : null}
 
       {props.warnings.length > 0 ? (
-        <div>
+        <div className="input-warnings">
           <h3>Input warnings</h3>
           <ul>
             {props.warnings.map((warning) => (
@@ -258,19 +262,27 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
         </div>
       ) : null}
 
-      {props.runBlockingMessage ? <p role="alert">{props.runBlockingMessage}</p> : null}
-      {props.hasUnsavedChangesSinceLastRun ? <p>Unsaved changes since last successful run.</p> : null}
+      {props.runBlockingMessage ? (
+        <p role="alert" className="input-error">
+          {props.runBlockingMessage}
+        </p>
+      ) : null}
+      {props.hasUnsavedChangesSinceLastRun ? (
+        <p className="input-status">Unsaved changes since last successful run.</p>
+      ) : null}
 
-      <button type="button" onClick={props.onRun}>
-        Run with current inputs
-      </button>
+      <div className="input-run-bar">
+        <button className="btn btn-primary" type="button" onClick={props.onRun}>
+          Run with current inputs
+        </button>
+      </div>
 
       {[...sections.entries()].map(([category, controls]) => (
-        <fieldset key={category}>
+        <fieldset key={category} className="input-category">
           <legend>{category}</legend>
           {controls.map((control) => (
-            <div key={control.id}>
-              <label>
+            <div key={control.id} className="input-row">
+              <label className="field">
                 {control.name}
                 {renderInputControl(
                   control,
@@ -280,8 +292,14 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
                   Boolean(props.inlineErrorsByControlId[control.id])
                 )}
               </label>
-              {props.inlineErrorsByControlId[control.id] ? <p role="alert">{props.inlineErrorsByControlId[control.id]}</p> : null}
-              {props.showSourceMapping ? <p>{`${control.source.nodeId}.${control.source.valuePath.join(".")}`}</p> : null}
+              {props.inlineErrorsByControlId[control.id] ? (
+                <p role="alert" className="input-error">
+                  {props.inlineErrorsByControlId[control.id]}
+                </p>
+              ) : null}
+              {props.showSourceMapping ? (
+                <p className="input-source-mapping">{`${control.source.nodeId}.${control.source.valuePath.join(".")}`}</p>
+              ) : null}
             </div>
           ))}
         </fieldset>

@@ -46,13 +46,15 @@ export function WorkflowImport({ onImported }: WorkflowImportProps) {
   }
 
   return (
-    <section>
+    <section className="setup-card">
       <h2>Workflow Import</h2>
       <p>Upload a ComfyUI workflow JSON template to reuse it for later runs.</p>
-      <input type="file" accept=".json,application/json" onChange={handleFileChange} />
-      <p>{status}</p>
+      <div className="setup-form">
+        <input className="input" type="file" accept=".json,application/json" onChange={handleFileChange} />
+      </div>
+      <p className="status-inline" data-tone="success">{status}</p>
       {activeTemplate ? (
-        <div>
+        <div className="setup-meta">
           <p>Fingerprint: {activeTemplate.fingerprint}</p>
           <p>Shape valid: {activeTemplate.validation.shapeValid ? "Yes" : "No"}</p>
           <p>Template valid: {activeTemplate.validation.templateValid ? "Yes" : "No"}</p>

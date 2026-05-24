@@ -83,6 +83,38 @@ describe("dynamic input editor", () => {
     expect(html).toContain("Reset to template defaults");
   });
 
+  it("renders run-blocking and unsaved-state feedback with structural class hooks", () => {
+    const controls = createControls();
+
+    const html = renderToStaticMarkup(
+      <DynamicInputEditorView
+        controls={controls}
+        warnings={[]}
+        draftValues={{
+          [controls[0].id]: "Nora",
+          [controls[1].id]: 30
+        }}
+        hasDraftDiffFromTemplate={false}
+        hasUnsavedChangesSinceLastRun={true}
+        inlineErrorsByControlId={{
+          [controls[0].id]: "Name is required"
+        }}
+        runBlockingMessage="Fix validation before running"
+        showSourceMapping={true}
+        setShowSourceMapping={vi.fn()}
+        setValue={vi.fn()}
+        resetToTemplateDefaults={vi.fn()}
+        onRun={vi.fn()}
+      />
+    );
+
+    expect(html).toContain("Fix validation before running");
+    expect(html).toContain("Unsaved changes since last successful run.");
+    expect(html).toContain("input-run-bar");
+    expect(html).toContain("input-category");
+    expect(html).toContain("input-source-mapping");
+  });
+
   it("applies overlay order and keeps new controls by default order", () => {
     const controls = createControls();
     const overlayOrdered = applyOrderingOverlay(controls, {

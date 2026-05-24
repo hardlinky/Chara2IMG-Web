@@ -15,7 +15,7 @@ export function ActiveWorkflowTemplate({
 }: ActiveWorkflowTemplateProps) {
   if (isLoading) {
     return (
-      <section>
+      <section className="setup-card">
         <h2>Active Workflow Template</h2>
         <p>Loading active template...</p>
       </section>
@@ -24,16 +24,16 @@ export function ActiveWorkflowTemplate({
 
   if (error) {
     return (
-      <section>
+      <section className="setup-card">
         <h2>Active Workflow Template</h2>
-        <p>Template restore failed: {error}</p>
+        <p className="status-inline" data-tone="error">Template restore failed: {error}</p>
       </section>
     );
   }
 
   if (!activeTemplate) {
     return (
-      <section>
+      <section className="setup-card">
         <h2>Active Workflow Template</h2>
         <p>No active template saved yet.</p>
       </section>
@@ -41,16 +41,20 @@ export function ActiveWorkflowTemplate({
   }
 
   return (
-    <section>
+    <section className="setup-card">
       <h2>Active Workflow Template</h2>
-      <p>Name: {activeTemplate.displayName}</p>
-      <p>Fingerprint: {activeTemplate.fingerprint}</p>
-      <p>Imported at: {new Date(activeTemplate.importedAt).toLocaleString()}</p>
-      <p>Shape valid: {activeTemplate.validation.shapeValid ? "Yes" : "No"}</p>
-      <p>Template valid: {activeTemplate.validation.templateValid ? "Yes" : "No"}</p>
-      <button type="button" onClick={onClear}>
-        Clear active template
-      </button>
+      <div className="setup-meta">
+        <p>Name: {activeTemplate.displayName}</p>
+        <p>Fingerprint: {activeTemplate.fingerprint}</p>
+        <p>Imported at: {new Date(activeTemplate.importedAt).toLocaleString()}</p>
+        <p>Shape valid: {activeTemplate.validation.shapeValid ? "Yes" : "No"}</p>
+        <p>Template valid: {activeTemplate.validation.templateValid ? "Yes" : "No"}</p>
+      </div>
+      <div className="setup-actions">
+        <button className="btn btn-destructive" type="button" onClick={onClear}>
+          Clear active template
+        </button>
+      </div>
     </section>
   );
 }

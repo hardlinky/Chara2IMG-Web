@@ -45,11 +45,11 @@ export function JobOutputsView({ cluster, onBack, onNextJob }: JobOutputsViewPro
   return (
     <section className="outputs-job-view">
       <div className="outputs-job-view-actions">
-        <button type="button" onClick={onBack}>
+        <button className="btn btn-secondary" type="button" onClick={onBack}>
           Back to gallery
         </button>
         {onNextJob ? (
-          <button type="button" onClick={onNextJob}>
+          <button className="btn btn-primary" type="button" onClick={onNextJob}>
             Next job
           </button>
         ) : null}
@@ -63,7 +63,7 @@ export function JobOutputsView({ cluster, onBack, onNextJob }: JobOutputsViewPro
 
       {visibleImages.length < cluster.outputs.length ? (
         <div className="outputs-job-view-more">
-          <button type="button" onClick={() => setVisibleCount((current) => current + PAGE_SIZE)}>
+          <button className="btn btn-secondary" type="button" onClick={() => setVisibleCount((current) => current + PAGE_SIZE)}>
             Load more images
           </button>
         </div>

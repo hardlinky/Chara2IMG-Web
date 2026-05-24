@@ -69,17 +69,23 @@ export function InviteGate(props: InviteGateProps) {
   }
 
   if (loading) {
-    return <p>Checking access...</p>;
+    return (
+      <section className="setup-card">
+        <p>Checking access...</p>
+      </section>
+    );
   }
 
   return (
-    <section>
+    <section className="setup-card">
       <h1>Invited Access</h1>
       <p>Enter your invite code to unlock this app.</p>
 
-      <form onSubmit={(event) => void submitInvite(event)}>
-        <label htmlFor="invite">Invite code</label>
+      <form className="setup-form" onSubmit={(event) => void submitInvite(event)}>
+        <label className="field" htmlFor="invite">
+          Invite code
         <input
+          className="input"
           id="invite"
           name="invite"
           type="password"
@@ -88,13 +94,18 @@ export function InviteGate(props: InviteGateProps) {
           autoComplete="off"
           required
         />
+        </label>
 
-        <button type="submit" disabled={submitting}>
+        <button className="btn btn-primary" type="submit" disabled={submitting}>
           {submitting ? "Verifying..." : "Verify Invite"}
         </button>
       </form>
 
-      {error ? <p role="alert">{error}</p> : null}
+      {error ? (
+        <p role="alert" className="status-inline" data-tone="error">
+          {error}
+        </p>
+      ) : null}
     </section>
   );
 }

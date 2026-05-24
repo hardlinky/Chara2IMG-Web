@@ -1,0 +1,110 @@
+.jobs-panel,
+.outputs-panel,
+.outputs-job-view {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.jobs-panel-header,
+.outputs-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.jobs-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.jobs-card {
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, rgba(39, 47, 56, 0.84), rgba(21, 26, 31, 0.88));
+  padding: var(--space-3);
+  display: grid;
+  gap: var(--space-2);
+}
+
+.jobs-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.jobs-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.jobs-status-chip {
+  border: 1px solid var(--color-border-strong);
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+  font-size: var(--font-size-sm);
+}
+
+.jobs-warning-chip {
+  border-color: rgba(229, 188, 111, 0.45);
+  color: var(--color-warning-text);
+  background: rgba(61, 49, 21, 0.8);
+}
+
+.jobs-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.jobs-pagination {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.outputs-provenance-line {
+  color: var(--color-text-secondary);
+}
+
+.outputs-job-view-actions,
+.outputs-job-view-more {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.outputs-lightbox {
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  background: rgba(18, 23, 28, 0.74);
+}
+
+.outputs-image-tile {
+  border-radius: var(--radius-md);
+}
+
+.outputs-image-tile:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+@media (max-width: 720px) {
+  .jobs-actions .btn,
+  .jobs-pagination .btn,
+  .outputs-job-view-actions .btn,
+  .outputs-job-view-more .btn,
+  .outputs-toolbar .btn {
+    width: 100%;
+  }
+}

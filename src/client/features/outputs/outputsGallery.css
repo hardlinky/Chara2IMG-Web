@@ -1,11 +1,11 @@
-.outputs-header {
+.outputs-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
 }
 
-.outputs-header select {
+.outputs-toolbar select {
   margin-left: 0.5rem;
 }
 
@@ -29,10 +29,10 @@
 .outputs-cluster-card {
   break-inside: avoid;
   margin: 0 0 0.85rem;
-  border: 1px solid #d2d7e5;
+  border: 1px solid var(--color-border-subtle);
   border-radius: 0.75rem;
   overflow: hidden;
-  background: #fff;
+  background: linear-gradient(180deg, rgba(40, 48, 57, 0.82), rgba(23, 28, 34, 0.9));
 }
 
 .outputs-cluster-preview {
@@ -40,7 +40,7 @@
   width: 100%;
   padding: 0;
   border: 0;
-  background: #f5f8ff;
+  background: rgba(17, 21, 24, 0.84);
   display: block;
   cursor: pointer;
 }
@@ -56,7 +56,7 @@
   right: 0.5rem;
   bottom: 0.5rem;
   background: rgba(12, 16, 24, 0.86);
-  color: #fff;
+  color: var(--color-text-primary);
   border-radius: 999px;
   padding: 0.2rem 0.55rem;
   font-size: 0.75rem;
@@ -69,7 +69,8 @@
   gap: 0.5rem;
   font-size: 0.85rem;
   padding: 0.55rem 0.7rem;
-  border-top: 1px solid #e5e9f2;
+  border-top: 1px solid var(--color-border-subtle);
+  color: var(--color-text-secondary);
 }
 
 .outputs-job-view-actions {
@@ -81,7 +82,7 @@
 .outputs-provenance-line {
   margin: 0 0 0.9rem;
   font-size: 0.88rem;
-  color: #27364b;
+  color: var(--color-text-secondary);
 }
 
 .outputs-image-grid {
@@ -104,6 +105,7 @@
   display: block;
   width: 100%;
   border-radius: 0.55rem;
+  border: 1px solid var(--color-border-subtle);
 }
 
 .outputs-image-tile-hidden {

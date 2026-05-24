@@ -19,6 +19,17 @@ export function createServerApp(): Hono {
   registerRunpodProxyRoutes(app);
   registerSystemRoutes(app);
 
+  app.use("/*", async (c, next) => {
+    await next();
+
+    const contentType = c.res.headers.get("content-type") ?? "";
+    if (contentType.includes("text/html")) {
+      c.res.headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
+      c.res.headers.set("Pragma", "no-cache");
+      c.res.headers.set("Expires", "0");
+    }
+  });
+
   app.use(
     "/*",
     serveStatic({
