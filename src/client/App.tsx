@@ -27,7 +27,7 @@ function toRunpodWorkflowInput(payload: Record<string, unknown>): Record<string,
 }
 
 export function App() {
-  const [activeTab, setActiveTab] = useState<"run" | "outputs">("run");
+  const [activeTab, setActiveTab] = useState<"setup" | "input" | "jobs" | "output">("setup");
   const [invited, setInvited] = useState(false);
   const [runpodKey, setRunpodKey] = useState(getRunpodKey());
   const [runEndpointId, setRunEndpointId] = useState(() => getStoredEndpointId() ?? "");
@@ -131,15 +131,21 @@ export function App() {
       <h1>Chara2Img Web</h1>
       <p>Invited session active.</p>
       <div>
-        <button type="button" onClick={() => setActiveTab("run")} disabled={activeTab === "run"}>
-          Run
+        <button type="button" onClick={() => setActiveTab("setup")} disabled={activeTab === "setup"}>
+          Setup
         </button>
-        <button type="button" onClick={() => setActiveTab("outputs")} disabled={activeTab === "outputs"}>
-          Outputs
+        <button type="button" onClick={() => setActiveTab("input")} disabled={activeTab === "input"}>
+          Input
+        </button>
+        <button type="button" onClick={() => setActiveTab("jobs")} disabled={activeTab === "jobs"}>
+          Jobs
+        </button>
+        <button type="button" onClick={() => setActiveTab("output")} disabled={activeTab === "output"}>
+          Output
         </button>
       </div>
 
-      {activeTab === "run" ? (
+      {activeTab === "setup" ? (
         <>
           <RunpodKeySettings onKeyChanged={setRunpodKey} />
           <p>Runpod key configured: {runpodKey ? "Yes" : "No"}</p>
@@ -165,6 +171,9 @@ export function App() {
               void clearTemplate();
             }}
           />
+        </>
+      ) : activeTab === "input" ? (
+        <>
           <p>Workflow template loaded: {activeTemplate ? "Yes" : "No"}</p>
           {activeTemplate ? (
             <DynamicInputEditor
@@ -172,9 +181,14 @@ export function App() {
               onRunPayloadBuilt={onRunPayloadBuilt}
               onEditorReady={(api) => setEditorApi(api)}
             />
-          ) : null}
+          ) : (
+            <p>Import a workflow in Setup before editing inputs.</p>
+          )}
           {runError ? <p role="alert">{runError}</p> : null}
           {runResult ? <pre>{runResult}</pre> : null}
+        </>
+      ) : activeTab === "jobs" ? (
+        <>
           {jobActionMessage ? <p role="status">{jobActionMessage}</p> : null}
           <RecentJobsPanel
             jobs={recentJobs.jobs}

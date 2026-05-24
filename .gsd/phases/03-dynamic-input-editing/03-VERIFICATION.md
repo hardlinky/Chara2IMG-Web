@@ -17,7 +17,7 @@ Status: passed
 
 | # | Truth | Status | Evidence |
 | --- | --- | --- | --- |
-| 1 | User can see generated controls in stable grouping and ordering | ✓ VERIFIED | deriveInputControls enforces deterministic [Input#] parsing from `_meta.title`/`inputs.title` and sorted control output, then hook applies sparse overlay |
+| 1 | User can see generated controls in stable grouping and ordering | ✓ VERIFIED | deriveInputControls enforces deterministic `[Input#]`/`[Input]` parsing from `_meta.title`/`inputs.title` and sorted control output, then hook applies sparse overlay |
 | 2 | User can edit text, multiline, numeric, boolean, dimension, image, and lora-row controls | ✓ VERIFIED | DynamicInputEditor renders all required control classes with bound draft state and per-type handlers, including Detailer lora rows |
 | 3 | Run blocks invalid inputs and builds fresh job-ready payload when valid | ✓ VERIFIED | validateDraftForRun + buildRunWorkflowPayload orchestrated by attemptRun path in hook and UI |
 
@@ -28,7 +28,7 @@ Score: 3/3 truths verified
 | Artifact | Expected | Status | Details |
 | --- | --- | --- | --- |
 | src/shared/contracts/inputs.ts | Shared input contracts for control, warning, draft, and validation shapes | ✓ EXISTS + SUBSTANTIVE | Control/value/warning/validation and payload-result contracts exported and used across shared/client modules |
-| src/shared/workflow/deriveInputControls.ts | Deterministic parser and ordering derivation | ✓ EXISTS + SUBSTANTIVE | Strict [Input#] parser, `_meta.title` defaulting, category/name extraction, lora-row mapping, warning emission, and deterministic sort logic |
+| src/shared/workflow/deriveInputControls.ts | Deterministic parser and ordering derivation | ✓ EXISTS + SUBSTANTIVE | `[Input#]`/`[Input]` parser, `_meta.title` defaulting, category/name extraction, expanded class-type mappings (checkpoint/vae/ksampler/etc), lora-row mapping, warning emission, and deterministic sort logic |
 | src/client/lib/inputEditorStorage.ts | Browser-local draft and overlay storage | ✓ EXISTS + SUBSTANTIVE | Dexie tables for per-template drafts and global order overlay |
 | src/client/features/inputs/useDynamicInputEditor.ts | Editor state orchestration and run attempt flow | ✓ EXISTS + SUBSTANTIVE | Derivation wiring, persistence, inline errors, run blocking, and payload build orchestration |
 | src/client/features/inputs/DynamicInputEditor.tsx | User-facing dynamic input editing UI | ✓ EXISTS + SUBSTANTIVE | Grouped rendering, warnings, reset controls, invalid highlighting, and run action hook integration |

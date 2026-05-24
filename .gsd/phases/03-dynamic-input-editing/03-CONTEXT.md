@@ -15,7 +15,7 @@ Phase 3 delivers a user-friendly input editing surface derived from workflow-def
 
 ### Input Surface Structure
 
-- Parse editable controls from node titles using exact prefix format `[Input#]`.
+- Parse editable controls from node titles using prefix formats `[Input#]` and `[Input]`.
 - Use `_meta.title` as the default title source, with `inputs.title` as fallback when `_meta.title` is missing.
 - Parse title body using first-dot split: `Category.Name`.
 - Example: `[Input1] Character.Body` -> category `Character`, input name `Body`.
@@ -23,9 +23,10 @@ Phase 3 delivers a user-friendly input editing surface derived from workflow-def
 - Display only input nodes in the editing UI; hide non-input workflow graph details.
 - Workflow acts as a black-box template for users.
 - Default ordering uses `[Input#]` index ascending, then full title tie-break for duplicates.
+- Inputs with plain `[Input]` (no numeric suffix) are valid and sort after numbered inputs.
 - Duplicates are allowed and ordered by full title.
 - Numbering gaps are allowed.
-- Case-sensitive parsing for titles and prefix matching (`[Input#]` exact only).
+- Case-sensitive parsing for titles and prefix matching (`[Input]` / `[Input#]`).
 - Trim leading/trailing whitespace on parsed category and name.
 - Category and input titles are case-sensitive for grouping and display.
 - Multilingual names are supported.
@@ -51,6 +52,17 @@ Phase 3 delivers a user-friendly input editing surface derived from workflow-def
   - `PrimitiveStringMultiline` -> `multiline`
   - `PrimitiveBoolean` -> `boolean`
   - `PrimitiveInt` / `PrimitiveFloat` -> `number`
+- Additional class-type mappings are first-class behavior:
+  - `CheckpointLoaderSimple.ckpt_name` -> `text`
+  - `VAELoader.vae_name` -> `text`
+  - `KSampler` / `KSamplerAdvanced` -> `steps|cfg|sampler_name|scheduler|denoise|seed` (first supported field)
+  - `EmptyLatentImage.batch_size` -> `number`
+  - `mxSlider2D.Xi/Yi` -> `dimension`
+  - `CR Integer Multiple.int` -> `number`
+  - `CR Float.float` -> `number`
+  - `CR Text` / `StringFunction|pysssss` / `Text Multiline.text` -> `multiline`
+  - `easy loadImageBase64.base64_data` -> `image`
+- For unmapped node classes, infer from the first scalar input field (`string|number|boolean`) as a fallback.
 - No smart coercion from string-like values to numeric/boolean by inference.
 - Constraints come strictly from workflow metadata.
 - Image controls use file picker plus preview, with replace/remove actions.
@@ -59,6 +71,7 @@ Phase 3 delivers a user-friendly input editing surface derived from workflow-def
   - checkbox toggle bound to `on`
   - lora name shown as label
   - strength slider with range `[-5.0, 5.0]`
+  - strength slider/textbox step interval `0.05`
   - strength textbox mirroring/editing the same float value
 
 ### Editing Behavior and Validation

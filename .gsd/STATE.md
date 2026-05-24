@@ -12,7 +12,7 @@ See: .gsd/PROJECT.md (updated 2026-05-23)
 Phase: 5 of 5 (Outputs and Gallery Review)
 Plan: 2 of 2 in current phase
 Status: Phase execution complete, verification passed
-Last activity: 2026-05-24 - Completed 05-02 outputs tab gallery and lightbox flow
+Last activity: 2026-05-24 - Added Setup/Input/Jobs/Output app tabs and expanded dynamic input parser mappings
 
 Progress: [██████████] 100%
 
@@ -54,6 +54,8 @@ Recent decisions affecting current work:
 - Post-Phase 5 update: Dynamic input mapping defaults to `_meta.title` + Primitive node value mapping, with dedicated `Detailer.Loras` row controls.
 - Post-Phase 5 update: `RUNPOD_ENDPOINT_ID` env var pre-populates the endpoint ID field; user overrides persisted in `localStorage` via `endpointStorage.ts`; server exposes `GET /api/system/config`.
 - Post-Phase 5 update: PhotoSwipe lightbox gains scroll-wheel zoom via `wheelToZoom: true`.
+- Post-Phase 5 update: App navigation split from `Run`/`Outputs` to `Setup`/`Input`/`Jobs`/`Output` tabs.
+- Post-Phase 5 update: Dynamic parser accepts `[Input]` titles without index (sorted last), expands class-type control mappings, and uses `0.05` step for lora strength controls.
 
 ### Pending Todos
 

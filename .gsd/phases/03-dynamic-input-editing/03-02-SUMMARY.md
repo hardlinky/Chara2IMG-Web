@@ -65,3 +65,11 @@ Run attempts now enforce full dynamic-input validation and build fresh job-ready
 ## Issues Encountered
 
 None.
+
+## Post-Delivery Enhancements
+
+Additional improvements shipped after initial phase execution:
+
+1. Expanded input mapping support in `deriveInputControls` to include `CheckpointLoaderSimple`, `VAELoader`, `KSampler/KSamplerAdvanced`, `mxSlider2D`, `CR Integer Multiple`, `CR Float`, `CR Text`, and `easy loadImageBase64`, plus scalar first-field fallback for unmapped classes.
+2. Accepted `[Input]` titles without numeric suffix and sorted them after numbered `[Input#]` entries.
+3. Updated Detailer lora strength slider/number step to `0.05` for finer but controlled tuning.
