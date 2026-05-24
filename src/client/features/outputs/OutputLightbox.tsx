@@ -19,7 +19,8 @@ export function OutputLightbox({ images, imagePrefix, maxVisible = images.length
         arrowKeys: true,
         pinchToClose: true,
         bgOpacity: 0.92,
-        showHideAnimationType: "zoom"
+        showHideAnimationType: "zoom",
+        wheelToZoom: true
       }}
     >
       <div className="outputs-image-grid">

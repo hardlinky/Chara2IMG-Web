@@ -4,10 +4,12 @@ import { extractRunpodImagePreview, type RunpodImagePreview } from "../../lib/ru
 
 type RunpodProxySmokeProps = {
   apiKey: string;
+  endpointId: string;
+  onEndpointIdChange: (value: string) => void;
 };
 
 export function RunpodProxySmoke(props: RunpodProxySmokeProps) {
-  const [endpointId, setEndpointId] = useState("");
+  const endpointId = props.endpointId;
   const [jobId, setJobId] = useState("");
   const [inputJson, setInputJson] = useState('{"prompt":"smoke"}');
   const [result, setResult] = useState("");
@@ -98,7 +100,7 @@ export function RunpodProxySmoke(props: RunpodProxySmokeProps) {
         <input
           id="endpoint-id"
           value={endpointId}
-          onChange={(event) => setEndpointId(event.target.value)}
+          onChange={(event) => props.onEndpointIdChange(event.target.value)}
           required
         />
 

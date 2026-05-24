@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { InviteGate } from "./features/access/InviteGate";
 import { RunpodKeySettings } from "./features/access/RunpodKeySettings";
 import { RunpodProxySmoke } from "./features/access/RunpodProxySmoke";
@@ -9,6 +9,8 @@ import { useActiveWorkflowTemplate } from "./features/workflows/useActiveWorkflo
 import { OutputsTab } from "./features/outputs/OutputsTab";
 import { submitRunAndPersistRecentJob } from "./lib/jobSubmission";
 import { getRunpodKey } from "./lib/runpodKeyStorage";
+import { getStoredEndpointId, saveEndpointId } from "./lib/endpointStorage";
+import { fetchSystemConfig } from "./lib/api/runpodProxyClient";
 import { formatSubmittedAtRelative } from "./features/jobs/jobStatus";
 import { useRecentJobs } from "./features/jobs/useRecentJobs";
 import { RecentJobsPanel } from "./features/jobs/RecentJobsPanel";
@@ -28,7 +30,24 @@ export function App() {
   const [activeTab, setActiveTab] = useState<"run" | "outputs">("run");
   const [invited, setInvited] = useState(false);
   const [runpodKey, setRunpodKey] = useState(getRunpodKey());
-  const [runEndpointId, setRunEndpointId] = useState("");
+  const [runEndpointId, setRunEndpointId] = useState(() => getStoredEndpointId() ?? "");
+
+  useEffect(() => {
+    if (runEndpointId) {
+      return;
+    }
+
+    void fetchSystemConfig().then((config) => {
+      if (config.endpointId) {
+        setRunEndpointId(config.endpointId);
+      }
+    });
+  }, []);
+
+  function updateEndpointId(value: string): void {
+    setRunEndpointId(value);
+    saveEndpointId(value);
+  }
   const [runResult, setRunResult] = useState("");
   const [runError, setRunError] = useState("");
   const [jobActionMessage, setJobActionMessage] = useState("");
@@ -128,9 +147,15 @@ export function App() {
           <input
             id="run-endpoint-id"
             value={runEndpointId}
-            onChange={(event) => setRunEndpointId(event.target.value)}
+            onChange={(event) => updateEndpointId(event.target.value)}
           />
-          {runpodKey ? <RunpodProxySmoke apiKey={runpodKey} /> : null}
+          {runpodKey ? (
+            <RunpodProxySmoke
+              apiKey={runpodKey}
+              endpointId={runEndpointId}
+              onEndpointIdChange={updateEndpointId}
+            />
+          ) : null}
           <WorkflowImport onImported={persistTemplate} />
           <ActiveWorkflowTemplate
             activeTemplate={activeTemplate}

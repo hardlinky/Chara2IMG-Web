@@ -39,8 +39,16 @@ async function runCommand(name: string, command: string, args: string[]): Promis
   };
 }
 
+function getDefaultEndpointId(): string | null {
+  return process.env.RUNPOD_ENDPOINT_ID?.trim() || null;
+}
+
 export function registerSystemRoutes(app: Hono): void {
   app.use("/api/system/*", requireInvitedSession);
+
+  app.get("/api/system/config", (c) => {
+    return c.json({ endpointId: getDefaultEndpointId() });
+  });
 
   app.post("/api/system/update", async (c) => {
     if (!isSelfUpdateEnabled()) {

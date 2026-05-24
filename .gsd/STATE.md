@@ -52,6 +52,8 @@ Recent decisions affecting current work:
 - Phase 4: Treat Runpod job lifecycle as a dedicated phase before output-gallery work.
 - Phase 5: Use projection-first output contracts so gallery/lightbox UI never parses raw Runpod payloads.
 - Post-Phase 5 update: Dynamic input mapping defaults to `_meta.title` + Primitive node value mapping, with dedicated `Detailer.Loras` row controls.
+- Post-Phase 5 update: `RUNPOD_ENDPOINT_ID` env var pre-populates the endpoint ID field; user overrides persisted in `localStorage` via `endpointStorage.ts`; server exposes `GET /api/system/config`.
+- Post-Phase 5 update: PhotoSwipe lightbox gains scroll-wheel zoom via `wheelToZoom: true`.
 
 ### Pending Todos
 

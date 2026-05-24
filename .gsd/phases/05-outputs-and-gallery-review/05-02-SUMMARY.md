@@ -77,7 +77,13 @@ Outputs review now ships as a dedicated gallery tab with per-job drill-in and li
 
 None - plan executed exactly as written.
 
-## Issues Encountered
+## Post-Delivery Enhancements
+
+Two additions shipped after phase verification:
+
+1. **Endpoint ID from environment variable** (`src/client/lib/endpointStorage.ts`, `src/client/lib/api/runpodProxyClient.ts`, `src/server/routes/system.ts`): Server exposes `RUNPOD_ENDPOINT_ID` via `GET /api/system/config`. Client initializes the endpoint ID field from `localStorage` (user override) then falls back to the env default. Edits are persisted so the field survives reloads. `RunpodProxySmoke` receives `endpointId`/`onEndpointIdChange` as props to stay in sync.
+
+2. **Scroll-wheel zoom in lightbox** (`src/client/features/outputs/OutputLightbox.tsx`): Added `wheelToZoom: true` to the PhotoSwipe `options` object so the scroll wheel zooms in and out when the lightbox is open.
 
 None.
 

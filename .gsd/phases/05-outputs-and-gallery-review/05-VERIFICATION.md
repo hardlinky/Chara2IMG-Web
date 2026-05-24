@@ -34,7 +34,7 @@ Score: 4/4 truths verified
 | src/client/features/outputs/useOutputGallery.ts | Gallery/dedicated-view orchestration with return-context restore | ✓ EXISTS + SUBSTANTIVE | Controls density, view transitions, selected job, and scroll restoration |
 | src/client/features/outputs/OutputsTab.tsx | Outputs gallery shell and collapsed cards | ✓ EXISTS + SUBSTANTIVE | Renders density controls, representative image card, and output count badge |
 | src/client/features/outputs/JobOutputsView.tsx | Dedicated per-job output view with provenance line | ✓ EXISTS + SUBSTANTIVE | Shows full provenance, load-more paging, and back/next actions |
-| src/client/features/outputs/OutputLightbox.tsx | PhotoSwipe integration with configured interactions | ✓ EXISTS + SUBSTANTIVE | Loop, keyboard, zoom/pan behavior, and explicit close support via PhotoSwipe |
+| src/client/features/outputs/OutputLightbox.tsx | PhotoSwipe integration with configured interactions | ✓ EXISTS + SUBSTANTIVE | Loop, keyboard, zoom/pan behavior, explicit close support, and scroll-wheel zoom (`wheelToZoom: true`) via PhotoSwipe |
 | src/client/App.tsx | Outputs tab entry and flow integration | ✓ EXISTS + SUBSTANTIVE | App-level tab state includes Outputs and consumes projected clusters |
 
 Artifacts: 8/8 verified

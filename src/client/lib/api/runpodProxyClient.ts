@@ -49,6 +49,19 @@ export type SelfUpdateResult = {
   error?: string;
 };
 
+export type SystemConfig = {
+  endpointId: string | null;
+};
+
+export async function fetchSystemConfig(): Promise<SystemConfig> {
+  const response = await fetch("/api/system/config");
+  if (!response.ok) {
+    return { endpointId: null };
+  }
+
+  return (await response.json()) as SystemConfig;
+}
+
 export class ProxyRequestError extends Error {
   status: number;
   data: unknown;
