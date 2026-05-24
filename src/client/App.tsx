@@ -50,6 +50,11 @@ export function App() {
       return;
     }
 
+    if (!activeTemplate) {
+      setRunError("Load a workflow template before running.");
+      return;
+    }
+
     try {
       setRunError("");
       const response = await submitRunAndPersistRecentJob({
@@ -58,6 +63,7 @@ export function App() {
         submittedInput: toRunpodWorkflowInput(snapshot.payload),
         snapshot: {
           templateFingerprint: snapshot.templateFingerprint,
+          workflowFileName: activeTemplate.displayName,
           draftValues: snapshot.draftValues,
           submittedInput: toRunpodWorkflowInput(snapshot.payload)
         }

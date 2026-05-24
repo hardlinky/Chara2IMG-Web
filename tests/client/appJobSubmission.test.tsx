@@ -1,6 +1,7 @@
 import "fake-indexeddb/auto";
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { clearRecentJobs, getRecentJob, listVisibleRecentJobs } from "../../src/client/lib/recentJobsStorage";
+import { clearRecentJobs, getRecentJob, listVisibleRecentJobs, upsertRecentJob } from "../../src/client/lib/recentJobsStorage";
+import { buildLifecycleSnapshotFromStatus } from "../../src/client/features/jobs/jobStatus";
 import { submitRunAndPersistRecentJob } from "../../src/client/lib/jobSubmission";
 
 describe("app job submission", () => {
@@ -21,6 +22,7 @@ describe("app job submission", () => {
       submittedInput: { workflow: { prompt: "hello" } },
       snapshot: {
         templateFingerprint: "fp-1",
+        workflowFileName: "workflow-a.json",
         draftValues: { prompt: "hello" },
         submittedInput: { workflow: { prompt: "hello" } }
       },
@@ -35,6 +37,7 @@ describe("app job submission", () => {
     expect(submitRun).toHaveBeenCalledTimes(1);
     expect(visible).toHaveLength(1);
     expect(stored?.provenance.templateFingerprint).toBe("fp-1");
+    expect(stored?.provenance.workflowFileName).toBe("workflow-a.json");
     expect(stored?.provenance.draftValues).toEqual({ prompt: "hello" });
   });
 
@@ -50,6 +53,7 @@ describe("app job submission", () => {
         submittedInput: { workflow: { prompt: "hello" } },
         snapshot: {
           templateFingerprint: "fp-1",
+          workflowFileName: "workflow-a.json",
           draftValues: { prompt: "hello" },
           submittedInput: { workflow: { prompt: "hello" } }
         },
@@ -60,5 +64,22 @@ describe("app job submission", () => {
     ).rejects.toThrow("submit failed");
 
     expect(await listVisibleRecentJobs()).toEqual([]);
+  });
+
+  it("keeps legacy records without workflow filename readable", async () => {
+    await upsertRecentJob({
+      jobId: "legacy-job",
+      endpointId: "endpoint-1",
+      templateFingerprint: "fp-legacy",
+      draftValues: { prompt: "legacy" },
+      submittedInput: { workflow: { prompt: "legacy" } },
+      lifecycle: buildLifecycleSnapshotFromStatus("COMPLETED"),
+      lastResponse: { id: "legacy-job", status: "COMPLETED" },
+      lastError: null
+    });
+
+    const stored = await getRecentJob("legacy-job");
+    expect(stored?.provenance.templateFingerprint).toBe("fp-legacy");
+    expect(stored?.provenance.workflowFileName).toBeUndefined();
   });
 });

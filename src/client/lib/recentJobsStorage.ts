@@ -31,6 +31,7 @@ function normalizeJobRecord(input: RecentJobSubmissionInput): StoredRecentJob {
     lifecycle: input.lifecycle,
     provenance: {
       templateFingerprint: input.templateFingerprint,
+      workflowFileName: input.workflowFileName,
       draftValues: input.draftValues,
       submittedInput: input.submittedInput
     },

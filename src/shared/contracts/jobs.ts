@@ -32,8 +32,29 @@ export type JobLifecycleSnapshot = {
 
 export type RecentJobProvenance = {
   templateFingerprint: string;
+  workflowFileName?: string;
   draftValues: DynamicInputDraftValues;
   submittedInput: Record<string, unknown>;
+};
+
+export type JobOutputImageMimeType = "image/png" | "image/jpeg" | "image/webp" | "image/gif";
+
+export type RecentJobOutputImage = {
+  dataUrl: string;
+  mimeType: JobOutputImageMimeType;
+  sourcePath: string;
+  outputIndex: number;
+};
+
+export type RecentJobOutputCluster = {
+  jobId: string;
+  endpointId: string;
+  submittedAt: string;
+  finishedAt: string | null;
+  workflowFileName?: string;
+  outputCount: number;
+  representative: RecentJobOutputImage;
+  outputs: RecentJobOutputImage[];
 };
 
 export type RecentJobRecord = {
@@ -51,6 +72,7 @@ export type RecentJobSubmissionInput = {
   jobId: string;
   endpointId: string;
   templateFingerprint: string;
+  workflowFileName?: string;
   draftValues: DynamicInputDraftValues;
   submittedInput: Record<string, unknown>;
   lifecycle: JobLifecycleSnapshot;

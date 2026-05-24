@@ -6,6 +6,7 @@ import type { DynamicInputDraftValues } from "../../shared/contracts/inputs";
 
 export type RunSubmissionSnapshot = {
   templateFingerprint: string;
+  workflowFileName?: string;
   draftValues: DynamicInputDraftValues;
   submittedInput: Record<string, unknown>;
 };
@@ -86,6 +87,7 @@ export async function submitRunAndPersistRecentJob(args: {
     jobId,
     endpointId: args.endpointId,
     templateFingerprint: args.snapshot.templateFingerprint,
+    workflowFileName: args.snapshot.workflowFileName,
     draftValues: args.snapshot.draftValues,
     submittedInput: args.snapshot.submittedInput,
     lifecycle: buildLifecycleSnapshot(status),
