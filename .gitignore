@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+coverage/
+*.tsbuildinfo
+
+# Environment-scaffolded workspace files
+.github/
+.gsd/templates/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+*.log
+.vscode-test/
