@@ -1,5 +1,6 @@
 import { FormEvent, useState } from "react";
 import { runViaProxy, statusViaProxy } from "../../lib/api/runpodProxyClient";
+import { extractRunpodImagePreview, type RunpodImagePreview } from "../../lib/runpodOutputImage";
 
 type RunpodProxySmokeProps = {
   apiKey: string;
@@ -11,6 +12,7 @@ export function RunpodProxySmoke(props: RunpodProxySmokeProps) {
   const [inputJson, setInputJson] = useState('{"prompt":"smoke"}');
   const [result, setResult] = useState("");
   const [error, setError] = useState("");
+  const [imagePreview, setImagePreview] = useState<RunpodImagePreview | null>(null);
 
   async function onRun(event: FormEvent): Promise<void> {
     event.preventDefault();
@@ -25,8 +27,10 @@ export function RunpodProxySmoke(props: RunpodProxySmokeProps) {
         input
       });
 
-      setResult(JSON.stringify(response));
+      setResult(JSON.stringify(response, null, 2));
+      setImagePreview(extractRunpodImagePreview(response));
     } catch (runError) {
+      setImagePreview(null);
       setError(runError instanceof Error ? runError.message : "Run request failed");
     }
   }
@@ -41,8 +45,10 @@ export function RunpodProxySmoke(props: RunpodProxySmokeProps) {
         id: jobId
       });
 
-      setResult(JSON.stringify(response));
+      setResult(JSON.stringify(response, null, 2));
+      setImagePreview(extractRunpodImagePreview(response));
     } catch (statusError) {
+      setImagePreview(null);
       setError(statusError instanceof Error ? statusError.message : "Status request failed");
     }
   }
@@ -80,6 +86,14 @@ export function RunpodProxySmoke(props: RunpodProxySmokeProps) {
 
       {error ? <p role="alert">{error}</p> : null}
       {result ? <pre>{result}</pre> : null}
+      {imagePreview ? (
+        <div>
+          <h3>Detected Output Image</h3>
+          <p>MIME type: {imagePreview.mimeType}</p>
+          <p>Source path: {imagePreview.sourcePath}</p>
+          <img alt="Runpod output preview" src={imagePreview.dataUrl} style={{ maxWidth: 512 }} />
+        </div>
+      ) : null}
     </section>
   );
 }
