@@ -21,10 +21,30 @@ async function postProxy<TPayload>(path: string, payload: TPayload): Promise<unk
   });
 
   const text = await response.text();
-  const data = text ? JSON.parse(text) : null;
+  const contentType = response.headers.get("Content-Type") ?? "";
+  const isLikelyJson = contentType.includes("application/json");
+
+  let data: unknown = null;
+  if (text) {
+    if (isLikelyJson) {
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = text;
+      }
+    } else {
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = text;
+      }
+    }
+  }
 
   if (!response.ok) {
-    throw new Error(`Proxy request failed (${response.status}) ${JSON.stringify(data)}`);
+    throw new Error(
+      `Proxy request failed (${response.status}) ${typeof data === "string" ? data : JSON.stringify(data)}`
+    );
   }
 
   return data;
