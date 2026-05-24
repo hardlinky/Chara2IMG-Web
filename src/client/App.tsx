@@ -2,6 +2,7 @@ import { useState } from "react";
 import { InviteGate } from "./features/access/InviteGate";
 import { RunpodKeySettings } from "./features/access/RunpodKeySettings";
 import { RunpodProxySmoke } from "./features/access/RunpodProxySmoke";
+import { DynamicInputEditor } from "./features/inputs/DynamicInputEditor";
 import { ActiveWorkflowTemplate } from "./features/workflows/ActiveWorkflowTemplate";
 import { WorkflowImport } from "./features/workflows/WorkflowImport";
 import { useActiveWorkflowTemplate } from "./features/workflows/useActiveWorkflowTemplate";
@@ -34,6 +35,8 @@ export function App() {
         }}
       />
       <p>Workflow template loaded: {activeTemplate ? "Yes" : "No"}</p>
+      {activeTemplate ? <DynamicInputEditor activeTemplate={activeTemplate} /> : null}
     </main>
   );
 }
+
