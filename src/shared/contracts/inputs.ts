@@ -86,6 +86,10 @@ export type DynamicInputRunValidationResult = {
   blockingMessage?: string;
 };
 
+export type DynamicInputRunValidationSummary = DynamicInputRunValidationResult & {
+  attemptedAt: string;
+};
+
 export type DynamicInputDerivationResult = {
   controls: DynamicInputControl[];
   sections: DynamicInputSection[];
