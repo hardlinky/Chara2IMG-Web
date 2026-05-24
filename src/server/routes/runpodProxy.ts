@@ -59,7 +59,7 @@ export function registerRunpodProxyRoutes(app: Hono): void {
         endpointId: parsed.data.endpointId,
         apiKey: parsed.data.apiKey,
         operation: "status",
-        body: { id: parsed.data.id }
+        id: parsed.data.id
       });
 
       return toProxyResponse(response, await response.text());
@@ -81,7 +81,7 @@ export function registerRunpodProxyRoutes(app: Hono): void {
         endpointId: parsed.data.endpointId,
         apiKey: parsed.data.apiKey,
         operation: "cancel",
-        body: { id: parsed.data.id }
+        id: parsed.data.id
       });
 
       return toProxyResponse(response, await response.text());
@@ -103,7 +103,7 @@ export function registerRunpodProxyRoutes(app: Hono): void {
         endpointId: parsed.data.endpointId,
         apiKey: parsed.data.apiKey,
         operation: "retry",
-        body: { id: parsed.data.id }
+        id: parsed.data.id
       });
 
       return toProxyResponse(response, await response.text());

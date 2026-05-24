@@ -72,6 +72,46 @@ describe("Runpod proxy boundary", () => {
     expect((init?.headers as Record<string, string>).Authorization).toBe("Bearer rp_test_key");
   });
 
+  it("forwards status request using path-based job URL", async () => {
+    const app = createServerApp();
+
+    const inviteResponse = await app.request("http://localhost/api/access/verify-invite", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Origin: "http://localhost:5173"
+      },
+      body: JSON.stringify({ invite: "invite-test" })
+    });
+
+    const cookie = extractCookieHeader(inviteResponse.headers.get("set-cookie"));
+
+    const proxyResponse = await app.request("http://localhost/api/runpod/status", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: cookie,
+        Origin: "http://localhost:5173"
+      },
+      body: JSON.stringify({
+        endpointId: "abc123",
+        apiKey: "rp_test_key",
+        id: "dda414c5-a1db-49f7-895a-31aac2a1c074-u1"
+      })
+    });
+
+    expect(proxyResponse.status).toBe(200);
+
+    const fetchMock = vi.mocked(fetch);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    const [url, init] = fetchMock.mock.calls[0] ?? [];
+    expect(String(url)).toContain(
+      "https://api.runpod.ai/v2/abc123/status/dda414c5-a1db-49f7-895a-31aac2a1c074-u1"
+    );
+    expect(init?.method).toBe("GET");
+  });
+
   it("rejects malformed request payloads before forwarding", async () => {
     const app = createServerApp();
 
