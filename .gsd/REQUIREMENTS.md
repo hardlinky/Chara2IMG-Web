@@ -6,6 +6,88 @@
 
 ## v1.1 Requirements
 
+### Visual System and UI Foundation
+
+- [ ] **UI-01**: User sees a consistent visual design system (typography, spacing, color usage, and card/surface treatment) across Setup/Input/Jobs/Output tabs.
+- [ ] **UI-02**: User can distinguish primary actions, secondary actions, and destructive actions through clear visual hierarchy.
+- [ ] **UI-03**: User can use the app comfortably on desktop and mobile layouts with no clipped or overlapping primary content.
+- [ ] **UI-04**: User gets clear, accessible interaction states (focus, hover, active, disabled, error) on all key controls.
+
+### Workflow Presets
+
+- [ ] **PRESET-01**: User can save the current workflow template plus input draft values as a named preset.
+- [ ] **PRESET-02**: User can apply a saved preset to the currently active compatible workflow in one action.
+- [ ] **PRESET-03**: User can rename and delete saved presets from a preset management surface.
+
+### Input Editing Quality of Life
+
+- [ ] **INPUT-01**: User can reset all inputs or a single category to template defaults without re-importing workflow files.
+- [ ] **INPUT-02**: User can clearly see which inputs changed since last successful run.
+- [ ] **INPUT-03**: Run-blocking validation feedback points to affected fields with actionable messages.
+
+### Jobs Quality of Life
+
+- [ ] **JOBS-01**: User can search/filter recent jobs by workflow name and status simultaneously.
+- [ ] **JOBS-02**: User can quickly identify rerun lineage (source job vs rerun job) in the jobs list.
+- [ ] **JOBS-03**: User can pin or favorite important recent jobs so they remain easy to find.
+
+### Output Review Quality of Life
+
+- [ ] **OUTUX-01**: User can add notes/tags to completed job output groups.
+- [ ] **OUTUX-02**: User can filter output gallery by workflow name, tags, and completion recency.
+- [ ] **OUTUX-03**: User can view compact per-output provenance metadata without leaving gallery flow.
+
+## Future Requirements (Deferred)
+
+- **AUTH-ADMIN-01**: Admin can manage invited users from an internal UI.
+- **SYNC-01**: User can resume long-running job tracking across devices.
+- **SHARE-01**: User can export/import presets between browsers.
+
+## Out of Scope (v1.1)
+
+| Feature | Reason |
+| ------- | ------ |
+| Admin invite management UI | Deferred to dedicated access/admin milestone to avoid mixing UX polish with policy/security workflows. |
+| Cross-device live job state sync | Requires account/session model expansion outside current invited-browser-local architecture. |
+| Public self-service onboarding | Product remains invited-user focused in near-term iterations. |
+
+## Traceability
+
+| Requirement | Phase | Status |
+| ----------- | ----- | ------ |
+| UI-01 | Phase 6 | Pending |
+| UI-02 | Phase 6 | Pending |
+| UI-03 | Phase 6 | Pending |
+| UI-04 | Phase 6 | Pending |
+| PRESET-01 | Phase 7 | Pending |
+| PRESET-02 | Phase 7 | Pending |
+| PRESET-03 | Phase 7 | Pending |
+| INPUT-01 | Phase 7 | Pending |
+| INPUT-02 | Phase 7 | Pending |
+| INPUT-03 | Phase 7 | Pending |
+| JOBS-01 | Phase 8 | Pending |
+| JOBS-02 | Phase 8 | Pending |
+| JOBS-03 | Phase 8 | Pending |
+| OUTUX-01 | Phase 8 | Pending |
+| OUTUX-02 | Phase 8 | Pending |
+| OUTUX-03 | Phase 8 | Pending |
+
+**Coverage:**
+
+- v1.1 requirements: 16 total
+- Mapped to phases: 16
+- Unmapped: 0
+
+---
+
+_Requirements defined: 2026-05-24 for milestone v1.1 UX and QOL (UI-first)_# Requirements: Chara2Img Web v1.1 UX and QOL
+
+**Defined:** 2026-05-24
+**Milestone:** v1.1 UX and QOL
+**Core Value:** Enable reliable full-parity web generation workflows against Runpod serverless ComfyUI, with user-supplied API keys and no always-on ComfyUI host.
+
+## v1.1 Requirements
+
 ### Workflow Presets
 
 - [ ] **PRESET-01**: User can save the current workflow template plus input draft values as a named preset.

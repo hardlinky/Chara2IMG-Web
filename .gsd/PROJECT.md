@@ -14,6 +14,7 @@ Enable reliable full-parity web generation workflows against Runpod serverless C
 
 **Target features:**
 
+- Visual refresh pass across the full app shell before feature expansions.
 - Workflow presets and faster setup reuse paths.
 - Input editor quality-of-life controls and safer feedback loops.
 - Jobs and outputs browsing improvements (filtering, metadata, readability).
@@ -31,6 +32,8 @@ Enable reliable full-parity web generation workflows against Runpod serverless C
 
 ### Active
 
+- [ ] App has a coherent visual system (typography, spacing, hierarchy, colors) across Setup/Input/Jobs/Output tabs.
+- [ ] App interaction states are visually clear and accessible (focus, hover, active, disabled, error).
 - [ ] Users can save and reuse named workflow presets.
 - [ ] Users can quickly apply prior run inputs and preset combinations with fewer manual steps.
 - [ ] Input editor supports additional quality-of-life controls while preserving payload fidelity.
