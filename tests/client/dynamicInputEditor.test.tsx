@@ -65,10 +65,14 @@ describe("dynamic input editor", () => {
           [controls[1].id]: 30
         }}
         hasDraftDiffFromTemplate={true}
+        hasUnsavedChangesSinceLastRun={false}
+        inlineErrorsByControlId={{}}
+        runBlockingMessage={null}
         showSourceMapping={false}
         setShowSourceMapping={vi.fn()}
         setValue={vi.fn()}
         resetToTemplateDefaults={vi.fn()}
+        onRun={vi.fn()}
       />
     );
 

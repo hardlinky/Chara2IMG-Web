@@ -2,12 +2,19 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
   DynamicInputControl,
   DynamicInputDraftValues,
+  DynamicInputInlineError,
   DynamicInputOrderingOverlay,
   DynamicInputSection,
   DynamicInputValue
 } from "../../../shared/contracts/inputs";
 import type { WorkflowTemplateRecord } from "../../../shared/contracts/workflow";
+import { buildRunWorkflowPayload } from "../../../shared/workflow/buildRunWorkflowPayload";
 import { deriveInputControls } from "../../../shared/workflow/deriveInputControls";
+import {
+  shouldPersistDraftValue,
+  validateDraftForRun,
+  validateInlineControl
+} from "../../../shared/workflow/validateInputDraft";
 import {
   clearInputDraftValues,
   getInputDraftValues,
@@ -81,11 +88,61 @@ export function buildSectionsFromControls(orderedControls: DynamicInputControl[]
   }));
 }
 
+export type RunAttemptResult =
+  | {
+      ok: true;
+      payload: Record<string, unknown>;
+      errors: DynamicInputInlineError[];
+    }
+  | {
+      ok: false;
+      errors: DynamicInputInlineError[];
+      blockingMessage: string;
+    };
+
+export function attemptRunFromEditorState(args: {
+  controls: DynamicInputControl[];
+  draftValues: DynamicInputDraftValues;
+  templateRawJson: unknown;
+}): RunAttemptResult {
+  const runValidation = validateDraftForRun(args.controls, args.draftValues);
+  if (!runValidation.valid) {
+    return {
+      ok: false,
+      errors: runValidation.errors,
+      blockingMessage: runValidation.blockingMessage ?? "Fix invalid inputs before running."
+    };
+  }
+
+  const buildResult = buildRunWorkflowPayload({
+    templateRawJson: args.templateRawJson,
+    controls: args.controls,
+    draftValues: args.draftValues
+  });
+
+  if (!buildResult.ok) {
+    return {
+      ok: false,
+      errors: buildResult.errors,
+      blockingMessage: "Fix highlighted inputs before running the workflow."
+    };
+  }
+
+  return {
+    ok: true,
+    payload: buildResult.payload,
+    errors: []
+  };
+}
+
 export function useDynamicInputEditor(activeTemplate: WorkflowTemplateRecord | null) {
   const [draftValues, setDraftValues] = useState<DynamicInputDraftValues>({});
   const [overlay, setOverlay] = useState<DynamicInputOrderingOverlay>({ orderByControlId: {} });
   const [showSourceMapping, setShowSourceMapping] = useState(false);
   const [isLoadingDraft, setIsLoadingDraft] = useState(false);
+  const [inlineErrorsByControlId, setInlineErrorsByControlId] = useState<Record<string, string>>({});
+  const [runBlockingMessage, setRunBlockingMessage] = useState<string | null>(null);
+  const [lastSuccessfulRunDraft, setLastSuccessfulRunDraft] = useState<DynamicInputDraftValues | null>(null);
 
   const derivation = useMemo(() => {
     if (!activeTemplate) {
@@ -122,6 +179,9 @@ export function useDynamicInputEditor(activeTemplate: WorkflowTemplateRecord | n
       const defaults = buildDefaultDraftValues(derivation.controls);
       setDraftValues(storedDraft ? { ...defaults, ...storedDraft } : defaults);
       setOverlay(storedOverlay);
+      setInlineErrorsByControlId({});
+      setRunBlockingMessage(null);
+      setLastSuccessfulRunDraft(null);
       setIsLoadingDraft(false);
     }
 
@@ -141,17 +201,39 @@ export function useDynamicInputEditor(activeTemplate: WorkflowTemplateRecord | n
         return;
       }
 
+      const control = derivation.controls.find((candidate) => candidate.id === controlId);
+      if (!control) {
+        return;
+      }
+
+      const validation = validateInlineControl(control, value);
+      setInlineErrorsByControlId((previous) => {
+        const next = { ...previous };
+        if (validation.valid) {
+          delete next[controlId];
+        } else {
+          next[controlId] = validation.errors[0]?.message ?? "Invalid value.";
+        }
+        return next;
+      });
+
+      if (validation.valid) {
+        setRunBlockingMessage(null);
+      }
+
       setDraftValues((previous) => {
         const next = {
           ...previous,
           [controlId]: value
         };
 
-        void saveInputDraftValues(activeTemplate.fingerprint, next);
+        if (shouldPersistDraftValue(control, value)) {
+          void saveInputDraftValues(activeTemplate.fingerprint, next);
+        }
         return next;
       });
     },
-    [activeTemplate]
+    [activeTemplate, derivation.controls]
   );
 
   const setOverlayPosition = useCallback((controlId: string, position: number) => {
@@ -178,6 +260,63 @@ export function useDynamicInputEditor(activeTemplate: WorkflowTemplateRecord | n
     await clearInputDraftValues(activeTemplate.fingerprint);
   }, [activeTemplate, derivation.controls]);
 
+  const attemptRun = useCallback((): RunAttemptResult => {
+    if (!activeTemplate) {
+      return {
+        ok: false,
+        errors: [
+          {
+            controlId: "workflow",
+            message: "No active template loaded."
+          }
+        ],
+        blockingMessage: "Load a workflow template before running."
+      };
+    }
+
+    const result = attemptRunFromEditorState({
+      controls: derivation.controls,
+      draftValues,
+      templateRawJson: activeTemplate.rawJson
+    });
+
+    if (!result.ok) {
+      setInlineErrorsByControlId(
+        result.errors.reduce<Record<string, string>>((accumulator, error) => {
+          accumulator[error.controlId] = error.message;
+          return accumulator;
+        }, {})
+      );
+      setRunBlockingMessage(result.blockingMessage);
+      return result;
+    }
+
+    setInlineErrorsByControlId({});
+    setRunBlockingMessage(null);
+    setLastSuccessfulRunDraft(draftValues);
+
+    return result;
+  }, [activeTemplate, derivation.controls, draftValues]);
+
+  const hasUnsavedChangesSinceLastRun = useMemo(() => {
+    if (!lastSuccessfulRunDraft) {
+      return false;
+    }
+
+    const allControlIds = new Set([
+      ...Object.keys(lastSuccessfulRunDraft),
+      ...Object.keys(draftValues)
+    ]);
+
+    for (const controlId of allControlIds) {
+      if (JSON.stringify(lastSuccessfulRunDraft[controlId] ?? null) !== JSON.stringify(draftValues[controlId] ?? null)) {
+        return true;
+      }
+    }
+
+    return false;
+  }, [draftValues, lastSuccessfulRunDraft]);
+
   return {
     controls: orderedControls,
     sections: orderedSections,
@@ -186,9 +325,13 @@ export function useDynamicInputEditor(activeTemplate: WorkflowTemplateRecord | n
     isLoadingDraft,
     showSourceMapping,
     setShowSourceMapping,
+    inlineErrorsByControlId,
+    runBlockingMessage,
+    hasUnsavedChangesSinceLastRun,
     setValue,
     setOverlayPosition,
     resetToTemplateDefaults,
+    attemptRun,
     hasDraftDiffFromTemplate: hasDraftDiffFromDefaults(derivation.controls, draftValues)
   };
 }

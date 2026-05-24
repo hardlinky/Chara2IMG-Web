@@ -2,6 +2,7 @@ import { ChangeEvent } from "react";
 import type {
   DynamicInputControl,
   DynamicInputDraftValues,
+  DynamicInputInlineError,
   DynamicInputValue,
   DynamicInputWarning
 } from "../../../shared/contracts/inputs";
@@ -13,10 +14,14 @@ type DynamicInputEditorViewProps = {
   warnings: DynamicInputWarning[];
   draftValues: DynamicInputDraftValues;
   hasDraftDiffFromTemplate: boolean;
+  hasUnsavedChangesSinceLastRun: boolean;
+  inlineErrorsByControlId: Record<string, string>;
+  runBlockingMessage: string | null;
   showSourceMapping: boolean;
   setShowSourceMapping: (next: boolean) => void;
   setValue: (controlId: string, value: DynamicInputValue) => void;
   resetToTemplateDefaults: () => void | Promise<void>;
+  onRun: () => void;
 };
 
 function formatWarning(warning: DynamicInputWarning): string {
@@ -42,14 +47,17 @@ function renderInputControl(
   control: DynamicInputControl,
   draftValues: DynamicInputDraftValues,
   setValue: (controlId: string, value: DynamicInputValue) => void,
-  showSourceMapping: boolean
+  showSourceMapping: boolean,
+  hasInlineError: boolean
 ) {
   const value = draftValues[control.id] ?? control.defaultValue;
+  const className = hasInlineError ? "input-invalid" : undefined;
 
   switch (control.kind) {
     case "text":
       return (
         <input
+          className={className}
           type="text"
           value={typeof value === "string" ? value : ""}
           onChange={(event) => setValue(control.id, event.target.value)}
@@ -58,6 +66,7 @@ function renderInputControl(
     case "multiline":
       return (
         <textarea
+          className={className}
           rows={4}
           value={typeof value === "string" ? value : ""}
           onChange={(event) => setValue(control.id, event.target.value)}
@@ -66,6 +75,7 @@ function renderInputControl(
     case "number":
       return (
         <input
+          className={className}
           type="number"
           value={typeof value === "number" ? value : 0}
           onChange={(event) => setValue(control.id, Number(event.target.value))}
@@ -74,6 +84,7 @@ function renderInputControl(
     case "boolean":
       return (
         <input
+          className={className}
           type="checkbox"
           checked={Boolean(value)}
           onChange={(event) => setValue(control.id, event.target.checked)}
@@ -90,6 +101,7 @@ function renderInputControl(
           <label>
             Width
             <input
+              className={className}
               type="number"
               value={dimensions.width}
               onChange={(event) => {
@@ -103,6 +115,7 @@ function renderInputControl(
           <label>
             Height
             <input
+              className={className}
               type="number"
               value={dimensions.height}
               onChange={(event) => {
@@ -122,6 +135,7 @@ function renderInputControl(
       return (
         <div>
           <input
+            className={className}
             type="file"
             accept="image/*"
             onChange={(event: ChangeEvent<HTMLInputElement>) => {
@@ -191,6 +205,13 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
         </div>
       ) : null}
 
+      {props.runBlockingMessage ? <p role="alert">{props.runBlockingMessage}</p> : null}
+      {props.hasUnsavedChangesSinceLastRun ? <p>Unsaved changes since last successful run.</p> : null}
+
+      <button type="button" onClick={props.onRun}>
+        Run with current inputs
+      </button>
+
       {[...sections.entries()].map(([category, controls]) => (
         <fieldset key={category}>
           <legend>{category}</legend>
@@ -198,8 +219,15 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
             <div key={control.id}>
               <label>
                 {control.name}
-                {renderInputControl(control, props.draftValues, props.setValue, props.showSourceMapping)}
+                {renderInputControl(
+                  control,
+                  props.draftValues,
+                  props.setValue,
+                  props.showSourceMapping,
+                  Boolean(props.inlineErrorsByControlId[control.id])
+                )}
               </label>
+              {props.inlineErrorsByControlId[control.id] ? <p role="alert">{props.inlineErrorsByControlId[control.id]}</p> : null}
               {props.showSourceMapping ? <p>{`${control.source.nodeId}.${control.source.valuePath.join(".")}`}</p> : null}
             </div>
           ))}
@@ -211,10 +239,22 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
 
 type DynamicInputEditorProps = {
   activeTemplate: WorkflowTemplateRecord;
+  onRunPayloadBuilt?: (payload: Record<string, unknown>) => Promise<void>;
+  onRunValidationFailed?: (errors: DynamicInputInlineError[]) => void;
 };
 
 export function DynamicInputEditor(props: DynamicInputEditorProps) {
   const editor = useDynamicInputEditor(props.activeTemplate);
+
+  function onRun(): void {
+    const result = editor.attemptRun();
+    if (!result.ok) {
+      props.onRunValidationFailed?.(result.errors);
+      return;
+    }
+
+    void props.onRunPayloadBuilt?.(result.payload);
+  }
 
   return (
     <DynamicInputEditorView
@@ -222,10 +262,14 @@ export function DynamicInputEditor(props: DynamicInputEditorProps) {
       warnings={editor.warnings}
       draftValues={editor.draftValues}
       hasDraftDiffFromTemplate={editor.hasDraftDiffFromTemplate}
+      hasUnsavedChangesSinceLastRun={editor.hasUnsavedChangesSinceLastRun}
+      inlineErrorsByControlId={editor.inlineErrorsByControlId}
+      runBlockingMessage={editor.runBlockingMessage}
       showSourceMapping={editor.showSourceMapping}
       setShowSourceMapping={editor.setShowSourceMapping}
       setValue={editor.setValue}
       resetToTemplateDefaults={editor.resetToTemplateDefaults}
+      onRun={onRun}
     />
   );
 }
