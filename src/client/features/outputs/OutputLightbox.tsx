@@ -15,6 +15,9 @@ export function OutputLightbox({ images, imagePrefix, maxVisible = images.length
         loop: true,
         allowPanToNext: false,
         preload: [1, 2],
+        escKey: true,
+        arrowKeys: true,
+        pinchToClose: true,
         bgOpacity: 0.92,
         showHideAnimationType: "zoom"
       }}
