@@ -48,24 +48,24 @@
 
 | Requirement | Phase | Status |
 | ----------- | ----- | ------ |
-| PRESET-01 | TBD | Pending |
-| PRESET-02 | TBD | Pending |
-| PRESET-03 | TBD | Pending |
-| INPUT-01 | TBD | Pending |
-| INPUT-02 | TBD | Pending |
-| INPUT-03 | TBD | Pending |
-| JOBS-01 | TBD | Pending |
-| JOBS-02 | TBD | Pending |
-| JOBS-03 | TBD | Pending |
-| OUTUX-01 | TBD | Pending |
-| OUTUX-02 | TBD | Pending |
-| OUTUX-03 | TBD | Pending |
+| PRESET-01 | Phase 6 | Pending |
+| PRESET-02 | Phase 6 | Pending |
+| PRESET-03 | Phase 6 | Pending |
+| INPUT-01 | Phase 6 | Pending |
+| INPUT-02 | Phase 6 | Pending |
+| INPUT-03 | Phase 7 | Pending |
+| JOBS-01 | Phase 7 | Pending |
+| JOBS-02 | Phase 7 | Pending |
+| JOBS-03 | Phase 7 | Pending |
+| OUTUX-01 | Phase 8 | Pending |
+| OUTUX-02 | Phase 8 | Pending |
+| OUTUX-03 | Phase 8 | Pending |
 
 **Coverage:**
 
 - v1.1 requirements: 12 total
-- Mapped to phases: 0 (to be filled by roadmap)
-- Unmapped: 12
+- Mapped to phases: 12
+- Unmapped: 0
 
 ---
 
