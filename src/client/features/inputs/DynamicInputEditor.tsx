@@ -156,6 +156,59 @@ function renderInputControl(
         </div>
       );
     }
+    case "lora-row": {
+      const loraValue =
+        value && typeof value === "object" && "enabled" in value && "loraName" in value && "strength" in value
+          ? (value as { enabled: boolean; loraName: string; strength: number })
+          : { enabled: false, loraName: control.name, strength: 0 };
+
+      const min = control.constraints.min ?? -5;
+      const max = control.constraints.max ?? 5;
+
+      return (
+        <div>
+          <input
+            className={className}
+            type="checkbox"
+            checked={loraValue.enabled}
+            onChange={(event) =>
+              setValue(control.id, {
+                ...loraValue,
+                enabled: event.target.checked
+              })
+            }
+          />
+          <input
+            className={className}
+            type="range"
+            min={min}
+            max={max}
+            step={0.01}
+            value={loraValue.strength}
+            onChange={(event) =>
+              setValue(control.id, {
+                ...loraValue,
+                strength: Number(event.target.value)
+              })
+            }
+          />
+          <input
+            className={className}
+            type="number"
+            min={min}
+            max={max}
+            step={0.01}
+            value={loraValue.strength}
+            onChange={(event) =>
+              setValue(control.id, {
+                ...loraValue,
+                strength: Number(event.target.value)
+              })
+            }
+          />
+        </div>
+      );
+    }
     default:
       return null;
   }

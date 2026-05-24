@@ -135,4 +135,86 @@ describe("deriveInputControls", () => {
     expect(result.controls[0]?.category).toBe("Uncategorized");
     expect(result.controls[0]?.name).toBe("NameOnly");
   });
+
+  it("derives controls from _meta.title with inferred Primitive metadata", () => {
+    const workflow = {
+      "588:580": {
+        class_type: "PrimitiveString",
+        inputs: {
+          value: "Sola"
+        },
+        _meta: {
+          title: "[Input0] Character.Name"
+        }
+      },
+      "588:581": {
+        class_type: "PrimitiveStringMultiline",
+        inputs: {
+          value: "line one\nline two"
+        },
+        _meta: {
+          title: "[Input1] Character.Face"
+        }
+      },
+      "536": {
+        class_type: "PrimitiveBoolean",
+        inputs: {
+          value: false
+        },
+        _meta: {
+          title: "[Input2] Detailer.Enabled"
+        }
+      }
+    };
+
+    const result = deriveInputControls(workflow);
+
+    expect(result.controls).toHaveLength(3);
+    expect(result.controls.map((control) => control.kind)).toEqual(["text", "multiline", "boolean"]);
+    expect(result.controls.map((control) => control.fullTitle)).toEqual([
+      "[Input0] Character.Name",
+      "[Input1] Character.Face",
+      "[Input2] Detailer.Enabled"
+    ]);
+    expect(result.warnings).toEqual([]);
+  });
+
+  it("maps Detailer.Loras rows into dedicated lora-row controls", () => {
+    const workflow = {
+      "534": {
+        class_type: "Power Lora Loader (rgthree)",
+        inputs: {
+          lora_1: {
+            on: true,
+            lora: "Houtengeki_Style.safetensors",
+            strength: 1
+          },
+          lora_2: {
+            on: false,
+            lora: "Bhive_Style.safetensors",
+            strength: 0.5
+          }
+        },
+        _meta: {
+          title: "[Input2] Detailer.Loras"
+        }
+      },
+      "536": {
+        class_type: "PrimitiveBoolean",
+        inputs: {
+          value: false
+        },
+        _meta: {
+          title: "[Input1] Detailer.Use Different Detailer Loras?"
+        }
+      }
+    };
+
+    const result = deriveInputControls(workflow);
+
+    expect(result.controls.map((control) => control.kind)).toEqual(["boolean", "lora-row", "lora-row"]);
+    expect(result.controls.find((control) => control.id === "534:lora-row:lora_1")?.name).toBe("Houtengeki_Style.safetensors");
+    expect(result.controls.find((control) => control.id === "534:lora-row:lora_2")?.name).toBe("Bhive_Style.safetensors");
+    expect(result.warnings).toEqual([]);
+  });
 });

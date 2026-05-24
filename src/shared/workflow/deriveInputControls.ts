@@ -8,6 +8,9 @@ import type {
 type WorkflowNode = {
   class_type: string;
   inputs?: Record<string, unknown>;
+  _meta?: {
+    title?: string;
+  };
 };
 
 type InputMetadata = {
@@ -22,7 +25,7 @@ type InputMetadata = {
 };
 
 const TITLE_PREFIX = /^\[Input(\d+)\]\s*/;
-const ALLOWED_TITLE = /^[\p{L}\p{N}\s._\-()]+$/u;
+const ALLOWED_TITLE = /^[\p{L}\p{N}\s._\-()?!]+$/u;
 
 function parseNode(rawNode: unknown): WorkflowNode | null {
   if (!rawNode || typeof rawNode !== "object") {
@@ -40,8 +43,68 @@ function parseNode(rawNode: unknown): WorkflowNode | null {
 
   return {
     class_type: node.class_type,
-    inputs: (node.inputs as Record<string, unknown> | undefined) ?? undefined
+    inputs: (node.inputs as Record<string, unknown> | undefined) ?? undefined,
+    _meta:
+      node._meta && typeof node._meta === "object" && !Array.isArray(node._meta)
+        ? (node._meta as { title?: string })
+        : undefined
   };
+}
+
+function inferMetadata(classType: string, inputs: Record<string, unknown>): InputMetadata | null {
+  if (typeof inputs.value === "number") {
+    return {
+      kind: "number",
+      field: "value"
+    };
+  }
+
+  if (typeof inputs.value === "boolean") {
+    return {
+      kind: "boolean",
+      field: "value"
+    };
+  }
+
+  if (typeof inputs.value === "string") {
+    if (classType === "PrimitiveStringMultiline") {
+      return {
+        kind: "multiline",
+        field: "value"
+      };
+    }
+
+    if (classType === "PrimitiveString") {
+      return {
+        kind: "text",
+        field: "value"
+      };
+    }
+
+    if (classType === "PrimitiveBoolean") {
+      return {
+        kind: "boolean",
+        field: "value"
+      };
+    }
+
+    if (classType === "PrimitiveInt" || classType === "PrimitiveFloat") {
+      return {
+        kind: "number",
+        field: "value"
+      };
+    }
+  }
+
+  if (typeof inputs.width === "number" && typeof inputs.height === "number") {
+    return {
+      kind: "dimension",
+      widthField: "width",
+      heightField: "height"
+    };
+  }
+
+  return null;
 }
 
 function toKind(rawKind: string | undefined): DynamicInputControlKind | null {
@@ -52,10 +115,75 @@ function toKind(rawKind: string | undefined): DynamicInputControlKind | null {
     case "boolean":
     case "dimension":
     case "image":
+    case "lora-row":
       return rawKind;
     default:
       return null;
   }
+}
+
+function toNumberOrDefault(value: unknown, fallback: number): number {
+  const next = Number(value);
+  return Number.isFinite(next) ? next : fallback;
+}
+
+function createLoraRowControls(args: {
+  nodeId: string;
+  title: string;
+  titlePath: string;
+  parsedTitle: { inputIndex: number; body: string };
+  inputs: Record<string, unknown>;
+}): DynamicInputControl[] {
+  const controls: DynamicInputControl[] = [];
+  const categoryAndName = parseCategoryAndName(args.parsedTitle.body);
+  const rowKeys = Object.keys(args.inputs)
+    .filter((key) => /^lora_\d+$/.test(key))
+    .sort((left, right) => Number(left.slice(5)) - Number(right.slice(5)));
+
+  for (const rowKey of rowKeys) {
+    const rowValue = args.inputs[rowKey];
+    if (!rowValue || typeof rowValue !== "object" || Array.isArray(rowValue)) {
+      continue;
+    }
+
+    const loraRow = rowValue as {
+      on?: unknown;
+      lora?: unknown;
+      strength?: unknown;
+    };
+
+    const loraName =
+      typeof loraRow.lora === "string" && loraRow.lora.trim().length > 0
+        ? loraRow.lora
+        : rowKey;
+
+    controls.push({
+      id: `${args.nodeId}:lora-row:${rowKey}`,
+      kind: "lora-row",
+      inputIndex: args.parsedTitle.inputIndex,
+      fullTitle: `${args.title}.${loraName}`,
+      category: categoryAndName.category,
+      name: loraName,
+      source: {
+        nodeId: args.nodeId,
+        titlePath: args.titlePath,
+        valuePath: [rowKey]
+      },
+      constraints: {
+        min: -5,
+        max: 5,
+        precision: 3
+      },
+      defaultValue: {
+        enabled: Boolean(loraRow.on),
+        loraName,
+        strength: toNumberOrDefault(loraRow.strength, 0)
+      },
+      orderKey: `${args.parsedTitle.inputIndex.toString().padStart(6, "0")}:${args.title}:${rowKey}`
+    });
+  }
+
+  return controls;
 }
 
 function parseTitle(title: string): { inputIndex: number; body: string } | null {
@@ -99,6 +227,7 @@ function parseCategoryAndName(body: string): { category: string; name: string } 
 function createControl(
   nodeId: string,
   title: string,
+  titlePath: string,
   parsedTitle: { inputIndex: number; body: string },
   metadata: InputMetadata,
   inputs: Record<string, unknown>
@@ -128,7 +257,7 @@ function createControl(
       name: categoryAndName.name,
       source: {
         nodeId,
-        titlePath: `${nodeId}.inputs.title`,
+        titlePath,
         valuePath: [widthField, heightField]
       },
       constraints: {
@@ -179,7 +308,7 @@ function createControl(
     name: categoryAndName.name,
     source: {
       nodeId,
-      titlePath: `${nodeId}.inputs.title`,
+      titlePath,
       valuePath: [valueField]
     },
     constraints: {
@@ -226,8 +355,17 @@ export function deriveInputControls(rawWorkflow: unknown): DynamicInputDerivatio
       continue;
     }
 
-    const title = node.inputs.title;
-    const metadata = node.inputs.__input as InputMetadata | undefined;
+    const titleFromInputs = node.inputs.title;
+    const titleFromMeta = node._meta?.title;
+    // Default to Comfy node _meta.title labels and use inputs.title when _meta title is unavailable.
+    const title = typeof titleFromMeta === "string" ? titleFromMeta : titleFromInputs;
+    const titlePath = typeof titleFromMeta === "string" ? `${nodeId}._meta.title` : `${nodeId}.inputs.title`;
+    const metadataFromInputs = node.inputs.__input as InputMetadata | undefined;
+    const inferredMetadata = inferMetadata(node.class_type, node.inputs);
+    const metadata =
+      metadataFromInputs && typeof metadataFromInputs === "object"
+        ? metadataFromInputs
+        : inferredMetadata;
 
     if (typeof title !== "string") {
       continue;
@@ -248,12 +386,24 @@ export function deriveInputControls(rawWorkflow: unknown): DynamicInputDerivatio
       continue;
     }
 
+    const loraControls = createLoraRowControls({
+      nodeId,
+      title,
+      titlePath,
+      parsedTitle,
+      inputs: node.inputs
+    });
+    if (loraControls.length > 0) {
+      controls.push(...loraControls);
+      continue;
+    }
+
     if (!metadata || typeof metadata !== "object") {
       warnings.push({
         code: "unsupported-kind",
         nodeId,
         title,
-        message: `Input '${title}' is missing declared control metadata and was skipped.`
+        message: `Input '${title}' does not map to a supported editable control and was skipped.`
       });
       continue;
     }
@@ -269,7 +419,7 @@ export function deriveInputControls(rawWorkflow: unknown): DynamicInputDerivatio
       continue;
     }
 
-    const control = createControl(nodeId, title, parsedTitle, metadata, node.inputs);
+    const control = createControl(nodeId, title, titlePath, parsedTitle, metadata, node.inputs);
     if (!control) {
       warnings.push({
         code: "missing-editable-value",

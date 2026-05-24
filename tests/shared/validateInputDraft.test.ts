@@ -97,4 +97,32 @@ describe("validateInputDraft", () => {
     expect(shouldPersistDraftValue(text, "")).toBe(true);
     expect(shouldPersistDraftValue(number, 0)).toBe(false);
   });
+
+  it("validates lora-row strength bounds and accepts valid rows", () => {
+    const loraRow = createControl({
+      id: "lora-1",
+      kind: "lora-row",
+      name: "Houtengeki_Style.safetensors",
+      constraints: { min: -5, max: 5, precision: 3 },
+      defaultValue: {
+        enabled: true,
+        loraName: "Houtengeki_Style.safetensors",
+        strength: 1
+      }
+    });
+
+    const invalid = validateInlineControl(loraRow, {
+      enabled: true,
+      loraName: "Houtengeki_Style.safetensors",
+      strength: 7
+    });
+    expect(invalid.valid).toBe(false);
+
+    const valid = validateInlineControl(loraRow, {
+      enabled: false,
+      loraName: "Houtengeki_Style.safetensors",
+      strength: -2.125
+    });
+    expect(valid.valid).toBe(true);
+  });
 });

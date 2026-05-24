@@ -105,6 +105,45 @@ export function validateInlineControl(
     }
   }
 
+  if (control.kind === "lora-row") {
+    if (!value || typeof value !== "object" || !("strength" in value) || !("enabled" in value) || !("loraName" in value)) {
+      return {
+        valid: false,
+        errors: [
+          {
+            controlId: control.id,
+            message: `${control.name} has an invalid lora row value.`
+          }
+        ]
+      };
+    }
+
+    if (typeof value.loraName !== "string" || value.loraName.trim().length === 0) {
+      return {
+        valid: false,
+        errors: [
+          {
+            controlId: control.id,
+            message: `${control.name} must have a lora name.`
+          }
+        ]
+      };
+    }
+
+    const error = validateNumberConstraints(control, Number(value.strength));
+    if (error) {
+      return {
+        valid: false,
+        errors: [
+          {
+            controlId: control.id,
+            message: error.replace(control.name, `${control.name} strength`)
+          }
+        ]
+      };
+    }
+  }
+
   if (control.kind === "dimension") {
     if (!value || typeof value !== "object" || !("width" in value) || !("height" in value)) {
       return {

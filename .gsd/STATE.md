@@ -51,6 +51,7 @@ Recent decisions affecting current work:
 - Phase 3: Keep workflow template canonical and enforce all-or-nothing apply-back on Run.
 - Phase 4: Treat Runpod job lifecycle as a dedicated phase before output-gallery work.
 - Phase 5: Use projection-first output contracts so gallery/lightbox UI never parses raw Runpod payloads.
+- Post-Phase 5 update: Dynamic input mapping defaults to `_meta.title` + Primitive node value mapping, with dedicated `Detailer.Loras` row controls.
 
 ### Pending Todos
 

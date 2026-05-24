@@ -16,6 +16,7 @@ Phase 3 delivers a user-friendly input editing surface derived from workflow-def
 ### Input Surface Structure
 
 - Parse editable controls from node titles using exact prefix format `[Input#]`.
+- Use `_meta.title` as the default title source, with `inputs.title` as fallback when `_meta.title` is missing.
 - Parse title body using first-dot split: `Category.Name`.
 - Example: `[Input1] Character.Body` -> category `Character`, input name `Body`.
 - Example: `[Input#] Character.Face.Eyes` -> category `Character`, input name `Face.Eyes`.
@@ -29,6 +30,7 @@ Phase 3 delivers a user-friendly input editing surface derived from workflow-def
 - Category and input titles are case-sensitive for grouping and display.
 - Multilingual names are supported.
 - Allowed naming chars: Unicode letters/numbers, spaces, and simple separators (`-`, `_`, `(`, `)`).
+- Allowed naming chars include `?` for existing workflow compatibility.
 - If disallowed symbols appear, exclude from UI and add a non-blocking warning.
 - If title cannot cleanly parse into `Category.Name`, include in `Uncategorized` using remaining title text.
 - If mapped input node has no editable value field, exclude from UI and add a non-blocking warning.
@@ -44,9 +46,20 @@ Phase 3 delivers a user-friendly input editing surface derived from workflow-def
 ### Control Mapping Rules
 
 - Control types are dictated by workflow node declared types/metadata, not by value-shape heuristics.
+- For Comfy primitive nodes, default mapping from `inputs.value` is first-class behavior:
+  - `PrimitiveString` -> `text`
+  - `PrimitiveStringMultiline` -> `multiline`
+  - `PrimitiveBoolean` -> `boolean`
+  - `PrimitiveInt` / `PrimitiveFloat` -> `number`
 - No smart coercion from string-like values to numeric/boolean by inference.
 - Constraints come strictly from workflow metadata.
 - Image controls use file picker plus preview, with replace/remove actions.
+- `Detailer.Loras` mapping is a dedicated control shape:
+  - one control per `lora_*` row
+  - checkbox toggle bound to `on`
+  - lora name shown as label
+  - strength slider with range `[-5.0, 5.0]`
+  - strength textbox mirroring/editing the same float value
 
 ### Editing Behavior and Validation
 

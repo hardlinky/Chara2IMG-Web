@@ -81,6 +81,31 @@ function applyControlValue(
     return null;
   }
 
+  if (control.kind === "lora-row") {
+    const currentRow = inputs[field];
+    if (!currentRow || typeof currentRow !== "object" || Array.isArray(currentRow)) {
+      return {
+        controlId: control.id,
+        message: `${control.name} could not map to a lora row object.`
+      };
+    }
+
+    if (!nextValue || typeof nextValue !== "object" || !("enabled" in nextValue) || !("strength" in nextValue) || !("loraName" in nextValue)) {
+      return {
+        controlId: control.id,
+        message: `${control.name} has an invalid lora row value.`
+      };
+    }
+
+    inputs[field] = {
+      ...(currentRow as Record<string, unknown>),
+      on: Boolean(nextValue.enabled),
+      strength: Number(nextValue.strength)
+    };
+
+    return null;
+  }
+
   inputs[field] = nextValue;
   return null;
 }

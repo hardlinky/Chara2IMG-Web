@@ -17,8 +17,8 @@ Status: passed
 
 | # | Truth | Status | Evidence |
 | --- | --- | --- | --- |
-| 1 | User can see generated controls in stable grouping and ordering | ✓ VERIFIED | deriveInputControls enforces deterministic [Input#] parsing and sorted control output, then hook applies sparse overlay |
-| 2 | User can edit text, multiline, numeric, boolean, dimension, and image controls | ✓ VERIFIED | DynamicInputEditor renders all required control classes with bound draft state and per-type handlers |
+| 1 | User can see generated controls in stable grouping and ordering | ✓ VERIFIED | deriveInputControls enforces deterministic [Input#] parsing from `_meta.title`/`inputs.title` and sorted control output, then hook applies sparse overlay |
+| 2 | User can edit text, multiline, numeric, boolean, dimension, image, and lora-row controls | ✓ VERIFIED | DynamicInputEditor renders all required control classes with bound draft state and per-type handlers, including Detailer lora rows |
 | 3 | Run blocks invalid inputs and builds fresh job-ready payload when valid | ✓ VERIFIED | validateDraftForRun + buildRunWorkflowPayload orchestrated by attemptRun path in hook and UI |
 
 Score: 3/3 truths verified
@@ -28,13 +28,13 @@ Score: 3/3 truths verified
 | Artifact | Expected | Status | Details |
 | --- | --- | --- | --- |
 | src/shared/contracts/inputs.ts | Shared input contracts for control, warning, draft, and validation shapes | ✓ EXISTS + SUBSTANTIVE | Control/value/warning/validation and payload-result contracts exported and used across shared/client modules |
-| src/shared/workflow/deriveInputControls.ts | Deterministic parser and ordering derivation | ✓ EXISTS + SUBSTANTIVE | Strict [Input#] parser, category/name extraction, warning emission, and deterministic sort logic |
+| src/shared/workflow/deriveInputControls.ts | Deterministic parser and ordering derivation | ✓ EXISTS + SUBSTANTIVE | Strict [Input#] parser, `_meta.title` defaulting, category/name extraction, lora-row mapping, warning emission, and deterministic sort logic |
 | src/client/lib/inputEditorStorage.ts | Browser-local draft and overlay storage | ✓ EXISTS + SUBSTANTIVE | Dexie tables for per-template drafts and global order overlay |
 | src/client/features/inputs/useDynamicInputEditor.ts | Editor state orchestration and run attempt flow | ✓ EXISTS + SUBSTANTIVE | Derivation wiring, persistence, inline errors, run blocking, and payload build orchestration |
 | src/client/features/inputs/DynamicInputEditor.tsx | User-facing dynamic input editing UI | ✓ EXISTS + SUBSTANTIVE | Grouped rendering, warnings, reset controls, invalid highlighting, and run action hook integration |
 | src/shared/workflow/validateInputDraft.ts | Hybrid inline/run validation logic | ✓ EXISTS + SUBSTANTIVE | Type-specific validation and run-blocking summary behavior |
 | src/shared/workflow/buildRunWorkflowPayload.ts | Canonical-safe write-back payload builder | ✓ EXISTS + SUBSTANTIVE | structuredClone-based build with all-or-nothing error handling |
-| tests/shared/deriveInputControls.test.ts | Parser/order regression tests | ✓ EXISTS + SUBSTANTIVE | Covers duplicate indexes, invalid symbols, missing fields, and category fallback |
+| tests/shared/deriveInputControls.test.ts | Parser/order regression tests | ✓ EXISTS + SUBSTANTIVE | Covers duplicate indexes, invalid symbols, missing fields, category fallback, and Detailer lora-row mapping |
 | tests/client/dynamicInputEditor.test.tsx | Editor rendering/warnings/order tests | ✓ EXISTS + SUBSTANTIVE | Verifies grouped UI/warnings and overlay ordering behavior |
 | tests/shared/validateInputDraft.test.ts | Validation behavior tests | ✓ EXISTS + SUBSTANTIVE | Inline clearing, run block, dimension/numeric constraints, persistence guard behavior |
 | tests/shared/buildRunWorkflowPayload.test.ts | Apply-back integrity tests | ✓ EXISTS + SUBSTANTIVE | Success, missing target, immutability, deterministic output |

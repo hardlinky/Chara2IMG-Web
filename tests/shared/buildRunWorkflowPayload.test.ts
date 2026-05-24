@@ -178,4 +178,61 @@ describe("buildRunWorkflowPayload", () => {
 
     expect(first).toEqual(second);
   });
+
+  it("applies lora-row controls to lora on/strength fields", () => {
+    const template = {
+      "534": {
+        class_type: "Power Lora Loader (rgthree)",
+        inputs: {
+          lora_1: {
+            on: true,
+            lora: "Houtengeki_Style.safetensors",
+            strength: 1
+          }
+        }
+      }
+    };
+
+    const result = buildRunWorkflowPayload({
+      templateRawJson: template,
+      controls: [
+        createControl({
+          id: "534:lora-row:lora_1",
+          kind: "lora-row",
+          name: "Houtengeki_Style.safetensors",
+          source: {
+            nodeId: "534",
+            titlePath: "534._meta.title",
+            valuePath: ["lora_1"]
+          },
+          constraints: {
+            min: -5,
+            max: 5,
+            precision: 3
+          },
+          defaultValue: {
+            enabled: true,
+            loraName: "Houtengeki_Style.safetensors",
+            strength: 1
+          }
+        })
+      ],
+      draftValues: {
+        "534:lora-row:lora_1": {
+          enabled: false,
+          loraName: "Houtengeki_Style.safetensors",
+          strength: -2.25
+        }
+      }
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+
+    const loraRow = (result.payload["534"] as { inputs: { lora_1: { on: boolean; strength: number } } }).inputs.lora_1;
+    expect(loraRow.on).toBe(false);
+    expect(loraRow.strength).toBe(-2.25);
+  });
 });
