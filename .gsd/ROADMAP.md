@@ -14,7 +14,7 @@ Chara2Img Web ships as a private, browser-based replacement for the existing WPF
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Access and Proxy Boundary** - Invited users can securely reach Runpod through the web app with BYOK handling.
-- [ ] **Phase 2: Workflow Import and Template Reuse** - Users can load, validate, and retain full workflow templates for repeated runs.
+- [x] **Phase 2: Workflow Import and Template Reuse** - Users can load, validate, and retain full workflow templates for repeated runs.
 - [ ] **Phase 3: Dynamic Input Editing** - Users can edit workflow-derived controls and produce a job-ready payload reliably.
 - [ ] **Phase 4: Job Lifecycle and Run Management** - Users can submit, monitor, control, and revisit recent runs.
 - [ ] **Phase 5: Outputs and Gallery Review** - Users can review completed job outputs with job provenance in a gallery flow.
@@ -59,8 +59,8 @@ Plans:
 
 Plans:
 
-- [ ] 02-01: Implement workflow import, validation, and normalization entry points
-- [ ] 02-02: Persist reusable full-fidelity workflow templates for repeat use
+- [x] 02-01: Implement workflow import, validation, and normalization entry points
+- [x] 02-02: Persist reusable full-fidelity workflow templates for repeat use
 
 ### Phase 3: Dynamic Input Editing
 
@@ -128,7 +128,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 | ----- | -------------- | ------ | --------- |
 | 1. Access and Proxy Boundary | 5/5 | Complete | 2026-05-23 |
-| 2. Workflow Import and Template Reuse | 0/2 | Not started | - |
+| 2. Workflow Import and Template Reuse | 2/2 | Complete | 2026-05-23 |
 | 3. Dynamic Input Editing | 0/2 | Not started | - |
 | 4. Job Lifecycle and Run Management | 0/3 | Not started | - |
 | 5. Outputs and Gallery Review | 0/2 | Not started | - |
