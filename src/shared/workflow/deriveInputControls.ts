@@ -52,56 +52,81 @@ function parseNode(rawNode: unknown): WorkflowNode | null {
 }
 
 function inferMetadata(classType: string, inputs: Record<string, unknown>): InputMetadata | null {
+  // --- Primitive node value-based detection (PrimitiveString, PrimitiveInt, etc.) ---
   if (typeof inputs.value === "number") {
-    return {
-      kind: "number",
-      field: "value"
-    };
+    return { kind: "number", field: "value" };
   }
 
   if (typeof inputs.value === "boolean") {
-    return {
-      kind: "boolean",
-      field: "value"
-    };
+    return { kind: "boolean", field: "value" };
   }
 
   if (typeof inputs.value === "string") {
-    if (classType === "PrimitiveStringMultiline") {
-      return {
-        kind: "multiline",
-        field: "value"
-      };
-    }
-
-    if (classType === "PrimitiveString") {
-      return {
-        kind: "text",
-        field: "value"
-      };
-    }
-
-    if (classType === "PrimitiveBoolean") {
-      return {
-        kind: "boolean",
-        field: "value"
-      };
-    }
-
-    if (classType === "PrimitiveInt" || classType === "PrimitiveFloat") {
-      return {
-        kind: "number",
-        field: "value"
-      };
-    }
+    if (classType === "PrimitiveStringMultiline") return { kind: "multiline", field: "value" };
+    if (classType === "PrimitiveBoolean") return { kind: "boolean", field: "value" };
+    // PrimitiveString, PrimitiveInt, PrimitiveFloat all fall through to text
+    return { kind: "text", field: "value" };
   }
 
+  // --- Class-type explicit mappings ---
+  switch (classType) {
+    case "CheckpointLoaderSimple":
+      if (typeof inputs.ckpt_name === "string") return { kind: "text", field: "ckpt_name" };
+      break;
+
+    case "VAELoader":
+      if (typeof inputs.vae_name === "string") return { kind: "text", field: "vae_name" };
+      break;
+
+    case "KSampler":
+    case "KSamplerAdvanced":
+      if (typeof inputs.steps === "number") return { kind: "number", field: "steps" };
+      if (typeof inputs.cfg === "number") return { kind: "number", field: "cfg" };
+      if (typeof inputs.sampler_name === "string") return { kind: "text", field: "sampler_name" };
+      if (typeof inputs.scheduler === "string") return { kind: "text", field: "scheduler" };
+      if (typeof inputs.denoise === "number") return { kind: "number", field: "denoise" };
+      if (typeof inputs.seed === "number") return { kind: "number", field: "seed" };
+      break;
+
+    case "EmptyLatentImage":
+      if (typeof inputs.batch_size === "number") return { kind: "number", field: "batch_size" };
+      break;
+
+    case "mxSlider2D":
+      if (typeof inputs.Xi === "number" && typeof inputs.Yi === "number") {
+        return { kind: "dimension", widthField: "Xi", heightField: "Yi" };
+      }
+      break;
+
+    case "CR Integer Multiple":
+      if (typeof inputs.int === "number") return { kind: "number", field: "int" };
+      break;
+
+    case "CR Float":
+      if (typeof inputs.float === "number") return { kind: "number", field: "float" };
+      break;
+
+    case "CR Text":
+    case "StringFunction|pysssss":
+    case "Text Multiline":
+      if (typeof inputs.text === "string") return { kind: "multiline", field: "text" };
+      break;
+
+    case "easy loadImageBase64":
+      if (typeof inputs.base64_data === "string") return { kind: "image", field: "base64_data" };
+      break;
+  }
+
+  // --- Generic dimension detection (EmptyLatentImage width/height, etc.) ---
   if (typeof inputs.width === "number" && typeof inputs.height === "number") {
-    return {
-      kind: "dimension",
-      widthField: "width",
-      heightField: "height"
-    };
+    return { kind: "dimension", widthField: "width", heightField: "height" };
+  }
+
+  // --- Generic fallback: use first scalar property (matches WPF default behaviour) ---
+  for (const [key, val] of Object.entries(inputs)) {
+    if (typeof val === "string") return { kind: "text", field: key };
+    if (typeof val === "number") return { kind: "number", field: key };
+    if (typeof val === "boolean") return { kind: "boolean", field: key };
   }
 
   return null;
