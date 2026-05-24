@@ -4,6 +4,7 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import { fileURLToPath } from "node:url";
 import { registerAccessRoutes } from "./routes/access";
 import { registerRunpodProxyRoutes } from "./routes/runpodProxy";
+import { registerSystemRoutes } from "./routes/system";
 import { applySecurityMiddleware } from "./middleware/security";
 
 const CLIENT_DIST_ROOT = "./dist/client";
@@ -16,6 +17,7 @@ export function createServerApp(): Hono {
   applySecurityMiddleware(app);
   registerAccessRoutes(app);
   registerRunpodProxyRoutes(app);
+  registerSystemRoutes(app);
 
   app.use(
     "/*",

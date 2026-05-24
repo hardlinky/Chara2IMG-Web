@@ -10,6 +10,18 @@ export type RunpodStatusPayload = {
   id: string;
 };
 
+export type SelfUpdateResult = {
+  ok: boolean;
+  before?: string;
+  after?: string;
+  steps?: Array<{
+    name: string;
+    stdout: string;
+    stderr: string;
+  }>;
+  error?: string;
+};
+
 async function postProxy<TPayload>(path: string, payload: TPayload): Promise<unknown> {
   const response = await fetch(path, {
     method: "POST",
@@ -56,4 +68,9 @@ export function runViaProxy(payload: RunpodRunPayload): Promise<unknown> {
 
 export function statusViaProxy(payload: RunpodStatusPayload): Promise<unknown> {
   return postProxy("/api/runpod/status", payload);
+}
+
+export async function updateAppViaProxy(): Promise<SelfUpdateResult> {
+  const response = await postProxy("/api/system/update", {});
+  return response as SelfUpdateResult;
 }

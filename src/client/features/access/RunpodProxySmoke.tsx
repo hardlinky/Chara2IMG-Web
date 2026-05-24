@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { runViaProxy, statusViaProxy } from "../../lib/api/runpodProxyClient";
+import { runViaProxy, statusViaProxy, updateAppViaProxy } from "../../lib/api/runpodProxyClient";
 import { extractRunpodImagePreview, type RunpodImagePreview } from "../../lib/runpodOutputImage";
 
 type RunpodProxySmokeProps = {
@@ -13,6 +13,8 @@ export function RunpodProxySmoke(props: RunpodProxySmokeProps) {
   const [result, setResult] = useState("");
   const [error, setError] = useState("");
   const [imagePreview, setImagePreview] = useState<RunpodImagePreview | null>(null);
+  const [updateStatus, setUpdateStatus] = useState("");
+  const [isUpdating, setIsUpdating] = useState(false);
 
   async function onRun(event: FormEvent): Promise<void> {
     event.preventDefault();
@@ -53,10 +55,43 @@ export function RunpodProxySmoke(props: RunpodProxySmokeProps) {
     }
   }
 
+  async function onUpdateApp(): Promise<void> {
+    setError("");
+    setIsUpdating(true);
+    setUpdateStatus("Pulling latest changes and rebuilding...");
+
+    try {
+      const response = await updateAppViaProxy();
+
+      if (!response.ok) {
+        setUpdateStatus(`Update failed: ${response.error ?? "Unknown error"}`);
+        return;
+      }
+
+      setUpdateStatus(
+        `Update complete (before: ${response.before ?? "?"}, after: ${response.after ?? "?"}). Reloading...`
+      );
+
+      window.setTimeout(() => {
+        window.location.reload();
+      }, 800);
+    } catch (updateError) {
+      setUpdateStatus(
+        `Update failed: ${updateError instanceof Error ? updateError.message : "Unexpected update error"}`
+      );
+    } finally {
+      setIsUpdating(false);
+    }
+  }
+
   return (
     <section>
       <h2>Runpod Proxy Smoke</h2>
       <p>Run a lightweight run/status proxy check using your current key.</p>
+      <button type="button" onClick={() => void onUpdateApp()} disabled={isUpdating}>
+        {isUpdating ? "Updating..." : "Update App (git pull + build)"}
+      </button>
+      {updateStatus ? <p>{updateStatus}</p> : null}
 
       <form onSubmit={(event) => void onRun(event)}>
         <label htmlFor="endpoint-id">Endpoint ID</label>
