@@ -24,6 +24,7 @@ function createJob(jobId: string, status: string) {
     jobId,
     endpointId: "endpoint-1",
     templateFingerprint: "fp-1",
+    workflowFileName: "workflow-a.json",
     draftValues: { prompt: jobId },
     submittedInput: { workflow: { prompt: jobId } },
     lifecycle: buildLifecycleSnapshotFromStatus(status),
@@ -103,6 +104,7 @@ describe("useRecentJobs helpers", () => {
             jobId: "job-rerun-copy",
             endpointId: args.endpointId,
             templateFingerprint: args.snapshot.templateFingerprint,
+            workflowFileName: args.snapshot.workflowFileName,
             draftValues: args.snapshot.draftValues,
             submittedInput: args.snapshot.submittedInput,
             lifecycle: buildLifecycleSnapshotFromStatus("IN_QUEUE"),
@@ -117,6 +119,7 @@ describe("useRecentJobs helpers", () => {
     expect(result?.jobId).toBe("job-rerun");
     expect(submittedJobId).toBe("job-rerun-copy");
     expect((await listRecentJobs()).map((job) => job.jobId)).toEqual(["job-rerun-copy", "job-rerun"]);
+    expect((await getRecentJob("job-rerun-copy"))?.provenance.workflowFileName).toBe("workflow-a.json");
   });
 
   it("persists and restores the last-used status filter", () => {

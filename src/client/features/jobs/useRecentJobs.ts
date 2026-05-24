@@ -192,6 +192,7 @@ export async function rerunRecentJobWithDependencies(
     submittedInput: job.provenance.submittedInput,
     snapshot: {
       templateFingerprint: job.provenance.templateFingerprint,
+      workflowFileName: job.provenance.workflowFileName,
       draftValues: job.provenance.draftValues,
       submittedInput: job.provenance.submittedInput
     }
