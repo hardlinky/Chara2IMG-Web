@@ -1,0 +1,15 @@
+{
+  "metadata": {
+    "exporter": "wpf-client",
+    "version": "legacy"
+  },
+  "workflow": {
+    "nodes": [
+      {
+        "id": "prompt",
+        "type": "textbox",
+        "value": "legacy template"
+      }
+    ]
+  }
+}
