@@ -24,7 +24,7 @@ type InputMetadata = {
   heightField?: string;
 };
 
-const TITLE_PREFIX = /^\[Input(\d+)\]\s*/;
+const TITLE_PREFIX = /^\[Input(\d*)\]\s*/;
 const ALLOWED_TITLE = /^[\p{L}\p{N}\s._\-()?!]+$/u;
 
 function parseNode(rawNode: unknown): WorkflowNode | null {
@@ -193,7 +193,7 @@ function parseTitle(title: string): { inputIndex: number; body: string } | null 
   }
 
   return {
-    inputIndex: Number(match[1]),
+    inputIndex: match[1] ? Number(match[1]) : Number.MAX_SAFE_INTEGER,
     body: title.slice(match[0].length)
   };
 }
