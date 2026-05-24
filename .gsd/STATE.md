@@ -5,14 +5,14 @@
 See: .gsd/PROJECT.md (updated 2026-05-24)
 
 **Core value:** Enable reliable full-parity web generation workflows against Runpod serverless ComfyUI, with user-supplied API keys and no always-on ComfyUI host.
-**Current focus:** Planning next milestone (v1.1 Hardening)
+**Current focus:** Milestone v1.1 UX and QOL requirement and roadmap definition
 
 ## Current Position
 
-Phase: 6 of 8 (Admin and Access Operations)
-Plan: Not started
-Status: Ready to plan next milestone
-Last activity: 2026-05-24 - Completed v1.0 MVP milestone archive, project evolution review, and release tagging
+Phase: Not started (defining requirements)
+Plan: -
+Status: Defining requirements
+Last activity: 2026-05-24 - Milestone v1.1 UX and QOL started
 
 Progress: [██████░░░░] 62%
 
@@ -59,8 +59,9 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Define v1.1 milestone requirements and execution roadmap.
-- Plan Phase 6 (Admin and Access Operations).
+- Define v1.1 UX and QOL requirements.
+- Create v1.1 roadmap with phases continuing from 6.
+- Start planning Phase 6 after roadmap approval.
 
 ### Blockers/Concerns
 

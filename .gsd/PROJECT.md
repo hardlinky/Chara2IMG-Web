@@ -8,6 +8,16 @@ Chara2Img Web is a browser-based app for invited users to run ComfyUI image gene
 
 Enable reliable full-parity web generation workflows against Runpod serverless ComfyUI, with user-supplied API keys and no always-on ComfyUI host.
 
+## Current Milestone: v1.1 UX and QOL
+
+**Goal:** Improve day-to-day usability, editing efficiency, and output review quality without changing core Runpod workflow parity guarantees.
+
+**Target features:**
+
+- Workflow presets and faster setup reuse paths.
+- Input editor quality-of-life controls and safer feedback loops.
+- Jobs and outputs browsing improvements (filtering, metadata, readability).
+
 ## Requirements
 
 ### Validated
@@ -21,11 +31,12 @@ Enable reliable full-parity web generation workflows against Runpod serverless C
 
 ### Active
 
-- [ ] Admin can manage invited users from an internal UI.
-- [ ] Users can resume long-running job tracking across devices.
-- [ ] Users can save named workflow presets in the app.
-- [ ] Users can attach notes/tags to generated outputs.
-- [ ] Expand quality-of-life editing controls while preserving payload fidelity.
+- [ ] Users can save and reuse named workflow presets.
+- [ ] Users can quickly apply prior run inputs and preset combinations with fewer manual steps.
+- [ ] Input editor supports additional quality-of-life controls while preserving payload fidelity.
+- [ ] Jobs list UX supports faster triage through clearer statuses and filtering affordances.
+- [ ] Outputs UX supports better review context (notes/tags/metadata summaries).
+- [ ] Admin invite management and cross-device job tracking remain deferred to a later milestone.
 
 ### Out of Scope
 
@@ -58,4 +69,4 @@ v1.0 shipped end-to-end invited-user workflow generation parity. Current UI navi
 
 ---
 
-_Last updated: 2026-05-24 after v1.0 milestone_
+_Last updated: 2026-05-24 after v1.1 milestone initialization_
