@@ -14,6 +14,7 @@ import { fetchSystemConfig } from "./lib/api/runpodProxyClient";
 import { formatSubmittedAtRelative } from "./features/jobs/jobStatus";
 import { useRecentJobs } from "./features/jobs/useRecentJobs";
 import { RecentJobsPanel } from "./features/jobs/RecentJobsPanel";
+import { APP_VERSION_LABEL } from "./lib/appVersion";
 import type { DynamicInputDraftValues } from "../shared/contracts/inputs";
 
 function toRunpodWorkflowInput(payload: Record<string, unknown>): Record<string, unknown> {
@@ -128,7 +129,7 @@ export function App() {
 
   return (
     <main>
-      <h1>Chara2Img Web</h1>
+      <h1>{`Chara2IMG Web ${APP_VERSION_LABEL}`}</h1>
       <p>Invited session active.</p>
       <div>
         <button type="button" onClick={() => setActiveTab("setup")} disabled={activeTab === "setup"}>
