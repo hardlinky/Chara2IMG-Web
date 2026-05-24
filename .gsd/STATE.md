@@ -2,19 +2,19 @@
 
 ## Project Reference
 
-See: .gsd/PROJECT.md (updated 2026-05-23)
+See: .gsd/PROJECT.md (updated 2026-05-24)
 
 **Core value:** Enable reliable full-parity web generation workflows against Runpod serverless ComfyUI, with user-supplied API keys and no always-on ComfyUI host.
-**Current focus:** Phase 5 - Outputs and Gallery Review (execution complete, verification passed)
+**Current focus:** Planning next milestone (v1.1 Hardening)
 
 ## Current Position
 
-Phase: 5 of 5 (Outputs and Gallery Review)
-Plan: 2 of 2 in current phase
-Status: Phase execution complete, verification passed
-Last activity: 2026-05-24 - Added Setup/Input/Jobs/Output app tabs and expanded dynamic input parser mappings
+Phase: 6 of 8 (Admin and Access Operations)
+Plan: Not started
+Status: Ready to plan next milestone
+Last activity: 2026-05-24 - Completed v1.0 MVP milestone archive, project evolution review, and release tagging
 
-Progress: [██████████] 100%
+Progress: [██████░░░░] 62%
 
 ## Performance Metrics
 
@@ -59,7 +59,8 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-Milestone completion and release tagging are pending.
+- Define v1.1 milestone requirements and execution roadmap.
+- Plan Phase 6 (Admin and Access Operations).
 
 ### Blockers/Concerns
 
@@ -68,5 +69,5 @@ No active blockers.
 ## Session Continuity
 
 Last session: 2026-05-24
-Stopped at: Completed Phase 5 execution and verification; milestone wrap-up pending
+Stopped at: Completed v1.0 milestone archival and reset for next milestone planning
 Resume file: None

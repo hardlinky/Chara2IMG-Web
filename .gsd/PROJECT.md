@@ -2,7 +2,7 @@
 
 ## What This Is
 
-Chara2Img Web is a browser-based app for small invited users to run ComfyUI image generation jobs against Runpod serverless endpoints without keeping a local ComfyUI instance running. It ports the full WPF workflow to web, including custom workflow templates, dynamic input editing, job control, reruns, and output gallery viewing. Users can supply their own Runpod API key with a browser-local remember option.
+Chara2Img Web is a browser-based app for invited users to run ComfyUI image generation jobs against Runpod serverless endpoints without keeping a local ComfyUI instance running. It ships full core WPF parity in web form: secure invite access, BYOK key handling, workflow template import/reuse, dynamic input editing and apply-back, job lifecycle management, and output gallery/lightbox review.
 
 ## Core Value
 
@@ -12,26 +12,31 @@ Enable reliable full-parity web generation workflows against Runpod serverless C
 
 ### Validated
 
-(None yet - ship to validate)
+- ✓ User can load custom ComfyUI workflow JSON templates in the web app. - v1.0
+- ✓ User can edit workflow-derived inputs and submit jobs using those values. - v1.0
+- ✓ User can view and manage a jobs list, including rerun, load inputs, cancel, and remove. - v1.0
+- ✓ User can view generated outputs in a gallery flow with per-job provenance. - v1.0
+- ✓ User can provide their own Runpod API key with browser-local remember support. - v1.0
+- ✓ Backend proxy supports full Runpod job lifecycle calls (run, status polling, cancel) for WPF parity. - v1.0
 
 ### Active
 
-- [ ] User can load custom ComfyUI workflow JSON templates in the web app.
-- [ ] User can edit workflow-derived inputs in an Input tab and submit jobs using those values.
-- [ ] User can view and manage a jobs list, including rerun, load inputs from job, cancel, and remove.
-- [ ] User can view generated outputs in a gallery tab.
-- [ ] User can provide their own Runpod API key with browser-local remember support.
-- [ ] Backend proxy supports full Runpod job lifecycle calls (run, status polling, cancel) for full WPF parity.
+- [ ] Admin can manage invited users from an internal UI.
+- [ ] Users can resume long-running job tracking across devices.
+- [ ] Users can save named workflow presets in the app.
+- [ ] Users can attach notes/tags to generated outputs.
+- [ ] Expand quality-of-life editing controls while preserving payload fidelity.
 
 ### Out of Scope
 
 - Native desktop packaging - focus is web deployment on lightweight Runpod pod.
 - Public self-serve multi-tenant launch - initial release targets invited users only.
 - Building or hosting a persistent ComfyUI runtime - rely on existing Runpod serverless endpoint.
+- Offline-first local generation mode - product remains Runpod-serverless centered.
 
 ## Context
 
-This project ports an existing .NET WPF app integration to web. The current WPF app already supports Runpod bearer auth, workflow JSON parsing based on [Input]/[Input#] node titles, dynamic typed input controls, workflow input application before submit, polling status, cancel operations, rerun/load-inputs behavior, and output gallery handling from base64 image responses. The web app should preserve that behavior while running on a lightweight Runpod pod and supporting users who bring their own API keys.
+v1.0 shipped end-to-end invited-user workflow generation parity. Current UI navigation is split into Setup/Input/Jobs/Output tabs. Dynamic parsing supports `_meta.title` defaults, optional `[Input]` (no index) ordering, lora-row editing, and expanded class-type mappings. The stack is TypeScript + React + Vite client, Hono backend proxy, Dexie browser persistence, and Vitest coverage.
 
 ## Constraints
 
@@ -44,10 +49,13 @@ This project ports an existing .NET WPF app integration to web. The current WPF 
 
 | Decision | Rationale | Outcome |
 | -------- | --------- | ------- |
-| Full parity scope for v1 | Existing WPF workflows are already proven and required by user | - Pending |
-| Web architecture uses frontend plus lightweight backend proxy | Better control and safer key handling than direct browser-to-Runpod calls | - Pending |
-| User-supplied Runpod API key with browser-local remember option | Needed for invited users using their own accounts with acceptable convenience | - Pending |
+| Full parity scope for v1 | Existing WPF workflows are already proven and required by user | ✓ Good - shipped in v1.0 |
+| Web architecture uses frontend plus lightweight backend proxy | Better control and safer key handling than direct browser-to-Runpod calls | ✓ Good - scalable and testable boundary |
+| User-supplied Runpod API key with browser-local remember option | Needed for invited users using their own accounts with acceptable convenience | ✓ Good - shipped with browser-local persistence |
+| Keep canonical workflow JSON and rebuild payload per run | Guarantees deterministic apply-back and avoids template mutation | ✓ Good - stable run behavior and repeatability |
+| Projection-first outputs contract | Prevent UI from coupling to raw Runpod payload shape changes | ✓ Good - enabled clean gallery/lightbox features |
+| Split navigation into Setup/Input/Jobs/Output tabs | Reduce context overload in single run surface and isolate workflows | ✓ Good - clearer user flow post-v1 polish |
 
 ---
 
-_Last updated: 2026-05-23 after initialization_
+_Last updated: 2026-05-24 after v1.0 milestone_
