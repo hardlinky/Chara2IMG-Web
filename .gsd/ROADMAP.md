@@ -31,12 +31,20 @@
 **Goal**: Users get a coherent, modern, and accessible interface across Setup/Input/Jobs/Output before additional QOL feature expansion.
 **Depends on**: Phase 5
 **Requirements**: UI-01, UI-02, UI-03, UI-04
+**Plans**: 5 plans
 **Success Criteria**:
 
 1. Visual hierarchy, spacing, and typography are consistent across all tabs.
 2. Primary/secondary/destructive actions are distinguishable at a glance.
 3. Desktop and mobile layouts preserve core actions without clipping or overlap.
 4. Key controls expose clear focus/hover/active/disabled/error states.
+
+Plans:
+- [ ] 06-01-PLAN.md - Establish Theme 01 token foundation and global interaction-state primitives.
+- [ ] 06-02-PLAN.md - Build two-tier app shell with accessible segmented tabs and mobile bottom nav.
+- [ ] 06-03-PLAN.md - Apply refresh and state hierarchy to Setup/Input surfaces.
+- [ ] 06-04-PLAN.md - Apply refresh and responsive interaction polish to Jobs/Output surfaces.
+- [ ] 06-05-PLAN.md - Run final human verification against UI-01..UI-04 acceptance criteria.
 
 ### Phase 7: Workflow Presets and Input Usability
 
@@ -71,6 +79,6 @@
 | 3. Dynamic Input Editing | v1.0 | 2/2 | Complete | 2026-05-23 |
 | 4. Job Lifecycle and Run Management | v1.0 | 3/3 | Complete | 2026-05-24 |
 | 5. Outputs and Gallery Review | v1.0 | 2/2 | Complete | 2026-05-24 |
-| 6. UI Refresh and Interaction Foundation | v1.1 | 0/0 | Not started | - |
+| 6. UI Refresh and Interaction Foundation | v1.1 | 0/5 | Not started | - |
 | 7. Workflow Presets and Input Usability | v1.1 | 0/0 | Not started | - |
 | 8. Jobs and Output Review Quality of Life | v1.1 | 0/0 | Not started | - |
