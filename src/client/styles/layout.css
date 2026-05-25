@@ -29,6 +29,13 @@
   font-size: var(--font-size-sm);
 }
 
+.app-header-right {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-left: auto;
+}
+
 .tab-panel {
   padding: var(--space-4);
 }
@@ -83,6 +90,11 @@
 
   .app-header-row {
     gap: var(--space-2);
+  }
+
+  .app-header-right {
+    width: 100%;
+    justify-content: space-between;
   }
 
   .tab-panel {

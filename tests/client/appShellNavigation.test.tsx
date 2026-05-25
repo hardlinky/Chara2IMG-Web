@@ -4,10 +4,10 @@ import { AppShell } from "../../src/client/components/app-shell/AppShell";
 import type { AppTabDefinition } from "../../src/client/components/app-shell/TopTabRail";
 
 const tabs: AppTabDefinition[] = [
-  { id: "setup", label: "Setup", iconInactive: "[ ]", iconActive: "[x]" },
-  { id: "input", label: "Input", iconInactive: "[ ]", iconActive: "[x]" },
-  { id: "jobs", label: "Jobs", iconInactive: "[ ]", iconActive: "[x]" },
-  { id: "output", label: "Output", iconInactive: "[ ]", iconActive: "[x]" }
+  { id: "setup", label: "Setup" },
+  { id: "input", label: "Input" },
+  { id: "jobs", label: "Jobs" },
+  { id: "output", label: "Output" }
 ];
 
 describe("app shell navigation", () => {

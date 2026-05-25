@@ -3,7 +3,6 @@ import { AppShell } from "./components/app-shell/AppShell";
 import type { AppTabDefinition } from "./components/app-shell/TopTabRail";
 import { InviteGate } from "./features/access/InviteGate";
 import { RunpodKeySettings } from "./features/access/RunpodKeySettings";
-import { RunpodProxySmoke } from "./features/access/RunpodProxySmoke";
 import { DynamicInputEditor } from "./features/inputs/DynamicInputEditor";
 import { ActiveWorkflowTemplate } from "./features/workflows/ActiveWorkflowTemplate";
 import { WorkflowImport } from "./features/workflows/WorkflowImport";
@@ -12,7 +11,7 @@ import { OutputsTab } from "./features/outputs/OutputsTab";
 import { submitRunAndPersistRecentJob } from "./lib/jobSubmission";
 import { getRunpodKey } from "./lib/runpodKeyStorage";
 import { getStoredEndpointId, saveEndpointId } from "./lib/endpointStorage";
-import { fetchSystemConfig } from "./lib/api/runpodProxyClient";
+import { fetchSystemConfig, updateAppViaProxy } from "./lib/api/runpodProxyClient";
 import { formatSubmittedAtRelative } from "./features/jobs/jobStatus";
 import { useRecentJobs } from "./features/jobs/useRecentJobs";
 import { RecentJobsPanel } from "./features/jobs/RecentJobsPanel";
@@ -30,10 +29,10 @@ function toRunpodWorkflowInput(payload: Record<string, unknown>): Record<string,
 }
 
 const APP_TABS: AppTabDefinition[] = [
-  { id: "setup", label: "Setup", iconInactive: "[ ]", iconActive: "[x]" },
-  { id: "input", label: "Input", iconInactive: "[ ]", iconActive: "[x]" },
-  { id: "jobs", label: "Jobs", iconInactive: "[ ]", iconActive: "[x]" },
-  { id: "output", label: "Output", iconInactive: "[ ]", iconActive: "[x]" }
+  { id: "setup", label: "Setup" },
+  { id: "input", label: "Input" },
+  { id: "jobs", label: "Jobs" },
+  { id: "output", label: "Output" }
 ];
 
 export function App() {
@@ -65,6 +64,8 @@ export function App() {
   const [runResult, setRunResult] = useState("");
   const [runError, setRunError] = useState("");
   const [jobActionMessage, setJobActionMessage] = useState("");
+  const [isUpdatingApp, setIsUpdatingApp] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState("");
   const [editorApi, setEditorApi] = useState<{
     applyExternalDraftValues: (
       sourceTemplateFingerprint: string,
@@ -136,6 +137,28 @@ export function App() {
     setJobActionMessage(`Loaded inputs from ${job.jobId}.`);
   }
 
+  async function onUpdateApp(): Promise<void> {
+    setIsUpdatingApp(true);
+    setUpdateStatus("Updating app...");
+
+    try {
+      const result = await updateAppViaProxy();
+      if (!result.ok) {
+        setUpdateStatus(`Update failed: ${result.error ?? "Unknown error"}`);
+        return;
+      }
+
+      setUpdateStatus("Update complete. Reloading...");
+      window.setTimeout(() => {
+        window.location.reload();
+      }, 700);
+    } catch (error) {
+      setUpdateStatus(`Update failed: ${error instanceof Error ? error.message : "Unexpected update error"}`);
+    } finally {
+      setIsUpdatingApp(false);
+    }
+  }
+
   if (!invited) {
     return <InviteGate onInvited={() => setInvited(true)} />;
   }
@@ -148,7 +171,12 @@ export function App() {
       headerRowOne={
         <>
           <h1>{`Chara2IMG Web ${APP_VERSION_LABEL}`}</h1>
-          <p className="app-header-status">Invited session active.</p>
+          <div className="app-header-right">
+            <button className="btn btn-secondary" type="button" onClick={() => void onUpdateApp()} disabled={isUpdatingApp}>
+              {isUpdatingApp ? "Updating..." : "Update App"}
+            </button>
+            <p className="app-header-status">Invited session active.</p>
+          </div>
         </>
       }
       headerRowTwo={
@@ -156,6 +184,7 @@ export function App() {
           <span>{`Runpod key: ${runpodKey ? "Configured" : "Missing"}`}</span>
           <span>{`Endpoint: ${runEndpointId || "Not set"}`}</span>
           <span>{`Template: ${activeTemplate ? "Loaded" : "Not loaded"}`}</span>
+          {updateStatus ? <span>{updateStatus}</span> : null}
         </>
       }
       panels={{
@@ -171,13 +200,6 @@ export function App() {
                 onChange={(event) => updateEndpointId(event.target.value)}
               />
             </section>
-            {runpodKey ? (
-              <RunpodProxySmoke
-                apiKey={runpodKey}
-                endpointId={runEndpointId}
-                onEndpointIdChange={updateEndpointId}
-              />
-            ) : null}
             <WorkflowImport onImported={persistTemplate} />
             <ActiveWorkflowTemplate
               activeTemplate={activeTemplate}

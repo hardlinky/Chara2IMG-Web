@@ -5,8 +5,6 @@ export type AppTabId = "setup" | "input" | "jobs" | "output";
 export type AppTabDefinition = {
   id: AppTabId;
   label: string;
-  iconInactive: string;
-  iconActive: string;
 };
 
 type TopTabRailProps = {
@@ -56,7 +54,6 @@ export function TopTabRail({ tabs, activeTab, onTabChange }: TopTabRailProps) {
             onClick={() => onTabChange(tab.id)}
             onKeyDown={(event) => onTabKeyDown(event, index)}
           >
-            <span aria-hidden>{selected ? tab.iconActive : tab.iconInactive}</span>
             <span>{tab.label}</span>
           </button>
         );

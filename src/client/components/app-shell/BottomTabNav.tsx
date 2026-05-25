@@ -22,7 +22,6 @@ export function BottomTabNav({ tabs, activeTab, onTabChange }: BottomTabNavProps
             className={`bottom-tab-item interactive ${selected ? "bottom-tab-item-active" : ""}`}
             onClick={() => onTabChange(tab.id)}
           >
-            <span aria-hidden>{selected ? tab.iconActive : tab.iconInactive}</span>
             <span>{tab.label}</span>
           </button>
         );
