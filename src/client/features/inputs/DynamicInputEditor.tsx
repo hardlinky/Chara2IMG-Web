@@ -343,8 +343,7 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
         <fieldset key={category} className="input-category">
           <legend>
             <div className="input-category-header">
-              <span className="input-category-title">{category}</span>
-              <div className="input-category-actions">
+              <div className="input-category-title-group">
                 <button
                   type="button"
                   className="btn btn-secondary input-category-icon-button"
@@ -354,6 +353,9 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
                 >
                   <span aria-hidden="true">{collapsedByCategory[category] ? "▸" : "▾"}</span>
                 </button>
+                <span className="input-category-title">{category}</span>
+              </div>
+              <div className="input-category-actions">
                 <button
                   type="button"
                   className="btn btn-secondary input-category-icon-button"
