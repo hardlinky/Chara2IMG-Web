@@ -228,6 +228,18 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
   const [showDetailerHint, setShowDetailerHint] = useState(false);
   const sections = new Map<string, DynamicInputControl[]>();
 
+  function toggleDetailerHintForMobile(): void {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (!window.matchMedia("(max-width: 720px)").matches) {
+      return;
+    }
+
+    setShowDetailerHint((previous) => !previous);
+  }
+
   const detailerLoraMasterControl = props.controls.find(
     (control) =>
       control.kind === "boolean" &&
@@ -315,7 +327,8 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
                         type="button"
                         className="input-inline-hint-button"
                         title={'Enable "Use Different Detailer Loras?" to edit detailer lora rows.'}
-                        onClick={() => setShowDetailerHint((previous) => !previous)}
+                        data-tooltip={'Enable "Use Different Detailer Loras?" to edit detailer lora rows.'}
+                        onClick={toggleDetailerHintForMobile}
                       >
                         info
                       </button>

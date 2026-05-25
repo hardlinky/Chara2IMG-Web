@@ -122,6 +122,7 @@
 }
 
 .input-inline-hint-button {
+  position: relative;
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
   border: 1px solid var(--color-border-subtle);
@@ -249,8 +250,29 @@
 
 @media (min-width: 721px) {
   .input-inline-hint-button {
-    cursor: default;
-    pointer-events: none;
+    cursor: help;
+    pointer-events: auto;
+  }
+
+  .input-inline-hint-button:hover::after,
+  .input-inline-hint-button:focus-visible::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    top: calc(100% + 0.35rem);
+    left: 50%;
+    transform: translateX(-50%);
+    width: max-content;
+    max-width: 18rem;
+    padding: 0.35rem 0.5rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border-subtle);
+    background: rgba(17, 21, 24, 0.96);
+    color: var(--color-text-primary);
+    text-transform: none;
+    white-space: normal;
+    z-index: 5;
+    box-shadow: var(--shadow-sm);
+    text-align: left;
   }
 
   .input-inline-hint-mobile {
