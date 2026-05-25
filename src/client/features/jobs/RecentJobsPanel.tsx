@@ -28,12 +28,103 @@ function formatExecutionTime(job: RecentJobRecord): string | null {
   return `${seconds}s`;
 }
 
-function formatFailureSnippet(job: RecentJobRecord): string | null {
-  if (!job.lifecycle.failureReason) {
+function extractStringValue(value: unknown): string | null {
+  if (typeof value === "string" && value.trim()) {
+    return value;
+  }
+
+  return null;
+}
+
+function extractMessageFromUnknown(value: unknown): string | null {
+  const direct = extractStringValue(value);
+  if (direct) {
+    return direct;
+  }
+
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
     return null;
   }
 
-  return job.lifecycle.failureReason.length > 90 ? `${job.lifecycle.failureReason.slice(0, 90)}...` : job.lifecycle.failureReason;
+  const record = value as Record<string, unknown>;
+  return extractStringValue(record.message) ?? extractStringValue(record.error) ?? extractStringValue(record.reason);
+}
+
+function findWorkerId(value: unknown): string | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  const directWorkerId = extractStringValue(record.workerId) ?? extractStringValue(record.worker_id);
+  if (directWorkerId) {
+    return directWorkerId;
+  }
+
+  const directWorker = record.worker;
+  if (directWorker && typeof directWorker === "object" && !Array.isArray(directWorker)) {
+    const worker = directWorker as Record<string, unknown>;
+    const workerNestedId = extractStringValue(worker.id) ?? extractStringValue(worker.workerId) ?? extractStringValue(worker.worker_id);
+    if (workerNestedId) {
+      return workerNestedId;
+    }
+  }
+
+  const nestedData = record.data;
+  if (nestedData && typeof nestedData === "object" && !Array.isArray(nestedData)) {
+    const nestedRecord = nestedData as Record<string, unknown>;
+    const nestedWorkerId = extractStringValue(nestedRecord.workerId) ?? extractStringValue(nestedRecord.worker_id);
+    if (nestedWorkerId) {
+      return nestedWorkerId;
+    }
+
+    const nestedWorker = nestedRecord.worker;
+    if (nestedWorker && typeof nestedWorker === "object" && !Array.isArray(nestedWorker)) {
+      const worker = nestedWorker as Record<string, unknown>;
+      const nestedWorkerNestedId = extractStringValue(worker.id) ?? extractStringValue(worker.workerId) ?? extractStringValue(worker.worker_id);
+      if (nestedWorkerNestedId) {
+        return nestedWorkerNestedId;
+      }
+    }
+  }
+
+  return null;
+}
+
+function extractErrorFromResponse(value: unknown): string | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  const directError = extractMessageFromUnknown(record.error) ?? extractStringValue(record.failureReason) ?? extractStringValue(record.reason);
+  if (directError) {
+    return directError;
+  }
+
+  const nestedData = record.data;
+  if (nestedData && typeof nestedData === "object" && !Array.isArray(nestedData)) {
+    const nestedRecord = nestedData as Record<string, unknown>;
+    const nestedError =
+      extractMessageFromUnknown(nestedRecord.error) ??
+      extractStringValue(nestedRecord.failureReason) ??
+      extractStringValue(nestedRecord.reason);
+    if (nestedError) {
+      return nestedError;
+    }
+  }
+
+  return null;
+}
+
+function formatFailureSnippet(job: RecentJobRecord): string | null {
+  const failureMessage = job.lastError ?? job.lifecycle.failureReason ?? extractErrorFromResponse(job.lastResponse);
+
+  if (!failureMessage) {
+    return null;
+  }
+
+  return failureMessage.length > 90 ? `${failureMessage.slice(0, 90)}...` : failureMessage;
 }
 
 export function RecentJobsPanel(props: RecentJobsPanelProps) {
@@ -62,6 +153,7 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
           {props.jobs.map((job) => {
             const executionTime = formatExecutionTime(job);
             const failureSnippet = formatFailureSnippet(job);
+            const workerId = findWorkerId(job.lastResponse);
             return (
               <li key={job.jobId} className="jobs-card">
                 <div className="jobs-card-meta">
@@ -70,6 +162,7 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
                     {props.formatSubmittedAtRelative(job.submittedAt)}
                   </time>
                 </div>
+                {workerId ? <span>Worker ID: {workerId}</span> : null}
                 <div className="jobs-status-row">
                   <span className="jobs-status-chip">Status: {job.lifecycle.status}</span>
                   {props.warningJobIds.includes(job.jobId) ? (
@@ -77,7 +170,11 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
                   ) : null}
                 </div>
                 {executionTime ? <span>Execution time: {executionTime}</span> : null}
-                {failureSnippet ? <p>{failureSnippet}</p> : null}
+                {failureSnippet ? (
+                  <p>
+                    <strong>Error:</strong> {failureSnippet}
+                  </p>
+                ) : null}
                 <div className="jobs-actions">
                   {!job.lifecycle.isTerminal && job.lifecycle.status !== "CANCELLING" ? (
                     <button

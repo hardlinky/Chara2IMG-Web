@@ -63,6 +63,76 @@ describe("RecentJobsPanel", () => {
     expect(html).not.toContain("Restore");
   });
 
+  it("prints the returned error message for failed jobs", () => {
+    const html = renderToStaticMarkup(
+      <RecentJobsPanel
+        jobs={[
+          createJob({
+            jobId: "job-error",
+            lastError: "Proxy request failed (500) Upstream timed out",
+            lifecycle: {
+              status: "FAILED",
+              isTerminal: true,
+              terminalReason: "failed",
+              finishedAt: "2026-05-23T10:10:00.000Z",
+              lastCheckedAt: "2026-05-23T10:10:00.000Z",
+              warning: null,
+              executionTimeMs: 600000,
+              failureReason: "Queue exceeded limits"
+            }
+          })
+        ]}
+        warningJobIds={[]}
+        cancelingJobIds={[]}
+        statusFilter="All"
+        page={1}
+        pageCount={1}
+        pageNumbers={[1]}
+        onStatusFilterChange={vi.fn()}
+        onPageChange={vi.fn()}
+        onCancel={vi.fn()}
+        onRerun={vi.fn()}
+        onLoadInputs={vi.fn()}
+        onRemoveVisible={vi.fn()}
+        formatSubmittedAtRelative={() => "just now"}
+      />
+    );
+
+    expect(html).toContain("Error:");
+    expect(html).toContain("Proxy request failed (500) Upstream timed out");
+    expect(html).not.toContain("Queue exceeded limits");
+  });
+
+  it("prints the worker id when the job response includes one", () => {
+    const html = renderToStaticMarkup(
+      <RecentJobsPanel
+        jobs={[
+          createJob({
+            jobId: "job-worker",
+            lastResponse: {
+              workerId: "worker-42"
+            }
+          })
+        ]}
+        warningJobIds={[]}
+        cancelingJobIds={[]}
+        statusFilter="All"
+        page={1}
+        pageCount={1}
+        pageNumbers={[1]}
+        onStatusFilterChange={vi.fn()}
+        onPageChange={vi.fn()}
+        onCancel={vi.fn()}
+        onRerun={vi.fn()}
+        onLoadInputs={vi.fn()}
+        onRemoveVisible={vi.fn()}
+        formatSubmittedAtRelative={() => "just now"}
+      />
+    );
+
+    expect(html).toContain("Worker ID: worker-42");
+  });
+
   it("renders the exact empty state text when there are no visible jobs", () => {
     const html = renderToStaticMarkup(
       <RecentJobsPanel
