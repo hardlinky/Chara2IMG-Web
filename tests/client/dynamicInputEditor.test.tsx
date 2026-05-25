@@ -111,6 +111,75 @@ describe("dynamic input editor", () => {
     expect(html).not.toContain("Show source mapping");
   });
 
+  it("hides detailer lora rows when the master detailer-lora toggle is off", () => {
+    const controls: DynamicInputControl[] = [
+      {
+        id: "detailer:boolean:toggle",
+        kind: "boolean",
+        inputIndex: 1,
+        fullTitle: "[Input1] Detailer.Use Different Detailer Loras?",
+        category: "Detailer",
+        name: "Use Different Detailer Loras?",
+        source: {
+          nodeId: "a",
+          titlePath: "a._meta.title",
+          valuePath: ["value"]
+        },
+        constraints: {},
+        defaultValue: false,
+        orderKey: "000001:[Input1] Detailer.Use Different Detailer Loras?"
+      },
+      {
+        id: "detailer:lora-row:lora_1",
+        kind: "lora-row",
+        inputIndex: 2,
+        fullTitle: "[Input2] Detailer.Bhive_Style.safetensors",
+        category: "Detailer",
+        name: "Bhive_Style.safetensors",
+        source: {
+          nodeId: "b",
+          titlePath: "b._meta.title",
+          valuePath: ["lora_1"]
+        },
+        constraints: { min: -5, max: 5 },
+        defaultValue: {
+          enabled: false,
+          loraName: "Bhive_Style.safetensors",
+          strength: 1
+        },
+        orderKey: "000002:[Input2] Detailer.Bhive_Style.safetensors"
+      }
+    ];
+
+    const html = renderToStaticMarkup(
+      <DynamicInputEditorView
+        controls={controls}
+        warnings={[]}
+        draftValues={{
+          "detailer:boolean:toggle": false,
+          "detailer:lora-row:lora_1": {
+            enabled: false,
+            loraName: "Bhive_Style.safetensors",
+            strength: 1
+          }
+        }}
+        hasDraftDiffFromTemplate={false}
+        hasUnsavedChangesSinceLastRun={false}
+        inlineErrorsByControlId={{}}
+        runBlockingMessage={null}
+        setValue={vi.fn()}
+        resetToTemplateDefaults={vi.fn()}
+        onRun={vi.fn()}
+      />
+    );
+
+    expect(html).toContain("Use Different Detailer Loras?");
+    expect(html).toContain("Enable");
+    expect(html).toContain("Use Different Detailer Loras?");
+    expect(html).toContain("edit detailer lora rows");
+    expect(html).not.toContain("Bhive_Style.safetensors");
+  });
+
   it("applies overlay order and keeps new controls by default order", () => {
     const controls = createControls();
     const overlayOrdered = applyOrderingOverlay(controls, {

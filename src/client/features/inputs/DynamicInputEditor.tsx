@@ -81,12 +81,14 @@ function renderInputControl(
       );
     case "boolean":
       return (
-        <input
-          className={hasInlineError ? "interactive input-invalid" : "interactive"}
-          type="checkbox"
-          checked={Boolean(value)}
-          onChange={(event) => setValue(control.id, event.target.checked)}
-        />
+        <div className="input-boolean-wrap">
+          <input
+            className={hasInlineError ? "interactive input-invalid" : "interactive"}
+            type="checkbox"
+            checked={Boolean(value)}
+            onChange={(event) => setValue(control.id, event.target.checked)}
+          />
+        </div>
       );
     case "dimension": {
       const dimensions =
@@ -227,6 +229,19 @@ function renderInputControl(
 export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
   const sections = new Map<string, DynamicInputControl[]>();
 
+  const detailerLoraMasterControl = props.controls.find(
+    (control) =>
+      control.kind === "boolean" &&
+      control.category === "Detailer" &&
+      /use different detailer loras\?/i.test(control.name)
+  );
+
+  const detailerLorasEnabled =
+    !detailerLoraMasterControl ||
+    Boolean(
+      props.draftValues[detailerLoraMasterControl.id] ?? detailerLoraMasterControl.defaultValue
+    );
+
   for (const control of props.controls) {
     const list = sections.get(control.category);
     if (list) {
@@ -273,7 +288,16 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
       {[...sections.entries()].map(([category, controls]) => (
         <fieldset key={category} className="input-category">
           <legend>{category}</legend>
-          {controls.map((control) => (
+          {controls
+            .filter(
+              (control) =>
+                !(
+                  category === "Detailer" &&
+                  control.kind === "lora-row" &&
+                  !detailerLorasEnabled
+                )
+            )
+            .map((control) => (
             <div key={control.id} className="input-row">
               <label className="field">
                 {control.name}
@@ -290,7 +314,10 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
                 </p>
               ) : null}
             </div>
-          ))}
+            ))}
+          {category === "Detailer" && !detailerLorasEnabled ? (
+            <p className="input-status">Enable "Use Different Detailer Loras?" to edit detailer lora rows.</p>
+          ) : null}
         </fieldset>
       ))}
 
