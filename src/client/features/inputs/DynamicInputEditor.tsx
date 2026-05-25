@@ -703,6 +703,8 @@ export function DynamicInputEditor(props: DynamicInputEditorProps) {
     <DynamicInputEditorView
       controls={editor.controls}
       sections={editor.sections}
+      sectionNamesByCategory={editor.sectionNamesByCategory}
+      nameValidationErrorsByControlId={editor.nameValidationErrorsByControlId}
       sectionColumnByCategory={editor.sectionColumnByCategory}
       columnsSplitRatio={editor.columnsSplitRatio}
       warnings={editor.warnings}

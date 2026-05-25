@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { DynamicInputControl, DynamicInputWarning } from "../../src/shared/contracts/inputs";
+import type { WorkflowTemplateRecord } from "../../src/shared/contracts/workflow";
+import { DynamicInputEditor } from "../../src/client/features/inputs/DynamicInputEditor";
 import { DynamicInputEditorView } from "../../src/client/features/inputs/DynamicInputEditor";
 import {
   applyExternalDraftValues,
@@ -157,6 +159,71 @@ describe("dynamic input editor", () => {
     expect(html).toContain("{Sola_Eyes}");
     expect(html).not.toContain("{Character_Name}");
     expect(html).not.toContain("{Sola_Name}");
+  });
+
+  it("forwards named aliases through the wrapper component", () => {
+    const template: WorkflowTemplateRecord = {
+      fingerprint: "fp-1",
+      displayName: "Test workflow",
+      schemaVersion: "comfyui-v1",
+      importedAt: new Date().toISOString(),
+      rawText: JSON.stringify({
+        character: {
+          class_type: "CR Text",
+          inputs: {
+            text: "Sola"
+          },
+          _meta: {
+            title: "[Input1] Character.Name"
+          }
+        },
+        eyes: {
+          class_type: "CR Text",
+          inputs: {
+            text: "gold"
+          },
+          _meta: {
+            title: "[Input2] Character.Eyes"
+          }
+        }
+      }),
+      rawJson: {
+        character: {
+          class_type: "CR Text",
+          inputs: {
+            text: "Sola"
+          },
+          _meta: {
+            title: "[Input1] Character.Name"
+          }
+        },
+        eyes: {
+          class_type: "CR Text",
+          inputs: {
+            text: "gold"
+          },
+          _meta: {
+            title: "[Input2] Character.Eyes"
+          }
+        }
+      },
+      validation: {
+        shapeValid: true,
+        templateValid: true,
+        issues: []
+      }
+    };
+
+    const html = renderToStaticMarkup(
+      <DynamicInputEditor
+        activeTemplate={template}
+        onRunPayloadBuilt={vi.fn()}
+        onRunValidationFailed={vi.fn()}
+      />
+    );
+
+    expect(html).toContain("{Sola_Eyes}");
+    expect(html).toContain("{Character_Eyes}");
   });
 
   it("renders run-blocking and unsaved-state feedback with structural class hooks", () => {
