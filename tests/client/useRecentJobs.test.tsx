@@ -1,6 +1,6 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi, afterEach } from "vitest";
-import { cancelViaProxy } from "../../src/client/lib/api/runpodProxyClient";
+import { cancelViaProxy, statusViaProxy } from "../../src/client/lib/api/runpodProxyClient";
 import { clearRecentJobs, getRecentJob, listRecentJobs, upsertRecentJob } from "../../src/client/lib/recentJobsStorage";
 import { buildLifecycleSnapshotFromStatus } from "../../src/client/features/jobs/jobStatus";
 import {
@@ -8,6 +8,7 @@ import {
   filterJobsByStatus,
   getStoredStatusFilter,
   persistStatusFilter,
+  pollSingleJob,
   removeRecentJobFromVisibleList,
   rerunRecentJobWithDependencies
 } from "../../src/client/features/jobs/useRecentJobs";
@@ -38,6 +39,7 @@ describe("useRecentJobs helpers", () => {
   beforeEach(async () => {
     await clearRecentJobs();
     vi.mocked(cancelViaProxy).mockReset();
+    vi.mocked(statusViaProxy).mockReset();
     let storedFilter: string | null = null;
     vi.stubGlobal("window", {
       localStorage: {
@@ -158,5 +160,35 @@ describe("useRecentJobs helpers", () => {
         lastError: null
       }
     ], "FAILED").map((job) => job.jobId)).toEqual(["job-b"]);
+  });
+
+  it("polls a single IN_PROGRESS job and updates its lifecycle without affecting other jobs", async () => {
+    await upsertRecentJob(createJob("job-poll", "IN_PROGRESS"));
+    await upsertRecentJob(createJob("job-other", "IN_QUEUE"));
+    vi.mocked(statusViaProxy).mockResolvedValueOnce({ id: "job-poll", status: "COMPLETED" });
+
+    const result = await pollSingleJob("job-poll", { apiKey: "key", endpointId: "endpoint-1" });
+
+    expect(vi.mocked(statusViaProxy)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(statusViaProxy)).toHaveBeenCalledWith(expect.objectContaining({ id: "job-poll" }));
+
+    const polled = result.jobs.find((job) => job.jobId === "job-poll");
+    expect(polled?.lifecycle.status).toBe("COMPLETED");
+    expect(polled?.lifecycle.isTerminal).toBe(true);
+
+    const other = result.jobs.find((job) => job.jobId === "job-other");
+    expect(other?.lifecycle.status).toBe("IN_QUEUE");
+    expect(result.warningJobIds).toHaveLength(0);
+  });
+
+  it("adds a warning when the single job poll request fails with a non-404 error", async () => {
+    await upsertRecentJob(createJob("job-warn", "IN_PROGRESS"));
+    vi.mocked(statusViaProxy).mockRejectedValueOnce(new Error("Network error"));
+
+    const result = await pollSingleJob("job-warn", { apiKey: "key", endpointId: "endpoint-1" });
+
+    expect(result.warningJobIds).toContain("job-warn");
+    const stored = await getRecentJob("job-warn");
+    expect(stored?.lifecycle.status).toBe("IN_PROGRESS");
   });
 });

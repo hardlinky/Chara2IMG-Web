@@ -14,6 +14,7 @@ type RecentJobsPanelProps = {
   onPageChange: (next: number) => void;
   onCancel: (jobId: string) => void;
   onRerun: (jobId: string) => void;
+  onPollStatus: (jobId: string) => void;
   onLoadInputs: (jobId: string) => void;
   onExportWorkflow: (jobId: string) => void;
   onRemoveVisible: (jobId: string) => void;
@@ -185,6 +186,11 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
                       onClick={() => props.onCancel(job.jobId)}
                     >
                       Cancel
+                    </button>
+                  ) : null}
+                  {job.lifecycle.status === "IN_PROGRESS" ? (
+                    <button className="btn btn-secondary" type="button" onClick={() => props.onPollStatus(job.jobId)}>
+                      Refresh
                     </button>
                   ) : null}
                   <button className="btn btn-primary" type="button" onClick={() => props.onRerun(job.jobId)}>

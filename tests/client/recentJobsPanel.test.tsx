@@ -45,6 +45,7 @@ describe("RecentJobsPanel", () => {
         onPageChange={vi.fn()}
         onCancel={vi.fn()}
         onRerun={vi.fn()}
+        onPollStatus={vi.fn()}
         onLoadInputs={vi.fn()}
         onExportWorkflow={vi.fn()}
         onRemoveVisible={vi.fn()}
@@ -94,6 +95,7 @@ describe("RecentJobsPanel", () => {
         onPageChange={vi.fn()}
         onCancel={vi.fn()}
         onRerun={vi.fn()}
+        onPollStatus={vi.fn()}
         onLoadInputs={vi.fn()}
         onExportWorkflow={vi.fn()}
         onRemoveVisible={vi.fn()}
@@ -127,6 +129,7 @@ describe("RecentJobsPanel", () => {
         onPageChange={vi.fn()}
         onCancel={vi.fn()}
         onRerun={vi.fn()}
+        onPollStatus={vi.fn()}
         onLoadInputs={vi.fn()}
         onExportWorkflow={vi.fn()}
         onRemoveVisible={vi.fn()}
@@ -165,6 +168,7 @@ describe("RecentJobsPanel", () => {
         onPageChange={vi.fn()}
         onCancel={vi.fn()}
         onRerun={vi.fn()}
+        onPollStatus={vi.fn()}
         onLoadInputs={vi.fn()}
         onExportWorkflow={vi.fn()}
         onRemoveVisible={vi.fn()}
@@ -189,6 +193,7 @@ describe("RecentJobsPanel", () => {
         onPageChange={vi.fn()}
         onCancel={vi.fn()}
         onRerun={vi.fn()}
+        onPollStatus={vi.fn()}
         onLoadInputs={vi.fn()}
         onExportWorkflow={vi.fn()}
         onRemoveVisible={vi.fn()}
@@ -197,5 +202,66 @@ describe("RecentJobsPanel", () => {
     );
 
     expect(html).toContain("No recent jobs yet");
+  });
+
+  it("shows Refresh button only for IN_PROGRESS jobs", () => {
+    const inProgressHtml = renderToStaticMarkup(
+      <RecentJobsPanel
+        jobs={[
+          createJob({
+            jobId: "job-in-progress",
+            lifecycle: {
+              status: "IN_PROGRESS",
+              isTerminal: false,
+              terminalReason: undefined,
+              lastCheckedAt: "2026-05-23T10:05:00.000Z",
+              warning: null,
+              executionTimeMs: undefined,
+              failureReason: null
+            }
+          })
+        ]}
+        warningJobIds={[]}
+        cancelingJobIds={[]}
+        statusFilter="All"
+        page={1}
+        pageCount={1}
+        pageNumbers={[1]}
+        onStatusFilterChange={vi.fn()}
+        onPageChange={vi.fn()}
+        onCancel={vi.fn()}
+        onRerun={vi.fn()}
+        onPollStatus={vi.fn()}
+        onLoadInputs={vi.fn()}
+        onExportWorkflow={vi.fn()}
+        onRemoveVisible={vi.fn()}
+        formatSubmittedAtRelative={() => "just now"}
+      />
+    );
+
+    expect(inProgressHtml).toContain("Refresh");
+
+    const failedHtml = renderToStaticMarkup(
+      <RecentJobsPanel
+        jobs={[createJob({ jobId: "job-failed" })]}
+        warningJobIds={[]}
+        cancelingJobIds={[]}
+        statusFilter="All"
+        page={1}
+        pageCount={1}
+        pageNumbers={[1]}
+        onStatusFilterChange={vi.fn()}
+        onPageChange={vi.fn()}
+        onCancel={vi.fn()}
+        onRerun={vi.fn()}
+        onPollStatus={vi.fn()}
+        onLoadInputs={vi.fn()}
+        onExportWorkflow={vi.fn()}
+        onRemoveVisible={vi.fn()}
+        formatSubmittedAtRelative={() => "just now"}
+      />
+    );
+
+    expect(failedHtml).not.toContain("Refresh");
   });
 });
