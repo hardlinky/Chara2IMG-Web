@@ -64,4 +64,26 @@ describe("app shell navigation", () => {
     expect(html).toContain('data-tab-id="jobs"');
     expect(html).toContain('data-tab-id="output"');
   });
+
+  it("renders the jobs tab badge when a badge count is set", () => {
+    const tabsWithBadge: AppTabDefinition[] = tabs.map((tab) => (tab.id === "jobs" ? { ...tab, badge: 3 } : tab));
+
+    const html = renderToStaticMarkup(
+      <AppShell
+        tabs={tabsWithBadge}
+        activeTab="jobs"
+        onTabChange={() => undefined}
+        headerRowOne={<h1>Header</h1>}
+        panels={{
+          setup: <p>Setup panel</p>,
+          input: <p>Input panel</p>,
+          jobs: <p>Jobs panel</p>,
+          output: <p>Output panel</p>
+        }}
+      />
+    );
+
+    expect(html).toContain("tab-badge");
+    expect(html).toContain(">3<");
+  });
 });
