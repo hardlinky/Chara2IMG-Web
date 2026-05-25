@@ -50,7 +50,7 @@ export function JobOutputsView({ cluster, onBack, onPreviousJob, onNextJob }: Jo
           Back to gallery
         </button>
         <div className="outputs-job-navigation">
-          <button className="btn btn-secondary" type="button" onClick={onPreviousJob} disabled={!onPreviousJob}>
+          <button className="btn btn-primary" type="button" onClick={onPreviousJob} disabled={!onPreviousJob}>
             Previous job
           </button>
           <button className="btn btn-primary" type="button" onClick={onNextJob} disabled={!onNextJob}>
