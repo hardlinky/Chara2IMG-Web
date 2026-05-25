@@ -78,6 +78,27 @@
   color: var(--color-text-primary);
 }
 
+.input-category-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-width: min(42rem, calc(100vw - 8rem));
+}
+
+.input-category-toggle {
+  padding: 0.25rem 0.6rem;
+}
+
+.input-category-actions {
+  display: inline-flex;
+  gap: var(--space-1);
+}
+
+.input-category-actions .btn {
+  padding: 0.2rem 0.55rem;
+}
+
 .input-row {
   display: grid;
   gap: var(--space-2);
@@ -244,8 +265,20 @@
 
   .setup-actions .btn,
   .input-actions .btn,
+  .input-category-header .btn,
   .input-run-bar .btn-primary {
     width: 100%;
+  }
+
+  .input-category-header {
+    min-width: 0;
+    display: grid;
+  }
+
+  .input-category-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
   }
 
   .input-run-bar {

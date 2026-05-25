@@ -3,6 +3,7 @@ import type {
   DynamicInputControl,
   DynamicInputDraftValues,
   DynamicInputInlineError,
+  DynamicInputSection,
   DynamicInputValue,
   DynamicInputWarning
 } from "../../../shared/contracts/inputs";
@@ -12,6 +13,7 @@ import "../../styles/setupInput.css";
 
 type DynamicInputEditorViewProps = {
   controls: DynamicInputControl[];
+  sections: DynamicInputSection[];
   warnings: DynamicInputWarning[];
   draftValues: DynamicInputDraftValues;
   hasDraftDiffFromTemplate: boolean;
@@ -19,6 +21,7 @@ type DynamicInputEditorViewProps = {
   inlineErrorsByControlId: Record<string, string>;
   runBlockingMessage: string | null;
   setValue: (controlId: string, value: DynamicInputValue) => void;
+  moveSection: (category: string, direction: "up" | "down") => void;
   resetToTemplateDefaults: () => void | Promise<void>;
   onRun: () => void;
 };
@@ -227,8 +230,18 @@ function renderInputControl(
 export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
   const [showDetailerHint, setShowDetailerHint] = useState(false);
   const [animateDetailerLoraRows, setAnimateDetailerLoraRows] = useState(false);
+  const [collapsedByCategory, setCollapsedByCategory] = useState<Record<string, boolean>>({});
   const previousDetailerLorasEnabled = useRef<boolean>(true);
-  const sections = new Map<string, DynamicInputControl[]>();
+
+  const controlsById = new Map(props.controls.map((control) => [control.id, control]));
+  const visibleSections = props.sections
+    .map((section) => ({
+      category: section.category,
+      controls: section.controlIds
+        .map((controlId) => controlsById.get(controlId))
+        .filter((control): control is DynamicInputControl => Boolean(control))
+    }))
+    .filter((section) => section.controls.length > 0);
 
   function toggleDetailerHintForMobile(): void {
     if (typeof window === "undefined") {
@@ -273,14 +286,24 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
     return undefined;
   }, [detailerLorasEnabled]);
 
-  for (const control of props.controls) {
-    const list = sections.get(control.category);
-    if (list) {
-      list.push(control);
-      continue;
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
     }
 
-    sections.set(control.category, [control]);
+    const next: Record<string, boolean> = {};
+    for (const section of visibleSections) {
+      next[section.category] = collapsedByCategory[section.category] ?? false;
+    }
+    setCollapsedByCategory(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.sections]);
+
+  function toggleCategory(category: string): void {
+    setCollapsedByCategory((previous) => ({
+      ...previous,
+      [category]: !previous[category]
+    }));
   }
 
   return (
@@ -316,19 +339,52 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
         <p className="input-status">Unsaved changes since last successful run.</p>
       ) : null}
 
-      {[...sections.entries()].map(([category, controls]) => (
+      {visibleSections.map(({ category, controls }, sectionIndex) => (
         <fieldset key={category} className="input-category">
-          <legend>{category}</legend>
-          {controls
-            .filter(
-              (control) =>
-                !(
-                  category === "Detailer" &&
-                  control.kind === "lora-row" &&
-                  !detailerLorasEnabled
+          <legend>
+            <div className="input-category-header">
+              <button
+                type="button"
+                className="btn btn-secondary input-category-toggle"
+                aria-expanded={!collapsedByCategory[category]}
+                onClick={() => toggleCategory(category)}
+              >
+                {collapsedByCategory[category] ? "Show" : "Hide"} {category}
+              </button>
+              <div className="input-category-actions">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => props.moveSection(category, "up")}
+                  disabled={sectionIndex === 0}
+                  aria-label={`Move ${category} up`}
+                >
+                  Up
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => props.moveSection(category, "down")}
+                  disabled={sectionIndex === visibleSections.length - 1}
+                  aria-label={`Move ${category} down`}
+                >
+                  Down
+                </button>
+              </div>
+            </div>
+          </legend>
+          {collapsedByCategory[category]
+            ? null
+            : controls
+                .filter(
+                  (control) =>
+                    !(
+                      category === "Detailer" &&
+                      control.kind === "lora-row" &&
+                      !detailerLorasEnabled
+                    )
                 )
-            )
-            .map((control) => (
+                .map((control) => (
             <div
               key={control.id}
               className={`input-row ${
@@ -384,7 +440,7 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
                 </p>
               ) : null}
             </div>
-            ))}
+                ))}
         </fieldset>
       ))}
 
@@ -442,6 +498,7 @@ export function DynamicInputEditor(props: DynamicInputEditorProps) {
   return (
     <DynamicInputEditorView
       controls={editor.controls}
+      sections={editor.sections}
       warnings={editor.warnings}
       draftValues={editor.draftValues}
       hasDraftDiffFromTemplate={editor.hasDraftDiffFromTemplate}
@@ -449,6 +506,7 @@ export function DynamicInputEditor(props: DynamicInputEditorProps) {
       inlineErrorsByControlId={editor.inlineErrorsByControlId}
       runBlockingMessage={editor.runBlockingMessage}
       setValue={editor.setValue}
+      moveSection={editor.moveSection}
       resetToTemplateDefaults={editor.resetToTemplateDefaults}
       onRun={onRun}
     />

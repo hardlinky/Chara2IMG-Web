@@ -2,7 +2,12 @@ import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { DynamicInputControl, DynamicInputWarning } from "../../src/shared/contracts/inputs";
 import { DynamicInputEditorView } from "../../src/client/features/inputs/DynamicInputEditor";
-import { applyExternalDraftValues, applyOrderingOverlay } from "../../src/client/features/inputs/useDynamicInputEditor";
+import {
+  applyExternalDraftValues,
+  applyOrderingOverlay,
+  buildOverlayForSectionOrder,
+  buildSectionsFromControls
+} from "../../src/client/features/inputs/useDynamicInputEditor";
 
 function createControls(): DynamicInputControl[] {
   return [
@@ -59,6 +64,7 @@ describe("dynamic input editor", () => {
     const html = renderToStaticMarkup(
       <DynamicInputEditorView
         controls={controls}
+        sections={buildSectionsFromControls(controls)}
         warnings={warnings}
         draftValues={{
           [controls[0].id]: "Nora",
@@ -69,6 +75,7 @@ describe("dynamic input editor", () => {
         inlineErrorsByControlId={{}}
         runBlockingMessage={null}
         setValue={vi.fn()}
+        moveSection={vi.fn()}
         resetToTemplateDefaults={vi.fn()}
         onRun={vi.fn()}
       />
@@ -87,6 +94,7 @@ describe("dynamic input editor", () => {
     const html = renderToStaticMarkup(
       <DynamicInputEditorView
         controls={controls}
+        sections={buildSectionsFromControls(controls)}
         warnings={[]}
         draftValues={{
           [controls[0].id]: "Nora",
@@ -99,6 +107,7 @@ describe("dynamic input editor", () => {
         }}
         runBlockingMessage="Fix validation before running"
         setValue={vi.fn()}
+        moveSection={vi.fn()}
         resetToTemplateDefaults={vi.fn()}
         onRun={vi.fn()}
       />
@@ -154,6 +163,7 @@ describe("dynamic input editor", () => {
     const html = renderToStaticMarkup(
       <DynamicInputEditorView
         controls={controls}
+        sections={buildSectionsFromControls(controls)}
         warnings={[]}
         draftValues={{
           "detailer:boolean:toggle": false,
@@ -168,6 +178,7 @@ describe("dynamic input editor", () => {
         inlineErrorsByControlId={{}}
         runBlockingMessage={null}
         setValue={vi.fn()}
+        moveSection={vi.fn()}
         resetToTemplateDefaults={vi.fn()}
         onRun={vi.fn()}
       />
@@ -202,6 +213,7 @@ describe("dynamic input editor", () => {
     const html = renderToStaticMarkup(
       <DynamicInputEditorView
         controls={controls}
+        sections={buildSectionsFromControls(controls)}
         warnings={[]}
         draftValues={{
           "detailer:boolean:toggle": true
@@ -211,6 +223,7 @@ describe("dynamic input editor", () => {
         inlineErrorsByControlId={{}}
         runBlockingMessage={null}
         setValue={vi.fn()}
+        moveSection={vi.fn()}
         resetToTemplateDefaults={vi.fn()}
         onRun={vi.fn()}
       />
@@ -231,6 +244,42 @@ describe("dynamic input editor", () => {
     });
 
     expect(overlayOrdered.map((control) => control.id)).toEqual(["b:number:steps", "a:text:value"]);
+  });
+
+  it("builds category-reordered overlay preserving controls inside each category", () => {
+    const controls = [
+      ...createControls(),
+      {
+        id: "c:text:mood",
+        kind: "text",
+        inputIndex: 3,
+        fullTitle: "[Input3] Character.Mood",
+        category: "Character",
+        name: "Mood",
+        source: {
+          nodeId: "c",
+          titlePath: "c.inputs.title",
+          valuePath: ["mood"]
+        },
+        constraints: {},
+        defaultValue: "Calm",
+        orderKey: "000003:[Input3] Character.Mood"
+      } satisfies DynamicInputControl
+    ];
+
+    const sections = buildSectionsFromControls(controls);
+    const reorderedSections = [sections[1], sections[0]];
+    const overlay = buildOverlayForSectionOrder({
+      orderedSections: reorderedSections,
+      controls
+    });
+    const reorderedControls = applyOrderingOverlay(controls, overlay);
+
+    expect(reorderedControls.map((control) => control.id)).toEqual([
+      "b:number:steps",
+      "a:text:value",
+      "c:text:mood"
+    ]);
   });
 
   it("loads external draft values when the template fingerprint matches", () => {

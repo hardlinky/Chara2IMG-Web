@@ -120,6 +120,24 @@ export function buildSectionsFromControls(orderedControls: DynamicInputControl[]
   }));
 }
 
+export function buildOverlayForSectionOrder(args: {
+  orderedSections: DynamicInputSection[];
+  controls: DynamicInputControl[];
+}): DynamicInputOrderingOverlay {
+  const controlIdsBySection = new Map(args.orderedSections.map((section) => [section.category, section.controlIds]));
+  const flattenedControlIds = args.orderedSections.flatMap((section) => controlIdsBySection.get(section.category) ?? []);
+  const validControlIds = new Set(args.controls.map((control) => control.id));
+
+  return {
+    orderByControlId: flattenedControlIds.reduce<Record<string, number>>((accumulator, controlId, index) => {
+      if (validControlIds.has(controlId)) {
+        accumulator[controlId] = index;
+      }
+      return accumulator;
+    }, {})
+  };
+}
+
 export type RunAttemptResult =
   | {
       ok: true;
@@ -282,6 +300,33 @@ export function useDynamicInputEditor(activeTemplate: WorkflowTemplateRecord | n
     });
   }, []);
 
+  const moveSection = useCallback(
+    (category: string, direction: "up" | "down") => {
+      const index = orderedSections.findIndex((section) => section.category === category);
+      if (index < 0) {
+        return;
+      }
+
+      const targetIndex = direction === "up" ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= orderedSections.length) {
+        return;
+      }
+
+      const reorderedSections = [...orderedSections];
+      const [movedSection] = reorderedSections.splice(index, 1);
+      reorderedSections.splice(targetIndex, 0, movedSection);
+
+      const nextOverlay = buildOverlayForSectionOrder({
+        orderedSections: reorderedSections,
+        controls: orderedControls
+      });
+
+      setOverlay(nextOverlay);
+      void saveInputOrderingOverlay(nextOverlay);
+    },
+    [orderedControls, orderedSections]
+  );
+
   const resetToTemplateDefaults = useCallback(async () => {
     if (!activeTemplate) {
       return;
@@ -405,6 +450,7 @@ export function useDynamicInputEditor(activeTemplate: WorkflowTemplateRecord | n
     hasUnsavedChangesSinceLastRun,
     setValue,
     setOverlayPosition,
+    moveSection,
     resetToTemplateDefaults,
     applyExternalDraft,
     attemptRun,
