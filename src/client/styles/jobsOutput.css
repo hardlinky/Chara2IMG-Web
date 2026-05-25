@@ -65,6 +65,18 @@
   gap: var(--space-2);
 }
 
+.jobs-refresh-btn {
+  border-radius: 999px;
+  font-size: var(--font-size-sm);
+  line-height: 1;
+  padding: 0.15rem;
+  width: calc(var(--font-size-sm) + 0.3rem + 2px);
+  height: calc(var(--font-size-sm) + 0.3rem + 2px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .jobs-pagination {
   display: flex;
   align-items: center;
@@ -127,5 +139,9 @@
   .outputs-job-navigation {
     max-width: none;
     width: 100%;
+  }
+
+  .jobs-actions .jobs-refresh-btn {
+    width: auto;
   }
 }

@@ -189,8 +189,14 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
                     </button>
                   ) : null}
                   {job.lifecycle.status === "IN_PROGRESS" ? (
-                    <button className="btn btn-secondary" type="button" onClick={() => props.onPollStatus(job.jobId)}>
-                      Refresh
+                    <button
+                      className="btn btn-secondary jobs-refresh-btn"
+                      type="button"
+                      aria-label="Refresh job status"
+                      title="Refresh job status"
+                      onClick={() => props.onPollStatus(job.jobId)}
+                    >
+                      ↻
                     </button>
                   ) : null}
                   <button className="btn btn-primary" type="button" onClick={() => props.onRerun(job.jobId)}>
