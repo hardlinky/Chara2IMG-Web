@@ -16,6 +16,7 @@ import { formatSubmittedAtRelative } from "./features/jobs/jobStatus";
 import { useRecentJobs } from "./features/jobs/useRecentJobs";
 import { RecentJobsPanel } from "./features/jobs/RecentJobsPanel";
 import { APP_VERSION_LABEL } from "./lib/appVersion";
+import { sanitizeWorkflowForExport } from "./lib/workflowExport";
 import type { DynamicInputDraftValues } from "../shared/contracts/inputs";
 
 function toRunpodWorkflowInput(payload: Record<string, unknown>): Record<string, unknown> {
@@ -195,9 +196,10 @@ export function App() {
       return;
     }
 
+    const sanitizedWorkflowPayload = sanitizeWorkflowForExport(workflowPayload);
     const fileBase = sanitizeFileNamePart(job.provenance.workflowFileName ?? "workflow").replace(/\.json$/i, "");
     const fileName = `${fileBase}-${sanitizeFileNamePart(job.jobId)}-populated.json`;
-    const blob = new Blob([JSON.stringify(workflowPayload, null, 2)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify(sanitizedWorkflowPayload, null, 2)], { type: "application/json" });
     const objectUrl = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = objectUrl;
