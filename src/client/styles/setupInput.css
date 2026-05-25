@@ -88,6 +88,12 @@
   gap: var(--space-2);
 }
 
+.field-boolean-row {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .input-row label.field-boolean {
   display: inline-flex;
   align-items: center;
@@ -113,6 +119,21 @@
   text-transform: lowercase;
   cursor: help;
   white-space: nowrap;
+}
+
+.input-inline-hint-button {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 999px;
+  padding: 0.05rem 0.35rem;
+  line-height: 1.2;
+  text-transform: lowercase;
+  background: transparent;
+}
+
+.input-inline-hint-mobile {
+  margin-top: var(--space-2);
 }
 
 .input-dimension-grid,
@@ -218,5 +239,21 @@
     margin: var(--space-4) calc(-1 * var(--space-3)) calc(-1 * var(--space-3));
     padding: var(--space-3) var(--space-3) calc(var(--space-3) + env(safe-area-inset-bottom));
     border-top: 1px solid var(--color-border-subtle);
+  }
+
+  .input-inline-hint-button {
+    cursor: pointer;
+    pointer-events: auto;
+  }
+}
+
+@media (min-width: 721px) {
+  .input-inline-hint-button {
+    cursor: default;
+    pointer-events: none;
+  }
+
+  .input-inline-hint-mobile {
+    display: none;
   }
 }

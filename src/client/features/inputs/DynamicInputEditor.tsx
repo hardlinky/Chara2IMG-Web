@@ -1,4 +1,4 @@
-import { ChangeEvent, useEffect } from "react";
+import { ChangeEvent, useEffect, useState } from "react";
 import type {
   DynamicInputControl,
   DynamicInputDraftValues,
@@ -225,6 +225,7 @@ function renderInputControl(
 }
 
 export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
+  const [showDetailerHint, setShowDetailerHint] = useState(false);
   const sections = new Map<string, DynamicInputControl[]>();
 
   const detailerLoraMasterControl = props.controls.find(
@@ -298,23 +299,34 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
             .map((control) => (
             <div key={control.id} className="input-row">
               {control.kind === "boolean" ? (
-                <label className="field field-boolean">
-                  {renderInputControl(
-                    control,
-                    props.draftValues,
-                    props.setValue,
-                    Boolean(props.inlineErrorsByControlId[control.id])
-                  )}
-                  <span>{control.name}</span>
-                  {detailerLoraMasterControl?.id === control.id && !detailerLorasEnabled ? (
-                    <span
-                      className="input-inline-hint"
-                      title={'Enable "Use Different Detailer Loras?" to edit detailer lora rows.'}
-                    >
-                      info
-                    </span>
+                <>
+                  <div className="field-boolean-row">
+                    <label className="field field-boolean">
+                      {renderInputControl(
+                        control,
+                        props.draftValues,
+                        props.setValue,
+                        Boolean(props.inlineErrorsByControlId[control.id])
+                      )}
+                      <span>{control.name}</span>
+                    </label>
+                    {detailerLoraMasterControl?.id === control.id && !detailerLorasEnabled ? (
+                      <button
+                        type="button"
+                        className="input-inline-hint-button"
+                        title={'Enable "Use Different Detailer Loras?" to edit detailer lora rows.'}
+                        onClick={() => setShowDetailerHint((previous) => !previous)}
+                      >
+                        info
+                      </button>
+                    ) : null}
+                  </div>
+                  {detailerLoraMasterControl?.id === control.id && !detailerLorasEnabled && showDetailerHint ? (
+                    <p className="input-status input-inline-hint-mobile">
+                      Enable "Use Different Detailer Loras?" to edit detailer lora rows.
+                    </p>
                   ) : null}
-                </label>
+                </>
               ) : (
                 <label className="field">
                   {control.name}
