@@ -4,19 +4,28 @@ import { importWorkflowFromText } from "../../../shared/workflow/importWorkflow"
 
 type WorkflowImportProps = {
   onImported: (template: WorkflowTemplateRecord) => void;
+  currentTemplate: WorkflowTemplateRecord | null;
 };
 
-export function WorkflowImport({ onImported }: WorkflowImportProps) {
-  const [status, setStatus] = useState<string>("No workflow imported yet.");
-  const [activeTemplate, setActiveTemplate] = useState<WorkflowTemplateRecord | null>(null);
+export function WorkflowImport({ onImported, currentTemplate }: WorkflowImportProps) {
+  const [status, setStatus] = useState<string | null>(null);
+  const [importedTemplate, setImportedTemplate] = useState<WorkflowTemplateRecord | null>(null);
+
+  const displayTemplate = importedTemplate ?? currentTemplate;
+
+  const statusText =
+    status ??
+    (currentTemplate
+      ? `Active template loaded: ${currentTemplate.displayName}.`
+      : "No workflow imported yet.");
 
   const nonBlockingIssues = useMemo(() => {
-    if (!activeTemplate) {
+    if (!displayTemplate) {
       return [];
     }
 
-    return activeTemplate.validation.issues;
-  }, [activeTemplate]);
+    return displayTemplate.validation.issues;
+  }, [displayTemplate]);
 
   async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -29,12 +38,12 @@ export function WorkflowImport({ onImported }: WorkflowImportProps) {
     const result = importWorkflowFromText(fileText, file.name);
 
     if (!result.ok) {
-      setActiveTemplate(null);
+      setImportedTemplate(null);
       setStatus(`Import failed: ${result.error.message}`);
       return;
     }
 
-    setActiveTemplate(result.template);
+    setImportedTemplate(result.template);
     onImported(result.template);
 
     const shapeText = result.template.validation.shapeValid ? "valid" : "issues found";
@@ -52,12 +61,12 @@ export function WorkflowImport({ onImported }: WorkflowImportProps) {
       <div className="setup-form">
         <input className="input" type="file" accept=".json,application/json" onChange={handleFileChange} />
       </div>
-      <p className="status-inline" data-tone="success">{status}</p>
-      {activeTemplate ? (
+      <p className="status-inline" data-tone="success">{statusText}</p>
+      {displayTemplate ? (
         <div className="setup-meta">
-          <p>Fingerprint: {activeTemplate.fingerprint}</p>
-          <p>Shape valid: {activeTemplate.validation.shapeValid ? "Yes" : "No"}</p>
-          <p>Template valid: {activeTemplate.validation.templateValid ? "Yes" : "No"}</p>
+          <p>Fingerprint: {displayTemplate.fingerprint}</p>
+          <p>Shape valid: {displayTemplate.validation.shapeValid ? "Yes" : "No"}</p>
+          <p>Template valid: {displayTemplate.validation.templateValid ? "Yes" : "No"}</p>
           {nonBlockingIssues.length > 0 ? (
             <ul>
               {nonBlockingIssues.map((issue) => (

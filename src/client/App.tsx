@@ -200,7 +200,7 @@ export function App() {
                 onChange={(event) => updateEndpointId(event.target.value)}
               />
             </section>
-            <WorkflowImport onImported={persistTemplate} />
+            <WorkflowImport onImported={persistTemplate} currentTemplate={activeTemplate} />
             <ActiveWorkflowTemplate
               activeTemplate={activeTemplate}
               isLoading={isLoading}
