@@ -231,7 +231,9 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
   const [showDetailerHint, setShowDetailerHint] = useState(false);
   const [animateDetailerLoraRows, setAnimateDetailerLoraRows] = useState(false);
   const [collapsedByCategory, setCollapsedByCategory] = useState<Record<string, boolean>>({});
+  const [categoryToFollow, setCategoryToFollow] = useState<string | null>(null);
   const previousDetailerLorasEnabled = useRef<boolean>(true);
+  const categoryRefs = useRef<Record<string, HTMLFieldSetElement | null>>({});
 
   const controlsById = new Map(props.controls.map((control) => [control.id, control]));
   const visibleSections = props.sections
@@ -299,11 +301,35 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.sections]);
 
+  useEffect(() => {
+    if (!categoryToFollow || typeof window === "undefined") {
+      return;
+    }
+
+    const fieldset = categoryRefs.current[categoryToFollow];
+    if (!fieldset) {
+      return;
+    }
+
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    fieldset.scrollIntoView({
+      block: "nearest",
+      behavior: prefersReducedMotion ? "auto" : "smooth"
+    });
+
+    setCategoryToFollow(null);
+  }, [categoryToFollow, props.sections]);
+
   function toggleCategory(category: string): void {
     setCollapsedByCategory((previous) => ({
       ...previous,
       [category]: !previous[category]
     }));
+  }
+
+  function onMoveCategory(category: string, direction: "up" | "down"): void {
+    setCategoryToFollow(category);
+    props.moveSection(category, direction);
   }
 
   return (
@@ -340,7 +366,13 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
       ) : null}
 
       {visibleSections.map(({ category, controls }, sectionIndex) => (
-        <fieldset key={category} className="input-category">
+        <fieldset
+          key={category}
+          className="input-category"
+          ref={(node) => {
+            categoryRefs.current[category] = node;
+          }}
+        >
           <legend>
             <div className="input-category-header">
               <div className="input-category-title-group">
@@ -359,7 +391,7 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
                 <button
                   type="button"
                   className="btn btn-secondary input-category-icon-button"
-                  onClick={() => props.moveSection(category, "up")}
+                  onClick={() => onMoveCategory(category, "up")}
                   disabled={sectionIndex === 0}
                   aria-label={`Move ${category} up`}
                 >
@@ -368,7 +400,7 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
                 <button
                   type="button"
                   className="btn btn-secondary input-category-icon-button"
-                  onClick={() => props.moveSection(category, "down")}
+                  onClick={() => onMoveCategory(category, "down")}
                   disabled={sectionIndex === visibleSections.length - 1}
                   aria-label={`Move ${category} down`}
                 >
