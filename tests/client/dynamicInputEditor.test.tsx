@@ -68,8 +68,6 @@ describe("dynamic input editor", () => {
         hasUnsavedChangesSinceLastRun={false}
         inlineErrorsByControlId={{}}
         runBlockingMessage={null}
-        showSourceMapping={false}
-        setShowSourceMapping={vi.fn()}
         setValue={vi.fn()}
         resetToTemplateDefaults={vi.fn()}
         onRun={vi.fn()}
@@ -100,8 +98,6 @@ describe("dynamic input editor", () => {
           [controls[0].id]: "Name is required"
         }}
         runBlockingMessage="Fix validation before running"
-        showSourceMapping={true}
-        setShowSourceMapping={vi.fn()}
         setValue={vi.fn()}
         resetToTemplateDefaults={vi.fn()}
         onRun={vi.fn()}
@@ -112,7 +108,7 @@ describe("dynamic input editor", () => {
     expect(html).toContain("Unsaved changes since last successful run.");
     expect(html).toContain("input-run-bar");
     expect(html).toContain("input-category");
-    expect(html).toContain("input-source-mapping");
+    expect(html).not.toContain("Show source mapping");
   });
 
   it("applies overlay order and keeps new controls by default order", () => {

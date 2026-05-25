@@ -18,8 +18,6 @@ type DynamicInputEditorViewProps = {
   hasUnsavedChangesSinceLastRun: boolean;
   inlineErrorsByControlId: Record<string, string>;
   runBlockingMessage: string | null;
-  showSourceMapping: boolean;
-  setShowSourceMapping: (next: boolean) => void;
   setValue: (controlId: string, value: DynamicInputValue) => void;
   resetToTemplateDefaults: () => void | Promise<void>;
   onRun: () => void;
@@ -48,7 +46,6 @@ function renderInputControl(
   control: DynamicInputControl,
   draftValues: DynamicInputDraftValues,
   setValue: (controlId: string, value: DynamicInputValue) => void,
-  showSourceMapping: boolean,
   hasInlineError: boolean
 ) {
   const value = draftValues[control.id] ?? control.defaultValue;
@@ -233,16 +230,6 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
       <h2>Dynamic Inputs</h2>
       <p>Edit the workflow-derived input values below.</p>
 
-      <label className="field">
-        <input
-          className="interactive"
-          type="checkbox"
-          checked={props.showSourceMapping}
-          onChange={(event) => props.setShowSourceMapping(event.target.checked)}
-        />
-        Show source mapping
-      </label>
-
       {props.hasDraftDiffFromTemplate ? (
         <div className="input-actions">
           <button className="btn btn-secondary" type="button" onClick={() => void props.resetToTemplateDefaults()}>
@@ -271,12 +258,6 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
         <p className="input-status">Unsaved changes since last successful run.</p>
       ) : null}
 
-      <div className="input-run-bar">
-        <button className="btn btn-primary" type="button" onClick={props.onRun}>
-          Run with current inputs
-        </button>
-      </div>
-
       {[...sections.entries()].map(([category, controls]) => (
         <fieldset key={category} className="input-category">
           <legend>{category}</legend>
@@ -288,7 +269,6 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
                   control,
                   props.draftValues,
                   props.setValue,
-                  props.showSourceMapping,
                   Boolean(props.inlineErrorsByControlId[control.id])
                 )}
               </label>
@@ -297,13 +277,16 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
                   {props.inlineErrorsByControlId[control.id]}
                 </p>
               ) : null}
-              {props.showSourceMapping ? (
-                <p className="input-source-mapping">{`${control.source.nodeId}.${control.source.valuePath.join(".")}`}</p>
-              ) : null}
             </div>
           ))}
         </fieldset>
       ))}
+
+      <div className="input-run-bar">
+        <button className="btn btn-primary" type="button" onClick={props.onRun}>
+          Run with current inputs
+        </button>
+      </div>
     </section>
   );
 }
@@ -359,8 +342,6 @@ export function DynamicInputEditor(props: DynamicInputEditorProps) {
       hasUnsavedChangesSinceLastRun={editor.hasUnsavedChangesSinceLastRun}
       inlineErrorsByControlId={editor.inlineErrorsByControlId}
       runBlockingMessage={editor.runBlockingMessage}
-      showSourceMapping={editor.showSourceMapping}
-      setShowSourceMapping={editor.setShowSourceMapping}
       setValue={editor.setValue}
       resetToTemplateDefaults={editor.resetToTemplateDefaults}
       onRun={onRun}
