@@ -1,4 +1,4 @@
-import { ChangeEvent, useEffect, useState } from "react";
+import { ChangeEvent, useEffect, useRef, useState } from "react";
 import type {
   DynamicInputControl,
   DynamicInputDraftValues,
@@ -226,6 +226,8 @@ function renderInputControl(
 
 export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
   const [showDetailerHint, setShowDetailerHint] = useState(false);
+  const [animateDetailerLoraRows, setAnimateDetailerLoraRows] = useState(false);
+  const previousDetailerLorasEnabled = useRef<boolean>(true);
   const sections = new Map<string, DynamicInputControl[]>();
 
   function toggleDetailerHintForMobile(): void {
@@ -252,6 +254,24 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
     Boolean(
       props.draftValues[detailerLoraMasterControl.id] ?? detailerLoraMasterControl.defaultValue
     );
+
+  useEffect(() => {
+    const wasEnabled = previousDetailerLorasEnabled.current;
+    previousDetailerLorasEnabled.current = detailerLorasEnabled;
+
+    if (!wasEnabled && detailerLorasEnabled) {
+      setAnimateDetailerLoraRows(true);
+      const timerId = window.setTimeout(() => {
+        setAnimateDetailerLoraRows(false);
+      }, 280);
+
+      return () => {
+        window.clearTimeout(timerId);
+      };
+    }
+
+    return undefined;
+  }, [detailerLorasEnabled]);
 
   for (const control of props.controls) {
     const list = sections.get(control.category);
@@ -309,7 +329,14 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
                 )
             )
             .map((control) => (
-            <div key={control.id} className="input-row">
+            <div
+              key={control.id}
+              className={`input-row ${
+                category === "Detailer" && control.kind === "lora-row" && animateDetailerLoraRows
+                  ? "input-row-lora-reveal"
+                  : ""
+              }`}
+            >
               {control.kind === "boolean" ? (
                 <>
                   <div className="field-boolean-row">

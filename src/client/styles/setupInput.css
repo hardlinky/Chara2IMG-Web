@@ -205,6 +205,21 @@
   border-top: 1px solid var(--color-border-subtle);
 }
 
+.input-row-lora-reveal .input-lora-card {
+  animation: detailer-lora-reveal 240ms ease-out;
+}
+
+@keyframes detailer-lora-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .setup-endpoint-row {
   display: grid;
   gap: var(--space-2);
@@ -245,6 +260,12 @@
   .input-inline-hint-button {
     cursor: pointer;
     pointer-events: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .input-row-lora-reveal .input-lora-card {
+    animation: none;
   }
 }
 
