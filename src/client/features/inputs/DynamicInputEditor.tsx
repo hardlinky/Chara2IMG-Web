@@ -343,32 +343,34 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
         <fieldset key={category} className="input-category">
           <legend>
             <div className="input-category-header">
-              <button
-                type="button"
-                className="btn btn-secondary input-category-toggle"
-                aria-expanded={!collapsedByCategory[category]}
-                onClick={() => toggleCategory(category)}
-              >
-                {collapsedByCategory[category] ? "Show" : "Hide"} {category}
-              </button>
+              <span className="input-category-title">{category}</span>
               <div className="input-category-actions">
                 <button
                   type="button"
-                  className="btn btn-secondary"
+                  className="btn btn-secondary input-category-icon-button"
+                  aria-expanded={!collapsedByCategory[category]}
+                  aria-label={`${collapsedByCategory[category] ? "Show" : "Hide"} ${category}`}
+                  onClick={() => toggleCategory(category)}
+                >
+                  <span aria-hidden="true">{collapsedByCategory[category] ? "▸" : "▾"}</span>
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary input-category-icon-button"
                   onClick={() => props.moveSection(category, "up")}
                   disabled={sectionIndex === 0}
                   aria-label={`Move ${category} up`}
                 >
-                  Up
+                  <span aria-hidden="true">↑</span>
                 </button>
                 <button
                   type="button"
-                  className="btn btn-secondary"
+                  className="btn btn-secondary input-category-icon-button"
                   onClick={() => props.moveSection(category, "down")}
                   disabled={sectionIndex === visibleSections.length - 1}
                   aria-label={`Move ${category} down`}
                 >
-                  Down
+                  <span aria-hidden="true">↓</span>
                 </button>
               </div>
             </div>

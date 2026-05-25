@@ -86,8 +86,9 @@
   min-width: min(42rem, calc(100vw - 8rem));
 }
 
-.input-category-toggle {
-  padding: 0.25rem 0.6rem;
+.input-category-title {
+  font-weight: 600;
+  color: var(--color-text-primary);
 }
 
 .input-category-actions {
@@ -95,8 +96,15 @@
   gap: var(--space-1);
 }
 
-.input-category-actions .btn {
-  padding: 0.2rem 0.55rem;
+.input-category-icon-button {
+  min-width: 2rem;
+  min-height: 1.9rem;
+  padding: 0.15rem 0.4rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  font-size: 0.9rem;
 }
 
 .input-row {
@@ -265,20 +273,15 @@
 
   .setup-actions .btn,
   .input-actions .btn,
-  .input-category-header .btn,
   .input-run-bar .btn-primary {
     width: 100%;
   }
 
   .input-category-header {
     min-width: 0;
-    display: grid;
-  }
-
-  .input-category-actions {
-    width: 100%;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
   }
 
   .input-run-bar {
