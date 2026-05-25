@@ -95,6 +95,49 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.input-lora-card {
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  background: rgba(16, 22, 27, 0.82);
+  padding: var(--space-3);
+  display: grid;
+  gap: var(--space-3);
+}
+
+.input-lora-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.input-lora-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-secondary);
+}
+
+.input-lora-toggle input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--color-accent-primary);
+}
+
+.input-lora-strength-field {
+  display: inline-grid;
+  gap: var(--space-1);
+  min-width: 7rem;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.input-lora-slider {
+  width: 100%;
+  accent-color: var(--color-accent-primary);
+}
+
 .input-image-controls {
   display: flex;
   flex-wrap: wrap;
@@ -122,6 +165,10 @@
   .input-dimension-grid,
   .input-lora-grid {
     grid-template-columns: 1fr;
+  }
+
+  .input-lora-strength-field {
+    width: 100%;
   }
 }
 

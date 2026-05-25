@@ -164,35 +164,47 @@ function renderInputControl(
       const max = control.constraints.max ?? 5;
 
       return (
-        <div className="input-lora-grid">
+        <div className="input-lora-card">
+          <div className="input-lora-header">
+            <label className="input-lora-toggle" htmlFor={`${control.id}-enabled`}>
+              <input
+                id={`${control.id}-enabled`}
+                className={hasInlineError ? "interactive input-invalid" : "interactive"}
+                type="checkbox"
+                checked={loraValue.enabled}
+                onChange={(event) =>
+                  setValue(control.id, {
+                    ...loraValue,
+                    enabled: event.target.checked
+                  })
+                }
+              />
+              Enabled
+            </label>
+
+            <label className="input-lora-strength-field" htmlFor={`${control.id}-strength`}>
+              Strength
+              <input
+                id={`${control.id}-strength`}
+                className={className}
+                type="number"
+                min={min}
+                max={max}
+                step={0.05}
+                value={loraValue.strength}
+                onChange={(event) =>
+                  setValue(control.id, {
+                    ...loraValue,
+                    strength: Number(event.target.value)
+                  })
+                }
+              />
+            </label>
+          </div>
+
           <input
-            className={hasInlineError ? "interactive input-invalid" : "interactive"}
-            type="checkbox"
-            checked={loraValue.enabled}
-            onChange={(event) =>
-              setValue(control.id, {
-                ...loraValue,
-                enabled: event.target.checked
-              })
-            }
-          />
-          <input
-            className={hasInlineError ? "input input-invalid" : "input"}
+            className={hasInlineError ? "input-lora-slider input-invalid" : "input-lora-slider"}
             type="range"
-            min={min}
-            max={max}
-            step={0.05}
-            value={loraValue.strength}
-            onChange={(event) =>
-              setValue(control.id, {
-                ...loraValue,
-                strength: Number(event.target.value)
-              })
-            }
-          />
-          <input
-            className={className}
-            type="number"
             min={min}
             max={max}
             step={0.05}
