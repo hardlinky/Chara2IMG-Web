@@ -10,6 +10,8 @@ type StoredInputDraft = {
 type StoredOrderingOverlay = {
   id: "global";
   orderByControlId: Record<string, number>;
+  sectionColumnByCategory?: Record<string, "left" | "right">;
+  columnsSplitRatio?: number;
   updatedAt: string;
 };
 
@@ -52,6 +54,8 @@ export async function saveInputOrderingOverlay(overlay: DynamicInputOrderingOver
   await db.table<StoredOrderingOverlay, "global">("ordering").put({
     id: "global",
     orderByControlId: overlay.orderByControlId,
+    sectionColumnByCategory: overlay.sectionColumnByCategory,
+    columnsSplitRatio: overlay.columnsSplitRatio,
     updatedAt: new Date().toISOString()
   });
 }
@@ -59,6 +63,8 @@ export async function saveInputOrderingOverlay(overlay: DynamicInputOrderingOver
 export async function getInputOrderingOverlay(): Promise<DynamicInputOrderingOverlay> {
   const stored = await db.table<StoredOrderingOverlay, "global">("ordering").get("global");
   return {
-    orderByControlId: stored?.orderByControlId ?? {}
+    orderByControlId: stored?.orderByControlId ?? {},
+    sectionColumnByCategory: stored?.sectionColumnByCategory ?? {},
+    columnsSplitRatio: stored?.columnsSplitRatio ?? 0.5
   };
 }

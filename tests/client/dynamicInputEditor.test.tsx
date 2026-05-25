@@ -65,6 +65,8 @@ describe("dynamic input editor", () => {
       <DynamicInputEditorView
         controls={controls}
         sections={buildSectionsFromControls(controls)}
+        sectionColumnByCategory={{}}
+        columnsSplitRatio={0.5}
         warnings={warnings}
         draftValues={{
           [controls[0].id]: "Nora",
@@ -76,6 +78,8 @@ describe("dynamic input editor", () => {
         runBlockingMessage={null}
         setValue={vi.fn()}
         moveSection={vi.fn()}
+        toggleSectionColumn={vi.fn()}
+        setColumnsSplitRatio={vi.fn()}
         resetToTemplateDefaults={vi.fn()}
         onRun={vi.fn()}
       />
@@ -95,6 +99,8 @@ describe("dynamic input editor", () => {
       <DynamicInputEditorView
         controls={controls}
         sections={buildSectionsFromControls(controls)}
+        sectionColumnByCategory={{}}
+        columnsSplitRatio={0.5}
         warnings={[]}
         draftValues={{
           [controls[0].id]: "Nora",
@@ -108,6 +114,8 @@ describe("dynamic input editor", () => {
         runBlockingMessage="Fix validation before running"
         setValue={vi.fn()}
         moveSection={vi.fn()}
+        toggleSectionColumn={vi.fn()}
+        setColumnsSplitRatio={vi.fn()}
         resetToTemplateDefaults={vi.fn()}
         onRun={vi.fn()}
       />
@@ -164,6 +172,8 @@ describe("dynamic input editor", () => {
       <DynamicInputEditorView
         controls={controls}
         sections={buildSectionsFromControls(controls)}
+        sectionColumnByCategory={{}}
+        columnsSplitRatio={0.5}
         warnings={[]}
         draftValues={{
           "detailer:boolean:toggle": false,
@@ -179,6 +189,8 @@ describe("dynamic input editor", () => {
         runBlockingMessage={null}
         setValue={vi.fn()}
         moveSection={vi.fn()}
+        toggleSectionColumn={vi.fn()}
+        setColumnsSplitRatio={vi.fn()}
         resetToTemplateDefaults={vi.fn()}
         onRun={vi.fn()}
       />
@@ -214,6 +226,8 @@ describe("dynamic input editor", () => {
       <DynamicInputEditorView
         controls={controls}
         sections={buildSectionsFromControls(controls)}
+        sectionColumnByCategory={{}}
+        columnsSplitRatio={0.5}
         warnings={[]}
         draftValues={{
           "detailer:boolean:toggle": true
@@ -224,6 +238,8 @@ describe("dynamic input editor", () => {
         runBlockingMessage={null}
         setValue={vi.fn()}
         moveSection={vi.fn()}
+        toggleSectionColumn={vi.fn()}
+        setColumnsSplitRatio={vi.fn()}
         resetToTemplateDefaults={vi.fn()}
         onRun={vi.fn()}
       />

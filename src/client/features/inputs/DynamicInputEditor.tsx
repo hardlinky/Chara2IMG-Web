@@ -14,6 +14,8 @@ import "../../styles/setupInput.css";
 type DynamicInputEditorViewProps = {
   controls: DynamicInputControl[];
   sections: DynamicInputSection[];
+  sectionColumnByCategory: Record<string, "left" | "right">;
+  columnsSplitRatio: number;
   warnings: DynamicInputWarning[];
   draftValues: DynamicInputDraftValues;
   hasDraftDiffFromTemplate: boolean;
@@ -22,6 +24,8 @@ type DynamicInputEditorViewProps = {
   runBlockingMessage: string | null;
   setValue: (controlId: string, value: DynamicInputValue) => void;
   moveSection: (category: string, direction: "up" | "down") => void;
+  toggleSectionColumn: (category: string) => void;
+  setColumnsSplitRatio: (ratio: number) => void;
   resetToTemplateDefaults: () => void | Promise<void>;
   onRun: () => void;
 };
@@ -232,8 +236,10 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
   const [animateDetailerLoraRows, setAnimateDetailerLoraRows] = useState(false);
   const [collapsedByCategory, setCollapsedByCategory] = useState<Record<string, boolean>>({});
   const [categoryToFollow, setCategoryToFollow] = useState<string | null>(null);
+  const [isResizingColumns, setIsResizingColumns] = useState(false);
   const previousDetailerLorasEnabled = useRef<boolean>(true);
   const categoryRefs = useRef<Record<string, HTMLFieldSetElement | null>>({});
+  const columnsContainerRef = useRef<HTMLDivElement | null>(null);
 
   const controlsById = new Map(props.controls.map((control) => [control.id, control]));
   const visibleSections = props.sections
@@ -244,6 +250,14 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
         .filter((control): control is DynamicInputControl => Boolean(control))
     }))
     .filter((section) => section.controls.length > 0);
+  const sectionIndexByCategory = new Map(visibleSections.map((section, index) => [section.category, index]));
+  const leftColumnSections = visibleSections.filter(
+    (section) => (props.sectionColumnByCategory[section.category] ?? "left") === "left"
+  );
+  const rightColumnSections = visibleSections.filter(
+    (section) => (props.sectionColumnByCategory[section.category] ?? "left") === "right"
+  );
+  const showTwoColumns = rightColumnSections.length > 0;
 
   function toggleDetailerHintForMobile(): void {
     if (typeof window === "undefined") {
@@ -320,6 +334,39 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
     setCategoryToFollow(null);
   }, [categoryToFollow, props.sections]);
 
+  useEffect(() => {
+    if (!isResizingColumns || typeof window === "undefined") {
+      return;
+    }
+
+    function onMouseMove(event: MouseEvent): void {
+      const container = columnsContainerRef.current;
+      if (!container) {
+        return;
+      }
+
+      const bounds = container.getBoundingClientRect();
+      if (bounds.width <= 0) {
+        return;
+      }
+
+      const ratio = (event.clientX - bounds.left) / bounds.width;
+      props.setColumnsSplitRatio(ratio);
+    }
+
+    function onMouseUp(): void {
+      setIsResizingColumns(false);
+    }
+
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+  }, [isResizingColumns, props]);
+
   function toggleCategory(category: string): void {
     setCollapsedByCategory((previous) => ({
       ...previous,
@@ -330,6 +377,146 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
   function onMoveCategory(category: string, direction: "up" | "down"): void {
     setCategoryToFollow(category);
     props.moveSection(category, direction);
+  }
+
+  function onMoveCategoryToOtherColumn(category: string): void {
+    setCategoryToFollow(category);
+    props.toggleSectionColumn(category);
+  }
+
+  function renderCategorySection(section: {
+    category: string;
+    controls: DynamicInputControl[];
+  }) {
+    const { category, controls } = section;
+    const sectionIndex = sectionIndexByCategory.get(category) ?? 0;
+
+    return (
+      <fieldset
+        key={category}
+        className="input-category"
+        ref={(node) => {
+          categoryRefs.current[category] = node;
+        }}
+      >
+        <legend>
+          <div className="input-category-header">
+            <div className="input-category-title-group">
+              <button
+                type="button"
+                className="btn btn-secondary input-category-icon-button"
+                aria-expanded={!collapsedByCategory[category]}
+                aria-label={`${collapsedByCategory[category] ? "Show" : "Hide"} ${category}`}
+                onClick={() => toggleCategory(category)}
+              >
+                <span aria-hidden="true">{collapsedByCategory[category] ? "▸" : "▾"}</span>
+              </button>
+              <span className="input-category-title">{category}</span>
+            </div>
+            <div className="input-category-actions">
+              <button
+                type="button"
+                className="btn btn-secondary input-category-icon-button"
+                onClick={() => onMoveCategoryToOtherColumn(category)}
+                aria-label={`Move ${category} to ${
+                  (props.sectionColumnByCategory[category] ?? "left") === "left" ? "right" : "left"
+                } column`}
+              >
+                <span aria-hidden="true">
+                  {(props.sectionColumnByCategory[category] ?? "left") === "left" ? "⇢" : "⇠"}
+                </span>
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary input-category-icon-button"
+                onClick={() => onMoveCategory(category, "up")}
+                disabled={sectionIndex === 0}
+                aria-label={`Move ${category} up`}
+              >
+                <span aria-hidden="true">↑</span>
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary input-category-icon-button"
+                onClick={() => onMoveCategory(category, "down")}
+                disabled={sectionIndex === visibleSections.length - 1}
+                aria-label={`Move ${category} down`}
+              >
+                <span aria-hidden="true">↓</span>
+              </button>
+            </div>
+          </div>
+        </legend>
+        {collapsedByCategory[category]
+          ? null
+          : controls
+              .filter(
+                (control) =>
+                  !(
+                    category === "Detailer" &&
+                    control.kind === "lora-row" &&
+                    !detailerLorasEnabled
+                  )
+              )
+              .map((control) => (
+          <div
+            key={control.id}
+            className={`input-row ${
+              category === "Detailer" && control.kind === "lora-row" && animateDetailerLoraRows
+                ? "input-row-lora-reveal"
+                : ""
+            }`}
+          >
+            {control.kind === "boolean" ? (
+              <>
+                <div className="field-boolean-row">
+                  <label className="field field-boolean">
+                    {renderInputControl(
+                      control,
+                      props.draftValues,
+                      props.setValue,
+                      Boolean(props.inlineErrorsByControlId[control.id])
+                    )}
+                    <span>{control.name}</span>
+                  </label>
+                  {detailerLoraMasterControl?.id === control.id ? (
+                    <button
+                      type="button"
+                      className="input-inline-hint-button"
+                      aria-label={'Toggle "Use Different Detailer Loras?" to show or hide detailer lora rows.'}
+                      data-tooltip={'Toggle "Use Different Detailer Loras?" to show or hide detailer lora rows.'}
+                      onClick={toggleDetailerHintForMobile}
+                    >
+                      info
+                    </button>
+                  ) : null}
+                </div>
+                {detailerLoraMasterControl?.id === control.id && showDetailerHint ? (
+                  <p className="input-status input-inline-hint-mobile">
+                    Toggle "Use Different Detailer Loras?" to show or hide detailer lora rows.
+                  </p>
+                ) : null}
+              </>
+            ) : (
+              <label className="field">
+                {control.name}
+                {renderInputControl(
+                  control,
+                  props.draftValues,
+                  props.setValue,
+                  Boolean(props.inlineErrorsByControlId[control.id])
+                )}
+              </label>
+            )}
+            {props.inlineErrorsByControlId[control.id] ? (
+              <p role="alert" className="input-error">
+                {props.inlineErrorsByControlId[control.id]}
+              </p>
+            ) : null}
+          </div>
+              ))}
+      </fieldset>
+    );
   }
 
   return (
@@ -365,120 +552,29 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
         <p className="input-status">Unsaved changes since last successful run.</p>
       ) : null}
 
-      {visibleSections.map(({ category, controls }, sectionIndex) => (
-        <fieldset
-          key={category}
-          className="input-category"
-          ref={(node) => {
-            categoryRefs.current[category] = node;
+      {showTwoColumns ? (
+        <div
+          className="input-category-columns"
+          ref={columnsContainerRef}
+          style={{
+            ["--input-left-column-width" as string]: `${props.columnsSplitRatio * 100}%`
           }}
         >
-          <legend>
-            <div className="input-category-header">
-              <div className="input-category-title-group">
-                <button
-                  type="button"
-                  className="btn btn-secondary input-category-icon-button"
-                  aria-expanded={!collapsedByCategory[category]}
-                  aria-label={`${collapsedByCategory[category] ? "Show" : "Hide"} ${category}`}
-                  onClick={() => toggleCategory(category)}
-                >
-                  <span aria-hidden="true">{collapsedByCategory[category] ? "▸" : "▾"}</span>
-                </button>
-                <span className="input-category-title">{category}</span>
-              </div>
-              <div className="input-category-actions">
-                <button
-                  type="button"
-                  className="btn btn-secondary input-category-icon-button"
-                  onClick={() => onMoveCategory(category, "up")}
-                  disabled={sectionIndex === 0}
-                  aria-label={`Move ${category} up`}
-                >
-                  <span aria-hidden="true">↑</span>
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-secondary input-category-icon-button"
-                  onClick={() => onMoveCategory(category, "down")}
-                  disabled={sectionIndex === visibleSections.length - 1}
-                  aria-label={`Move ${category} down`}
-                >
-                  <span aria-hidden="true">↓</span>
-                </button>
-              </div>
-            </div>
-          </legend>
-          {collapsedByCategory[category]
-            ? null
-            : controls
-                .filter(
-                  (control) =>
-                    !(
-                      category === "Detailer" &&
-                      control.kind === "lora-row" &&
-                      !detailerLorasEnabled
-                    )
-                )
-                .map((control) => (
-            <div
-              key={control.id}
-              className={`input-row ${
-                category === "Detailer" && control.kind === "lora-row" && animateDetailerLoraRows
-                  ? "input-row-lora-reveal"
-                  : ""
-              }`}
-            >
-              {control.kind === "boolean" ? (
-                <>
-                  <div className="field-boolean-row">
-                    <label className="field field-boolean">
-                      {renderInputControl(
-                        control,
-                        props.draftValues,
-                        props.setValue,
-                        Boolean(props.inlineErrorsByControlId[control.id])
-                      )}
-                      <span>{control.name}</span>
-                    </label>
-                    {detailerLoraMasterControl?.id === control.id ? (
-                      <button
-                        type="button"
-                        className="input-inline-hint-button"
-                        aria-label={'Toggle "Use Different Detailer Loras?" to show or hide detailer lora rows.'}
-                        data-tooltip={'Toggle "Use Different Detailer Loras?" to show or hide detailer lora rows.'}
-                        onClick={toggleDetailerHintForMobile}
-                      >
-                        info
-                      </button>
-                    ) : null}
-                  </div>
-                  {detailerLoraMasterControl?.id === control.id && showDetailerHint ? (
-                    <p className="input-status input-inline-hint-mobile">
-                      Toggle "Use Different Detailer Loras?" to show or hide detailer lora rows.
-                    </p>
-                  ) : null}
-                </>
-              ) : (
-                <label className="field">
-                  {control.name}
-                  {renderInputControl(
-                    control,
-                    props.draftValues,
-                    props.setValue,
-                    Boolean(props.inlineErrorsByControlId[control.id])
-                  )}
-                </label>
-              )}
-              {props.inlineErrorsByControlId[control.id] ? (
-                <p role="alert" className="input-error">
-                  {props.inlineErrorsByControlId[control.id]}
-                </p>
-              ) : null}
-            </div>
-                ))}
-        </fieldset>
-      ))}
+          <div className="input-category-column">{leftColumnSections.map((section) => renderCategorySection(section))}</div>
+          <button
+            type="button"
+            className={`input-category-resizer${isResizingColumns ? " is-active" : ""}`}
+            aria-label="Resize category columns"
+            onMouseDown={(event) => {
+              event.preventDefault();
+              setIsResizingColumns(true);
+            }}
+          />
+          <div className="input-category-column">{rightColumnSections.map((section) => renderCategorySection(section))}</div>
+        </div>
+      ) : (
+        leftColumnSections.map((section) => renderCategorySection(section))
+      )}
 
       <div className="input-run-bar">
         <button className="btn btn-primary" type="button" onClick={props.onRun}>
@@ -535,6 +631,8 @@ export function DynamicInputEditor(props: DynamicInputEditorProps) {
     <DynamicInputEditorView
       controls={editor.controls}
       sections={editor.sections}
+      sectionColumnByCategory={editor.sectionColumnByCategory}
+      columnsSplitRatio={editor.columnsSplitRatio}
       warnings={editor.warnings}
       draftValues={editor.draftValues}
       hasDraftDiffFromTemplate={editor.hasDraftDiffFromTemplate}
@@ -543,6 +641,8 @@ export function DynamicInputEditor(props: DynamicInputEditorProps) {
       runBlockingMessage={editor.runBlockingMessage}
       setValue={editor.setValue}
       moveSection={editor.moveSection}
+      toggleSectionColumn={editor.toggleSectionColumn}
+      setColumnsSplitRatio={editor.setColumnsSplitRatio}
       resetToTemplateDefaults={editor.resetToTemplateDefaults}
       onRun={onRun}
     />

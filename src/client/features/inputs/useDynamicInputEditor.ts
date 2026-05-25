@@ -23,6 +23,18 @@ import {
   saveInputOrderingOverlay
 } from "../../lib/inputEditorStorage";
 
+const DEFAULT_COLUMNS_SPLIT_RATIO = 0.5;
+const MIN_COLUMNS_SPLIT_RATIO = 0.3;
+const MAX_COLUMNS_SPLIT_RATIO = 0.7;
+
+function clampColumnsSplitRatio(ratio: number): number {
+  if (!Number.isFinite(ratio)) {
+    return DEFAULT_COLUMNS_SPLIT_RATIO;
+  }
+
+  return Math.min(MAX_COLUMNS_SPLIT_RATIO, Math.max(MIN_COLUMNS_SPLIT_RATIO, ratio));
+}
+
 function buildDefaultDraftValues(controls: DynamicInputControl[]): DynamicInputDraftValues {
   const defaults: DynamicInputDraftValues = {};
 
@@ -289,6 +301,7 @@ export function useDynamicInputEditor(activeTemplate: WorkflowTemplateRecord | n
   const setOverlayPosition = useCallback((controlId: string, position: number) => {
     setOverlay((previous) => {
       const next = {
+        ...previous,
         orderByControlId: {
           ...previous.orderByControlId,
           [controlId]: position
@@ -321,11 +334,59 @@ export function useDynamicInputEditor(activeTemplate: WorkflowTemplateRecord | n
         controls: orderedControls
       });
 
-      setOverlay(nextOverlay);
-      void saveInputOrderingOverlay(nextOverlay);
+      const mergedOverlay = {
+        ...overlay,
+        ...nextOverlay,
+        sectionColumnByCategory: {
+          ...(overlay.sectionColumnByCategory ?? {})
+        },
+        columnsSplitRatio: clampColumnsSplitRatio(overlay.columnsSplitRatio ?? DEFAULT_COLUMNS_SPLIT_RATIO)
+      };
+
+      setOverlay(mergedOverlay);
+      void saveInputOrderingOverlay(mergedOverlay);
     },
-    [orderedControls, orderedSections]
+    [orderedControls, orderedSections, overlay]
   );
+
+  const toggleSectionColumn = useCallback(
+    (category: string) => {
+      const knownCategories = new Set(orderedSections.map((section) => section.category));
+      if (!knownCategories.has(category)) {
+        return;
+      }
+
+      setOverlay((previous) => {
+        const currentColumn = previous.sectionColumnByCategory?.[category] ?? "left";
+        const nextColumn = currentColumn === "left" ? "right" : "left";
+        const sectionColumnByCategory: Record<string, "left" | "right"> = {
+          ...(previous.sectionColumnByCategory ?? {}),
+          [category]: nextColumn
+        };
+        const next = {
+          ...previous,
+          sectionColumnByCategory,
+          columnsSplitRatio: clampColumnsSplitRatio(previous.columnsSplitRatio ?? DEFAULT_COLUMNS_SPLIT_RATIO)
+        };
+
+        void saveInputOrderingOverlay(next);
+        return next;
+      });
+    },
+    [orderedSections]
+  );
+
+  const setColumnsSplitRatio = useCallback((ratio: number) => {
+    setOverlay((previous) => {
+      const next = {
+        ...previous,
+        columnsSplitRatio: clampColumnsSplitRatio(ratio)
+      };
+
+      void saveInputOrderingOverlay(next);
+      return next;
+    });
+  }, []);
 
   const resetToTemplateDefaults = useCallback(async () => {
     if (!activeTemplate) {
@@ -440,6 +501,8 @@ export function useDynamicInputEditor(activeTemplate: WorkflowTemplateRecord | n
   return {
     controls: orderedControls,
     sections: orderedSections,
+    sectionColumnByCategory: overlay.sectionColumnByCategory ?? {},
+    columnsSplitRatio: clampColumnsSplitRatio(overlay.columnsSplitRatio ?? DEFAULT_COLUMNS_SPLIT_RATIO),
     warnings: derivation.warnings,
     draftValues,
     isLoadingDraft,
@@ -451,6 +514,8 @@ export function useDynamicInputEditor(activeTemplate: WorkflowTemplateRecord | n
     setValue,
     setOverlayPosition,
     moveSection,
+    toggleSectionColumn,
+    setColumnsSplitRatio,
     resetToTemplateDefaults,
     applyExternalDraft,
     attemptRun,

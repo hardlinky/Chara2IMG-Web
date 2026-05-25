@@ -54,6 +54,8 @@ export type DynamicInputWarning = {
 
 export type DynamicInputOrderingOverlay = {
   orderByControlId: Record<string, number>;
+  sectionColumnByCategory?: Record<string, "left" | "right">;
+  columnsSplitRatio?: number;
 };
 
 export type DynamicInputValue =
