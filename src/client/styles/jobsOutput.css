@@ -83,6 +83,22 @@
   flex-wrap: wrap;
 }
 
+.outputs-job-view-actions {
+  align-items: center;
+  justify-content: space-between;
+}
+
+.outputs-job-navigation {
+  display: flex;
+  gap: var(--space-2);
+  flex: 1 1 18rem;
+  max-width: 24rem;
+}
+
+.outputs-job-navigation .btn {
+  flex: 1 1 0;
+}
+
 .outputs-lightbox {
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-md);
@@ -102,9 +118,14 @@
 @media (max-width: 720px) {
   .jobs-actions .btn,
   .jobs-pagination .btn,
-  .outputs-job-view-actions .btn,
+  .outputs-job-view-actions > .btn,
   .outputs-job-view-more .btn,
   .outputs-toolbar .btn {
+    width: 100%;
+  }
+
+  .outputs-job-navigation {
+    max-width: none;
     width: 100%;
   }
 }

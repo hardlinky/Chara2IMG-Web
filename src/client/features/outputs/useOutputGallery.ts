@@ -64,6 +64,19 @@ export function useOutputGallery(clusters: RecentJobOutputCluster[]) {
     setView({ mode: "job", jobId: nextJob.jobId });
   }, [clusters, selectedClusterIndex]);
 
+  const goToPreviousJob = useCallback(() => {
+    if (selectedClusterIndex <= 0) {
+      return;
+    }
+
+    const previousJob = clusters[selectedClusterIndex - 1];
+    if (!previousJob) {
+      return;
+    }
+
+    setView({ mode: "job", jobId: previousJob.jobId });
+  }, [clusters, selectedClusterIndex]);
+
   useEffect(() => {
     if (view.mode !== "gallery" || !returnContext) {
       return;
@@ -86,6 +99,7 @@ export function useOutputGallery(clusters: RecentJobOutputCluster[]) {
     selectedClusterIndex,
     openJobOutputs,
     goBackToGallery,
+    goToPreviousJob,
     goToNextJob,
     returnContext
   };

@@ -5,6 +5,7 @@ import { OutputLightbox } from "./OutputLightbox";
 type JobOutputsViewProps = {
   cluster: RecentJobOutputCluster;
   onBack: () => void;
+  onPreviousJob?: () => void;
   onNextJob?: () => void;
 };
 
@@ -37,7 +38,7 @@ function toRelativeTimestamp(isoValue: string | null): string {
   return `${deltaDays}d ago`;
 }
 
-export function JobOutputsView({ cluster, onBack, onNextJob }: JobOutputsViewProps) {
+export function JobOutputsView({ cluster, onBack, onPreviousJob, onNextJob }: JobOutputsViewProps) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const visibleImages = useMemo(() => cluster.outputs.slice(0, visibleCount), [cluster.outputs, visibleCount]);
@@ -48,11 +49,14 @@ export function JobOutputsView({ cluster, onBack, onNextJob }: JobOutputsViewPro
         <button className="btn btn-secondary" type="button" onClick={onBack}>
           Back to gallery
         </button>
-        {onNextJob ? (
-          <button className="btn btn-primary" type="button" onClick={onNextJob}>
+        <div className="outputs-job-navigation">
+          <button className="btn btn-secondary" type="button" onClick={onPreviousJob} disabled={!onPreviousJob}>
+            Previous job
+          </button>
+          <button className="btn btn-primary" type="button" onClick={onNextJob} disabled={!onNextJob}>
             Next job
           </button>
-        ) : null}
+        </div>
       </div>
 
       <p className="outputs-provenance-line">
