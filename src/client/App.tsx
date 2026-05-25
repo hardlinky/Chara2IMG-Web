@@ -80,7 +80,6 @@ export function App() {
     setRunEndpointId(value);
     saveEndpointId(value);
   }
-  const [runResult, setRunResult] = useState("");
   const [runError, setRunError] = useState("");
   const [jobActionMessage, setJobActionMessage] = useState("");
   const [isUpdatingApp, setIsUpdatingApp] = useState(false);
@@ -112,7 +111,7 @@ export function App() {
 
     try {
       setRunError("");
-      const response = await submitRunAndPersistRecentJob({
+      await submitRunAndPersistRecentJob({
         endpointId: runEndpointId,
         apiKey: runpodKey,
         submittedInput: toRunpodWorkflowInput(snapshot.payload),
@@ -124,7 +123,6 @@ export function App() {
         }
       });
       await recentJobs.handleNewSubmission();
-      setRunResult(JSON.stringify(response));
     } catch (submitError) {
       setRunError(submitError instanceof Error ? submitError.message : "Run submission failed.");
     }
@@ -279,7 +277,6 @@ export function App() {
                 {runError}
               </p>
             ) : null}
-            {runResult ? <pre className="card">{runResult}</pre> : null}
           </div>
         ),
         jobs: (
@@ -313,4 +310,3 @@ export function App() {
     />
   );
 }
-
