@@ -1,4 +1,4 @@
-import { ChangeEvent, useEffect, useRef, useState } from "react";
+import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import type {
   DynamicInputControl,
   DynamicInputDraftValues,
@@ -9,7 +9,7 @@ import type {
 } from "../../../shared/contracts/inputs";
 import type { WorkflowTemplateRecord } from "../../../shared/contracts/workflow";
 import { useDynamicInputEditor } from "./useDynamicInputEditor";
-import { buildVariableTokenParts, isNameField } from "./inputVariables";
+import { buildVariableTokenParts, isNameField, getCategoriesWithName } from "./inputVariables";
 import "../../styles/setupInput.css";
 
 type DynamicInputEditorViewProps = {
@@ -58,26 +58,21 @@ function copyVariableToClipboard(value: string): void {
   document.body.removeChild(fallback);
 }
 
-function renderVariableLinks(control: DynamicInputControl, sectionName: string | undefined) {
+function renderVariableLinks(
+  control: DynamicInputControl,
+  sectionName: string | undefined,
+  hasCategoryName: boolean
+ ) {
+  if (!hasCategoryName || isNameField(control)) {
+    return null;
+  }
+
   const trimmedSectionName = sectionName?.trim();
   const tokens = buildVariableTokenParts(control, trimmedSectionName);
   const showNamed = Boolean(trimmedSectionName);
 
-  if (!tokens.generic && !showNamed) {
-    return null;
-  }
-
   return (
     <span className="field-variable-links">
-      <button
-        type="button"
-        className="input-variable-link"
-        title={`Copy ${tokens.generic}`}
-        aria-label={`Copy ${tokens.generic}`}
-        onClick={() => copyVariableToClipboard(tokens.generic)}
-      >
-        {tokens.generic}
-      </button>
       {showNamed && tokens.named ? (
         <button
           type="button"
@@ -89,6 +84,15 @@ function renderVariableLinks(control: DynamicInputControl, sectionName: string |
           {tokens.named}
         </button>
       ) : null}
+      <button
+        type="button"
+        className="input-variable-link"
+        title={`Copy ${tokens.generic}`}
+        aria-label={`Copy ${tokens.generic}`}
+        onClick={() => copyVariableToClipboard(tokens.generic)}
+      >
+        {tokens.generic}
+      </button>
     </span>
   );
 }
@@ -301,6 +305,7 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
   const columnsContainerRef = useRef<HTMLDivElement | null>(null);
   const sectionNamesByCategory = props.sectionNamesByCategory ?? {};
   const nameValidationErrorsByControlId = props.nameValidationErrorsByControlId ?? {};
+  const categoriesWithName = useMemo(() => getCategoriesWithName(props.controls), [props.controls]);
   const inlineErrorsByControlId = {
     ...props.inlineErrorsByControlId,
     ...nameValidationErrorsByControlId
@@ -544,7 +549,7 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
                     )}
                     <span>{control.name}</span>
                   </label>
-                  {renderVariableLinks(control, sectionNamesByCategory[category])}
+                  {renderVariableLinks(control, sectionNamesByCategory[category], categoriesWithName.has(category))}
                   {detailerLoraMasterControl?.id === control.id ? (
                     <button
                       type="button"
@@ -567,7 +572,7 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
               <label className="field">
                 <span className="field-label-row">
                   <span>{control.name}</span>
-                  {renderVariableLinks(control, sectionNamesByCategory[category])}
+                  {renderVariableLinks(control, sectionNamesByCategory[category], categoriesWithName.has(category))}
                 </span>
                 {renderInputControl(
                   control,

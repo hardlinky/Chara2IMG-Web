@@ -155,8 +155,8 @@ describe("dynamic input editor", () => {
 
     expect(html).toContain("{Character_Eyes}");
     expect(html).toContain("{Sola_Eyes}");
-    expect(html).toContain("{Character_Name}");
-    expect(html).toContain("{Sola_Name}");
+    expect(html).not.toContain("{Character_Name}");
+    expect(html).not.toContain("{Sola_Name}");
   });
 
   it("renders run-blocking and unsaved-state feedback with structural class hooks", () => {
