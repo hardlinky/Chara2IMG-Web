@@ -10,10 +10,21 @@ body,
 }
 
 body {
+  position: relative;
+  isolation: isolate;
   font-family: var(--font-family-sans);
   font-size: var(--font-size-md);
   line-height: 1.5;
   color: var(--color-text-primary);
+  background: var(--color-surface-canvas);
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
   background:
     radial-gradient(circle at 0% 0%, rgba(199, 116, 61, 0.15), transparent 38%),
     radial-gradient(circle at 100% 10%, rgba(120, 80, 40, 0.14), transparent 42%),
