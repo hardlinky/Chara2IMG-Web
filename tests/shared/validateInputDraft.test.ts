@@ -125,4 +125,30 @@ describe("validateInputDraft", () => {
     });
     expect(valid.valid).toBe(true);
   });
+
+  it("blocks missing or duplicate Name fields when running", () => {
+    const characterName = createControl({
+      id: "character:name",
+      category: "Character",
+      defaultValue: "Sola"
+    });
+    const costumeName = createControl({
+      id: "costume:name",
+      category: "Costume",
+      defaultValue: "Sola"
+    });
+
+    const missing = validateDraftForRun([characterName], {
+      "character:name": ""
+    });
+    expect(missing.valid).toBe(false);
+    expect(missing.errors[0]?.message).toContain("Name is required");
+
+    const duplicate = validateDraftForRun([characterName, costumeName], {
+      "character:name": "Sola",
+      "costume:name": "Sola"
+    });
+    expect(duplicate.valid).toBe(false);
+    expect(duplicate.errors.some((error) => error.message.includes("must be unique"))).toBe(true);
+  });
 });

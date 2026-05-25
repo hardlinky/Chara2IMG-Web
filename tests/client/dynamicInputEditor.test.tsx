@@ -92,6 +92,73 @@ describe("dynamic input editor", () => {
     expect(html).toContain("Reset to template defaults");
   });
 
+  it("renders generic and named variable copy links for supported inputs", () => {
+    const controls: DynamicInputControl[] = [
+      {
+        id: "character:name",
+        kind: "text",
+        inputIndex: 1,
+        fullTitle: "[Input1] Character.Name",
+        category: "Character",
+        name: "Name",
+        source: {
+          nodeId: "character",
+          titlePath: "character.inputs.title",
+          valuePath: ["name"]
+        },
+        constraints: {},
+        defaultValue: "Sola",
+        orderKey: "000001:[Input1] Character.Name"
+      },
+      {
+        id: "character:eyes",
+        kind: "text",
+        inputIndex: 2,
+        fullTitle: "[Input2] Character.Eyes",
+        category: "Character",
+        name: "Eyes",
+        source: {
+          nodeId: "character",
+          titlePath: "character.inputs.title",
+          valuePath: ["eyes"]
+        },
+        constraints: {},
+        defaultValue: "gold",
+        orderKey: "000002:[Input2] Character.Eyes"
+      }
+    ];
+
+    const html = renderToStaticMarkup(
+      <DynamicInputEditorView
+        controls={controls}
+        sections={buildSectionsFromControls(controls)}
+        sectionNamesByCategory={{ Character: "Sola" }}
+        sectionColumnByCategory={{}}
+        columnsSplitRatio={0.5}
+        warnings={[]}
+        draftValues={{
+          "character:name": "Sola",
+          "character:eyes": "gold"
+        }}
+        hasDraftDiffFromTemplate={false}
+        hasUnsavedChangesSinceLastRun={false}
+        inlineErrorsByControlId={{}}
+        runBlockingMessage={null}
+        setValue={vi.fn()}
+        moveSection={vi.fn()}
+        toggleSectionColumn={vi.fn()}
+        setColumnsSplitRatio={vi.fn()}
+        resetToTemplateDefaults={vi.fn()}
+        onRun={vi.fn()}
+      />
+    );
+
+    expect(html).toContain("{Character_Eyes}");
+    expect(html).toContain("{Sola_Eyes}");
+    expect(html).toContain("{Character_Name}");
+    expect(html).toContain("{Sola_Name}");
+  });
+
   it("renders run-blocking and unsaved-state feedback with structural class hooks", () => {
     const controls = createControls();
 

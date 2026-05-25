@@ -158,6 +158,38 @@
   gap: var(--space-2);
 }
 
+.field-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.field-variable-links {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+}
+
+.input-variable-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-accent-primary);
+  font-size: var(--font-size-sm);
+  line-height: 1.2;
+  cursor: copy;
+  white-space: nowrap;
+}
+
+.input-variable-link:hover,
+.input-variable-link:focus-visible {
+  text-decoration: underline;
+  color: var(--color-accent-secondary);
+}
+
 .field-boolean-row {
   display: inline-flex;
   align-items: center;

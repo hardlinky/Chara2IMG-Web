@@ -5,6 +5,7 @@ import type {
   DynamicInputRunValidationResult,
   DynamicInputValue
 } from "../contracts/inputs";
+import { validateSectionNames } from "../../client/features/inputs/inputVariables";
 
 function decimalPlaces(value: number): number {
   const valueText = String(value);
@@ -198,6 +199,14 @@ export function validateDraftForRun(
     const candidate = draftValues[control.id] ?? control.defaultValue;
     return validateInlineControl(control, candidate).errors;
   });
+
+  const nameErrors = validateSectionNames(controls, draftValues);
+  for (const [controlId, message] of Object.entries(nameErrors)) {
+    errors.push({
+      controlId,
+      message
+    });
+  }
 
   if (errors.length === 0) {
     return {

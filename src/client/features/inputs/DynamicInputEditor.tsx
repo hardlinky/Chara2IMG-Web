@@ -9,11 +9,14 @@ import type {
 } from "../../../shared/contracts/inputs";
 import type { WorkflowTemplateRecord } from "../../../shared/contracts/workflow";
 import { useDynamicInputEditor } from "./useDynamicInputEditor";
+import { buildVariableTokenParts, isNameField } from "./inputVariables";
 import "../../styles/setupInput.css";
 
 type DynamicInputEditorViewProps = {
   controls: DynamicInputControl[];
   sections: DynamicInputSection[];
+  sectionNamesByCategory?: Record<string, string>;
+  nameValidationErrorsByControlId?: Record<string, string>;
   sectionColumnByCategory: Record<string, "left" | "right">;
   columnsSplitRatio: number;
   warnings: DynamicInputWarning[];
@@ -32,6 +35,62 @@ type DynamicInputEditorViewProps = {
 
 function formatWarning(warning: DynamicInputWarning): string {
   return warning.message;
+}
+
+function copyVariableToClipboard(value: string): void {
+  if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+    void navigator.clipboard.writeText(value);
+    return;
+  }
+
+  if (typeof document === "undefined") {
+    return;
+  }
+
+  const fallback = document.createElement("textarea");
+  fallback.value = value;
+  fallback.setAttribute("readonly", "true");
+  fallback.style.position = "fixed";
+  fallback.style.left = "-9999px";
+  document.body.appendChild(fallback);
+  fallback.select();
+  document.execCommand("copy");
+  document.body.removeChild(fallback);
+}
+
+function renderVariableLinks(control: DynamicInputControl, sectionName: string | undefined) {
+  const trimmedSectionName = sectionName?.trim();
+  const tokens = buildVariableTokenParts(control, trimmedSectionName);
+  const showNamed = Boolean(trimmedSectionName);
+
+  if (!tokens.generic && !showNamed) {
+    return null;
+  }
+
+  return (
+    <span className="field-variable-links">
+      <button
+        type="button"
+        className="input-variable-link"
+        title={`Copy ${tokens.generic}`}
+        aria-label={`Copy ${tokens.generic}`}
+        onClick={() => copyVariableToClipboard(tokens.generic)}
+      >
+        {tokens.generic}
+      </button>
+      {showNamed && tokens.named ? (
+        <button
+          type="button"
+          className="input-variable-link"
+          title={`Copy ${tokens.named}`}
+          aria-label={`Copy ${tokens.named}`}
+          onClick={() => copyVariableToClipboard(tokens.named ?? tokens.generic)}
+        >
+          {tokens.named}
+        </button>
+      ) : null}
+    </span>
+  );
 }
 
 function toImageDraftValue(file: File): Promise<{ dataUrl: string }> {
@@ -240,6 +299,12 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
   const previousDetailerLorasEnabled = useRef<boolean>(true);
   const categoryRefs = useRef<Record<string, HTMLFieldSetElement | null>>({});
   const columnsContainerRef = useRef<HTMLDivElement | null>(null);
+  const sectionNamesByCategory = props.sectionNamesByCategory ?? {};
+  const nameValidationErrorsByControlId = props.nameValidationErrorsByControlId ?? {};
+  const inlineErrorsByControlId = {
+    ...props.inlineErrorsByControlId,
+    ...nameValidationErrorsByControlId
+  };
 
   const controlsById = new Map(props.controls.map((control) => [control.id, control]));
   const visibleSections = props.sections
@@ -475,10 +540,11 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
                       control,
                       props.draftValues,
                       props.setValue,
-                      Boolean(props.inlineErrorsByControlId[control.id])
+                      Boolean(inlineErrorsByControlId[control.id])
                     )}
                     <span>{control.name}</span>
                   </label>
+                  {renderVariableLinks(control, sectionNamesByCategory[category])}
                   {detailerLoraMasterControl?.id === control.id ? (
                     <button
                       type="button"
@@ -499,18 +565,21 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
               </>
             ) : (
               <label className="field">
-                {control.name}
+                <span className="field-label-row">
+                  <span>{control.name}</span>
+                  {renderVariableLinks(control, sectionNamesByCategory[category])}
+                </span>
                 {renderInputControl(
                   control,
                   props.draftValues,
                   props.setValue,
-                  Boolean(props.inlineErrorsByControlId[control.id])
+                  Boolean(inlineErrorsByControlId[control.id])
                 )}
               </label>
             )}
-            {props.inlineErrorsByControlId[control.id] ? (
+            {inlineErrorsByControlId[control.id] ? (
               <p role="alert" className="input-error">
-                {props.inlineErrorsByControlId[control.id]}
+                {inlineErrorsByControlId[control.id]}
               </p>
             ) : null}
           </div>
