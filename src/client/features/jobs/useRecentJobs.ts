@@ -73,6 +73,46 @@ async function applyLifecycleUpdate(
   await updateRecentJobLifecycle(jobId, lifecycle, lastResponse as Record<string, unknown> | null, lastError);
 }
 
+export async function pollSingleJob(jobId: string, options: UseRecentJobsOptions = {}): Promise<{ jobs: RecentJobRecord[]; warningJobIds: string[] }> {
+  const warningJobIds: string[] = [];
+
+  if (options.apiKey) {
+    const job = (await loadRecentJobs()).find((candidate) => candidate.jobId === jobId);
+
+    if (job) {
+      const timeoutLifecycle = classifyTimeoutLifecycle(job);
+      if (timeoutLifecycle) {
+        await applyLifecycleUpdate(job.jobId, timeoutLifecycle);
+      } else if (!job.lifecycle.isTerminal && isCancellableJobStatus(job.lifecycle.status)) {
+        try {
+          const response = await statusViaProxy({
+            endpointId: options.endpointId ?? job.endpointId,
+            apiKey: options.apiKey,
+            id: job.jobId
+          });
+
+          const status = String(response.status ?? job.lifecycle.status);
+          const nextLifecycle = buildLifecycleSnapshotFromStatus(status);
+          await applyLifecycleUpdate(job.jobId, nextLifecycle, response);
+        } catch (error) {
+          const status = error instanceof Error && "status" in error ? Number((error as { status?: unknown }).status) : undefined;
+
+          if (status === 404) {
+            await applyLifecycleUpdate(job.jobId, classifyKnownJob404Lifecycle(job));
+          } else {
+            warningJobIds.push(job.jobId);
+          }
+        }
+      }
+    }
+  }
+
+  return {
+    jobs: await loadRecentJobs(),
+    warningJobIds
+  };
+}
+
 export async function pollRecentJobsOnce(options: UseRecentJobsOptions = {}): Promise<RecentJobUpdateResult> {
   const currentJobs = await loadRecentJobs();
   const warningJobIds: string[] = [];
@@ -253,6 +293,23 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
     }
   }, [apiKey, endpointId]);
 
+  const pollJob = useCallback(
+    async (jobId: string) => {
+      try {
+        const result = await pollSingleJob(jobId, { endpointId, apiKey });
+        setJobs(result.jobs);
+        setWarningJobIds((previous) => {
+          const merged = [...previous.filter((id) => id !== jobId), ...result.warningJobIds];
+          return merged;
+        });
+        setError(null);
+      } catch (pollError) {
+        setError(pollError instanceof Error ? pollError.message : "Failed to refresh job.");
+      }
+    },
+    [apiKey, endpointId]
+  );
+
   const cancelJob = useCallback(
     async (jobId: string) => {
       if (!apiKey) {
@@ -363,6 +420,7 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
     refreshRecentJobs,
     handleNewSubmission,
     pollNow,
+    pollJob,
     cancelJob,
     rerunJob,
     loadJobInputs,
