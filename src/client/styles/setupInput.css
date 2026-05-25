@@ -76,14 +76,15 @@
 .input-category legend {
   padding: 0 var(--space-2);
   color: var(--color-text-primary);
+  width: 100%;
 }
 
 .input-category-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-2);
-  min-width: min(42rem, calc(100vw - 8rem));
+  width: 100%;
+  min-width: 0;
 }
 
 .input-category-title {
@@ -94,6 +95,8 @@
 .input-category-actions {
   display: inline-flex;
   gap: var(--space-1);
+  margin-left: auto;
+  justify-content: flex-end;
 }
 
 .input-category-icon-button {
@@ -278,10 +281,14 @@
   }
 
   .input-category-header {
-    min-width: 0;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
+  }
+
+  .input-category-actions {
+    width: 100%;
+    justify-content: flex-end;
   }
 
   .input-run-bar {
