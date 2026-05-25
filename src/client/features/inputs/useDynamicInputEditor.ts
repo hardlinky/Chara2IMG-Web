@@ -22,6 +22,10 @@ import {
   saveInputDraftValues,
   saveInputOrderingOverlay
 } from "../../lib/inputEditorStorage";
+import {
+  deriveSectionNamesByCategory,
+  validateSectionNames
+} from "./inputVariables";
 
 const DEFAULT_COLUMNS_SPLIT_RATIO = 0.5;
 const MIN_COLUMNS_SPLIT_RATIO = 0.3;
@@ -256,6 +260,14 @@ export function useDynamicInputEditor(activeTemplate: WorkflowTemplateRecord | n
 
   const orderedControls = useMemo(() => applyOrderingOverlay(derivation.controls, overlay), [derivation.controls, overlay]);
   const orderedSections = useMemo(() => buildSectionsFromControls(orderedControls), [orderedControls]);
+  const sectionNamesByCategory = useMemo(
+    () => deriveSectionNamesByCategory(orderedControls, draftValues),
+    [draftValues, orderedControls]
+  );
+  const nameValidationErrorsByControlId = useMemo(
+    () => validateSectionNames(orderedControls, draftValues),
+    [draftValues, orderedControls]
+  );
 
   const setValue = useCallback(
     (controlId: string, value: DynamicInputValue) => {
@@ -501,6 +513,8 @@ export function useDynamicInputEditor(activeTemplate: WorkflowTemplateRecord | n
   return {
     controls: orderedControls,
     sections: orderedSections,
+    sectionNamesByCategory,
+    nameValidationErrorsByControlId,
     sectionColumnByCategory: overlay.sectionColumnByCategory ?? {},
     columnsSplitRatio: clampColumnsSplitRatio(overlay.columnsSplitRatio ?? DEFAULT_COLUMNS_SPLIT_RATIO),
     warnings: derivation.warnings,
