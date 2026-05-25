@@ -46,6 +46,7 @@ describe("RecentJobsPanel", () => {
         onCancel={vi.fn()}
         onRerun={vi.fn()}
         onLoadInputs={vi.fn()}
+        onExportWorkflow={vi.fn()}
         onRemoveVisible={vi.fn()}
         formatSubmittedAtRelative={() => "2h ago"}
       />
@@ -60,6 +61,7 @@ describe("RecentJobsPanel", () => {
     expect(html).toContain("Prev");
     expect(html).toContain("Next");
     expect(html).toContain("Load Inputs");
+    expect(html).not.toContain("Export");
     expect(html).not.toContain("Restore");
   });
 
@@ -93,6 +95,7 @@ describe("RecentJobsPanel", () => {
         onCancel={vi.fn()}
         onRerun={vi.fn()}
         onLoadInputs={vi.fn()}
+        onExportWorkflow={vi.fn()}
         onRemoveVisible={vi.fn()}
         formatSubmittedAtRelative={() => "just now"}
       />
@@ -125,12 +128,51 @@ describe("RecentJobsPanel", () => {
         onCancel={vi.fn()}
         onRerun={vi.fn()}
         onLoadInputs={vi.fn()}
+        onExportWorkflow={vi.fn()}
         onRemoveVisible={vi.fn()}
         formatSubmittedAtRelative={() => "just now"}
       />
     );
 
     expect(html).toContain("Worker ID: worker-42");
+  });
+
+  it("shows Export only on completed jobs", () => {
+    const html = renderToStaticMarkup(
+      <RecentJobsPanel
+        jobs={[
+          createJob({
+            jobId: "job-completed",
+            lifecycle: {
+              status: "COMPLETED",
+              isTerminal: true,
+              terminalReason: "completed",
+              finishedAt: "2026-05-23T10:10:00.000Z",
+              lastCheckedAt: "2026-05-23T10:10:00.000Z",
+              warning: null,
+              executionTimeMs: 600000,
+              failureReason: null
+            }
+          })
+        ]}
+        warningJobIds={[]}
+        cancelingJobIds={[]}
+        statusFilter="All"
+        page={1}
+        pageCount={1}
+        pageNumbers={[1]}
+        onStatusFilterChange={vi.fn()}
+        onPageChange={vi.fn()}
+        onCancel={vi.fn()}
+        onRerun={vi.fn()}
+        onLoadInputs={vi.fn()}
+        onExportWorkflow={vi.fn()}
+        onRemoveVisible={vi.fn()}
+        formatSubmittedAtRelative={() => "just now"}
+      />
+    );
+
+    expect(html).toContain("Export");
   });
 
   it("renders the exact empty state text when there are no visible jobs", () => {
@@ -148,6 +190,7 @@ describe("RecentJobsPanel", () => {
         onCancel={vi.fn()}
         onRerun={vi.fn()}
         onLoadInputs={vi.fn()}
+        onExportWorkflow={vi.fn()}
         onRemoveVisible={vi.fn()}
         formatSubmittedAtRelative={() => "just now"}
       />

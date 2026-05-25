@@ -15,6 +15,7 @@ type RecentJobsPanelProps = {
   onCancel: (jobId: string) => void;
   onRerun: (jobId: string) => void;
   onLoadInputs: (jobId: string) => void;
+  onExportWorkflow: (jobId: string) => void;
   onRemoveVisible: (jobId: string) => void;
   formatSubmittedAtRelative: (submittedAt: string) => string;
 };
@@ -192,6 +193,11 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
                   <button className="btn btn-secondary" type="button" onClick={() => props.onLoadInputs(job.jobId)}>
                     Load Inputs
                   </button>
+                  {job.lifecycle.status === "COMPLETED" ? (
+                    <button className="btn btn-secondary" type="button" onClick={() => props.onExportWorkflow(job.jobId)}>
+                      Export
+                    </button>
+                  ) : null}
                   <button className="btn btn-destructive" type="button" onClick={() => props.onRemoveVisible(job.jobId)}>
                     Remove
                   </button>

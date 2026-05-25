@@ -28,6 +28,24 @@ function toRunpodWorkflowInput(payload: Record<string, unknown>): Record<string,
   };
 }
 
+function toWorkflowExportPayload(submittedInput: Record<string, unknown>): Record<string, unknown> | null {
+  const workflow = submittedInput.workflow;
+  if (workflow && typeof workflow === "object" && !Array.isArray(workflow)) {
+    return workflow as Record<string, unknown>;
+  }
+
+  if (submittedInput && typeof submittedInput === "object" && !Array.isArray(submittedInput)) {
+    return submittedInput;
+  }
+
+  return null;
+}
+
+function sanitizeFileNamePart(value: string): string {
+  const sanitized = value.replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+  return sanitized || "workflow";
+}
+
 const APP_TABS: AppTabDefinition[] = [
   { id: "setup", label: "Setup" },
   { id: "input", label: "Input" },
@@ -159,6 +177,37 @@ export function App() {
     }
   }
 
+  async function onExportWorkflow(jobId: string): Promise<void> {
+    const job = await recentJobs.loadJobInputs(jobId);
+    if (!job) {
+      setJobActionMessage("Selected job is no longer available.");
+      return;
+    }
+
+    if (job.lifecycle.status !== "COMPLETED") {
+      setJobActionMessage("Only completed jobs can be exported.");
+      return;
+    }
+
+    const workflowPayload = toWorkflowExportPayload(job.provenance.submittedInput);
+    if (!workflowPayload) {
+      setJobActionMessage("This job does not include an exportable workflow payload.");
+      return;
+    }
+
+    const fileBase = sanitizeFileNamePart(job.provenance.workflowFileName ?? "workflow").replace(/\.json$/i, "");
+    const fileName = `${fileBase}-${sanitizeFileNamePart(job.jobId)}-populated.json`;
+    const blob = new Blob([JSON.stringify(workflowPayload, null, 2)], { type: "application/json" });
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = objectUrl;
+    link.download = fileName;
+    link.click();
+    URL.revokeObjectURL(objectUrl);
+
+    setJobActionMessage(`Exported populated workflow from ${job.jobId}.`);
+  }
+
   if (!invited) {
     return <InviteGate onInvited={() => setInvited(true)} />;
   }
@@ -251,6 +300,7 @@ export function App() {
               onCancel={(jobId) => void recentJobs.cancelJob(jobId)}
               onRerun={(jobId) => void recentJobs.rerunJob(jobId)}
               onLoadInputs={(jobId) => void onLoadInputs(jobId)}
+              onExportWorkflow={(jobId) => void onExportWorkflow(jobId)}
               onRemoveVisible={(jobId) => void recentJobs.removeVisibleJob(jobId)}
               formatSubmittedAtRelative={formatSubmittedAtRelative}
             />
