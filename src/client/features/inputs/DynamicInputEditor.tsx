@@ -326,7 +326,7 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
                       <button
                         type="button"
                         className="input-inline-hint-button"
-                        title={'Enable "Use Different Detailer Loras?" to edit detailer lora rows.'}
+                        aria-label={'Enable "Use Different Detailer Loras?" to edit detailer lora rows.'}
                         data-tooltip={'Enable "Use Different Detailer Loras?" to edit detailer lora rows.'}
                         onClick={toggleDetailerHintForMobile}
                       >
