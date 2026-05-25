@@ -204,7 +204,7 @@ describe("RecentJobsPanel", () => {
     expect(html).toContain("No recent jobs yet");
   });
 
-  it("shows Refresh button only for IN_PROGRESS jobs", () => {
+  it("shows refresh icon button only for IN_PROGRESS jobs", () => {
     const inProgressHtml = renderToStaticMarkup(
       <RecentJobsPanel
         jobs={[
@@ -239,7 +239,7 @@ describe("RecentJobsPanel", () => {
       />
     );
 
-    expect(inProgressHtml).toContain("Refresh");
+    expect(inProgressHtml).toContain('aria-label="Refresh job status"');
 
     const failedHtml = renderToStaticMarkup(
       <RecentJobsPanel
@@ -262,6 +262,6 @@ describe("RecentJobsPanel", () => {
       />
     );
 
-    expect(failedHtml).not.toContain("Refresh");
+    expect(failedHtml).not.toContain("Refresh job status");
   });
 });

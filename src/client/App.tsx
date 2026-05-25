@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { AppShell } from "./components/app-shell/AppShell";
 import type { AppTabDefinition } from "./components/app-shell/TopTabRail";
 import { InviteGate } from "./features/access/InviteGate";
@@ -17,6 +17,7 @@ import { useRecentJobs } from "./features/jobs/useRecentJobs";
 import { RecentJobsPanel } from "./features/jobs/RecentJobsPanel";
 import { APP_VERSION_LABEL } from "./lib/appVersion";
 import { sanitizeWorkflowForExport } from "./lib/workflowExport";
+import { isActiveRunpodStatus } from "../shared/contracts/jobs";
 import type { DynamicInputDraftValues } from "../shared/contracts/inputs";
 
 function toRunpodWorkflowInput(payload: Record<string, unknown>): Record<string, unknown> {
@@ -47,7 +48,7 @@ function sanitizeFileNamePart(value: string): string {
   return sanitized || "workflow";
 }
 
-const APP_TABS: AppTabDefinition[] = [
+const BASE_APP_TABS: AppTabDefinition[] = [
   { id: "setup", label: "Setup" },
   { id: "input", label: "Input" },
   { id: "jobs", label: "Jobs" },
@@ -93,6 +94,14 @@ export function App() {
   const { activeTemplate, isLoading, error, persistTemplate, clearTemplate } =
     useActiveWorkflowTemplate();
   const recentJobs = useRecentJobs({ endpointId: runEndpointId, apiKey: runpodKey ?? undefined });
+  const runningJobsCount = useMemo(
+    () => recentJobs.visibleJobs.filter((job) => isActiveRunpodStatus(job.lifecycle.status)).length,
+    [recentJobs.visibleJobs]
+  );
+  const appTabs = useMemo<AppTabDefinition[]>(
+    () => BASE_APP_TABS.map((tab) => (tab.id === "jobs" && runningJobsCount > 0 ? { ...tab, badge: runningJobsCount } : tab)),
+    [runningJobsCount]
+  );
 
   async function onRunPayloadBuilt(snapshot: {
     payload: Record<string, unknown>;
@@ -214,7 +223,7 @@ export function App() {
 
   return (
     <AppShell
-      tabs={APP_TABS}
+      tabs={appTabs}
       activeTab={activeTab}
       onTabChange={setActiveTab}
       headerRowOne={

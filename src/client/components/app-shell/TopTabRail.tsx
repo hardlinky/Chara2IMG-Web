@@ -5,6 +5,7 @@ export type AppTabId = "setup" | "input" | "jobs" | "output";
 export type AppTabDefinition = {
   id: AppTabId;
   label: string;
+  badge?: number;
 };
 
 type TopTabRailProps = {
@@ -55,6 +56,7 @@ export function TopTabRail({ tabs, activeTab, onTabChange }: TopTabRailProps) {
             onKeyDown={(event) => onTabKeyDown(event, index)}
           >
             <span>{tab.label}</span>
+            {tab.badge != null && tab.badge > 0 ? <span className="tab-badge">{tab.badge}</span> : null}
           </button>
         );
       })}

@@ -23,6 +23,7 @@ export function BottomTabNav({ tabs, activeTab, onTabChange }: BottomTabNavProps
             onClick={() => onTabChange(tab.id)}
           >
             <span>{tab.label}</span>
+            {tab.badge != null && tab.badge > 0 ? <span className="tab-badge">{tab.badge}</span> : null}
           </button>
         );
       })}
