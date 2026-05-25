@@ -93,7 +93,7 @@ describe("useRecentJobs helpers", () => {
   });
 
   it("reruns a prior job as a new submission using the saved payload input", async () => {
-    await upsertRecentJob(createJob("job-rerun", "FAILED"));
+    await upsertRecentJob({ ...createJob("job-rerun", "FAILED"), submittedAt: "2026-05-23T10:00:00.000Z" });
     let submittedJobId = "";
 
     const result = await rerunRecentJobWithDependencies(
@@ -111,7 +111,8 @@ describe("useRecentJobs helpers", () => {
             submittedInput: args.snapshot.submittedInput,
             lifecycle: buildLifecycleSnapshotFromStatus("IN_QUEUE"),
             lastResponse: { id: "job-rerun-copy" },
-            lastError: null
+            lastError: null,
+            submittedAt: "2026-05-23T10:01:00.000Z"
           });
           return { id: "job-rerun-copy", status: "IN_QUEUE" };
         }
