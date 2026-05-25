@@ -174,9 +174,8 @@ describe("dynamic input editor", () => {
     );
 
     expect(html).toContain("Use Different Detailer Loras?");
-    expect(html).toContain("Enable");
-    expect(html).toContain("Use Different Detailer Loras?");
-    expect(html).toContain("edit detailer lora rows");
+    expect(html).toContain("input-inline-hint");
+    expect(html).toContain("Enable &quot;Use Different Detailer Loras?&quot; to edit detailer lora rows.");
     expect(html).not.toContain("Bhive_Style.safetensors");
   });
 
