@@ -235,4 +235,45 @@ describe("buildRunWorkflowPayload", () => {
     expect(loraRow.on).toBe(false);
     expect(loraRow.strength).toBe(-2.25);
   });
+
+  it("strips data URL prefix and normalizes base64 padding for easy loadImageBase64 inputs", () => {
+    const template = {
+      "863": {
+        class_type: "easy loadImageBase64",
+        inputs: {
+          base64_data: ""
+        }
+      }
+    };
+
+    const result = buildRunWorkflowPayload({
+      templateRawJson: template,
+      controls: [
+        createControl({
+          id: "863:image:base64_data",
+          kind: "image",
+          name: "Base64 image",
+          source: {
+            nodeId: "863",
+            titlePath: "863._meta.title",
+            valuePath: ["base64_data"]
+          },
+          defaultValue: null
+        })
+      ],
+      draftValues: {
+        "863:image:base64_data": {
+          dataUrl: "data:image/png;base64,YWJjZA"
+        }
+      }
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+
+    const base64Data = (result.payload["863"] as { inputs: { base64_data: string } }).inputs.base64_data;
+    expect(base64Data).toBe("YWJjZA==");
+  });
 });

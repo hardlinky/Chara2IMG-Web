@@ -33,6 +33,24 @@ function getNodeInputs(payload: Record<string, unknown>, nodeId: string): Record
   return maybeInputs as Record<string, unknown>;
 }
 
+function normalizeBase64Input(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "";
+  }
+
+  const maybeDataUrlMatch = /^data:[^;,]+;base64,(.+)$/i.exec(trimmed);
+  const base64Raw = maybeDataUrlMatch ? maybeDataUrlMatch[1] : trimmed;
+  const compact = base64Raw.replace(/\s+/g, "");
+  const remainder = compact.length % 4;
+
+  if (remainder === 0) {
+    return compact;
+  }
+
+  return `${compact}${"=".repeat(4 - remainder)}`;
+}
+
 function applyControlValue(
   inputs: Record<string, unknown>,
   control: DynamicInputControl,
@@ -73,7 +91,8 @@ function applyControlValue(
 
   if (control.kind === "image") {
     if (nextValue && typeof nextValue === "object" && "dataUrl" in nextValue) {
-      inputs[field] = String(nextValue.dataUrl);
+      const imageValue = String(nextValue.dataUrl);
+      inputs[field] = field === "base64_data" ? normalizeBase64Input(imageValue) : imageValue;
     } else {
       inputs[field] = "";
     }
