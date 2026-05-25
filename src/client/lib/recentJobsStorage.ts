@@ -83,6 +83,46 @@ function removeImageAtPath(response: Record<string, unknown>, tokens: JsonPathTo
     return false;
   }
 
+  const removeArrayElementIfAddressable = (): boolean => {
+    if (tokens.length < 2 || typeof tokens[tokens.length - 1] !== "string" || typeof tokens[tokens.length - 2] !== "number") {
+      return false;
+    }
+
+    let current: unknown = response;
+    for (let index = 0; index < tokens.length - 2; index += 1) {
+      const token = tokens[index];
+      if (typeof token === "number") {
+        if (!Array.isArray(current) || token < 0 || token >= current.length) {
+          return false;
+        }
+        current = current[token];
+        continue;
+      }
+
+      if (!current || typeof current !== "object" || !(token in (current as Record<string, unknown>))) {
+        return false;
+      }
+      current = (current as Record<string, unknown>)[token];
+    }
+
+    const itemIndexToken = tokens[tokens.length - 2];
+    if (typeof itemIndexToken !== "number") {
+      return false;
+    }
+
+    const itemIndex = itemIndexToken;
+    if (!Array.isArray(current) || itemIndex < 0 || itemIndex >= current.length) {
+      return false;
+    }
+
+    current.splice(itemIndex, 1);
+    return true;
+  };
+
+  if (removeArrayElementIfAddressable()) {
+    return true;
+  }
+
   let current: unknown = response;
   for (let index = 0; index < tokens.length - 1; index += 1) {
     const token = tokens[index];
