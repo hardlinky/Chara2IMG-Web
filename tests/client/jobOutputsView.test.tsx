@@ -1,0 +1,47 @@
+import { describe, expect, it } from "vitest";
+import { renderToStaticMarkup } from "react-dom/server";
+import { JobOutputsView } from "../../src/client/features/outputs/JobOutputsView";
+import type { RecentJobOutputCluster } from "../../src/shared/contracts/jobs";
+
+const tinyPngDataUrl =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO5WvJwAAAAASUVORK5CYII=";
+
+const cluster: RecentJobOutputCluster = {
+  jobId: "job-1",
+  endpointId: "endpoint-1",
+  submittedAt: "2026-05-24T10:00:00.000Z",
+  finishedAt: "2026-05-24T10:02:00.000Z",
+  workflowFileName: "workflow-a.json",
+  outputCount: 2,
+  representative: {
+    dataUrl: tinyPngDataUrl,
+    mimeType: "image/png",
+    sourcePath: "$.output.images[0].image",
+    outputIndex: 0
+  },
+  outputs: [
+    {
+      dataUrl: tinyPngDataUrl,
+      mimeType: "image/png",
+      sourcePath: "$.output.images[0].image",
+      outputIndex: 0
+    },
+    {
+      dataUrl: tinyPngDataUrl,
+      mimeType: "image/png",
+      sourcePath: "$.output.images[1].image",
+      outputIndex: 1
+    }
+  ]
+};
+
+describe("JobOutputsView", () => {
+  it("renders previous and next job buttons in the navigation row and disables previous when unavailable", () => {
+    const html = renderToStaticMarkup(<JobOutputsView cluster={cluster} onBack={() => undefined} onNextJob={() => undefined} />);
+
+    expect(html).toContain("outputs-job-navigation");
+    expect(html).toContain(">Previous job</button>");
+    expect(html).toContain(">Next job</button>");
+    expect(html).toMatch(/<button class="btn btn-secondary" type="button" disabled="">Previous job<\/button>/);
+  });
+});

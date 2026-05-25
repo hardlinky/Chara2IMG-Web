@@ -20,6 +20,7 @@ export function OutputsTab({ clusters }: OutputsTabProps) {
       <JobOutputsView
         cluster={gallery.selectedCluster}
         onBack={gallery.goBackToGallery}
+        onPreviousJob={gallery.selectedClusterIndex > 0 ? gallery.goToPreviousJob : undefined}
         onNextJob={gallery.selectedClusterIndex >= 0 && gallery.selectedClusterIndex + 1 < clusters.length ? gallery.goToNextJob : undefined}
       />
     );
