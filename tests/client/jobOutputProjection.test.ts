@@ -92,6 +92,30 @@ describe("jobOutputProjection", () => {
     expect(clusters.map((cluster) => cluster.jobId)).toEqual(["job-new", "job-old"]);
   });
 
+  it("filters out hidden output indices from projected cluster", () => {
+    const job = createJob({ hiddenOutputIndices: [0] });
+    const cluster = projectJobOutputCluster(job);
+
+    expect(cluster).not.toBeNull();
+    expect(cluster?.outputCount).toBe(1);
+    expect(cluster?.outputs[0]?.outputIndex).toBe(1);
+    expect(cluster?.representative.outputIndex).toBe(1);
+  });
+
+  it("returns null when all outputs are hidden via hiddenOutputIndices", () => {
+    const job = createJob({ hiddenOutputIndices: [0, 1] });
+    const cluster = projectJobOutputCluster(job);
+
+    expect(cluster).toBeNull();
+  });
+
+  it("returns null when outputsHidden is true", () => {
+    const job = createJob({ outputsHidden: true });
+    const cluster = projectJobOutputCluster(job);
+
+    expect(cluster).toBeNull();
+  });
+
   it("passes through legacy jobs with missing workflow filename", () => {
     const legacy = createJob({
       jobId: "job-legacy",

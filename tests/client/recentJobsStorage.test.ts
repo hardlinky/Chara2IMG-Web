@@ -5,6 +5,8 @@ import {
   clearRecentJobs,
   getRecentJob,
   hideRecentJob,
+  hideJobOutputImage,
+  hideJobOutputs,
   listVisibleRecentJobs,
   upsertRecentJob,
   pruneRecentJobs
@@ -53,5 +55,34 @@ describe("recentJobsStorage", () => {
     await pruneRecentJobs(new Date("2026-05-24T12:00:01.000Z").getTime() + RECENT_JOBS_HIDDEN_RETENTION_MS);
 
     expect(await getRecentJob("job-hide")).toBeNull();
+  });
+
+  it("hides a specific output image by index", async () => {
+    await upsertRecentJob(createJob("job-img", "2026-05-23T10:00:00.000Z"));
+    await hideJobOutputImage("job-img", 2);
+
+    const job = await getRecentJob("job-img");
+    expect(job?.hiddenOutputIndices).toEqual([2]);
+
+    await hideJobOutputImage("job-img", 5);
+    const updated = await getRecentJob("job-img");
+    expect(updated?.hiddenOutputIndices).toEqual([2, 5]);
+  });
+
+  it("does not duplicate hidden indices when hiding the same image twice", async () => {
+    await upsertRecentJob(createJob("job-dedup", "2026-05-23T10:00:00.000Z"));
+    await hideJobOutputImage("job-dedup", 3);
+    await hideJobOutputImage("job-dedup", 3);
+
+    const job = await getRecentJob("job-dedup");
+    expect(job?.hiddenOutputIndices).toEqual([3]);
+  });
+
+  it("marks all outputs as hidden with hideJobOutputs", async () => {
+    await upsertRecentJob(createJob("job-all-hidden", "2026-05-23T10:00:00.000Z"));
+    await hideJobOutputs("job-all-hidden");
+
+    const job = await getRecentJob("job-all-hidden");
+    expect(job?.outputsHidden).toBe(true);
   });
 });

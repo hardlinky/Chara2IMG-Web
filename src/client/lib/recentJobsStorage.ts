@@ -111,6 +111,26 @@ export async function pruneRecentJobs(now: number = Date.now()): Promise<void> {
   }
 }
 
+export async function hideJobOutputImage(jobId: string, outputIndex: number): Promise<void> {
+  const job = await db.table<StoredRecentJob, string>("jobs").get(jobId);
+  if (!job) {
+    return;
+  }
+
+  const existing = job.hiddenOutputIndices ?? [];
+  if (existing.includes(outputIndex)) {
+    return;
+  }
+
+  await db.table<StoredRecentJob, string>("jobs").update(jobId, {
+    hiddenOutputIndices: [...existing, outputIndex]
+  });
+}
+
+export async function hideJobOutputs(jobId: string): Promise<void> {
+  await db.table<StoredRecentJob, string>("jobs").update(jobId, { outputsHidden: true });
+}
+
 export async function clearRecentJobs(): Promise<void> {
   await db.table<StoredRecentJob, string>("jobs").clear();
 }

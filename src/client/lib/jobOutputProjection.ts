@@ -16,17 +16,28 @@ export function projectJobOutputCluster(job: RecentJobRecord): RecentJobOutputCl
     return null;
   }
 
+  if (job.outputsHidden) {
+    return null;
+  }
+
   const extractedImages = extractRunpodOutputImages(job.lastResponse);
   if (extractedImages.length === 0) {
     return null;
   }
 
-  const outputs: RecentJobOutputImage[] = extractedImages.map((image, index) => ({
-    dataUrl: image.dataUrl,
-    mimeType: image.mimeType,
-    sourcePath: image.sourcePath,
-    outputIndex: index
-  }));
+  const hiddenSet = new Set<number>(job.hiddenOutputIndices ?? []);
+  const outputs: RecentJobOutputImage[] = extractedImages
+    .map((image, index) => ({
+      dataUrl: image.dataUrl,
+      mimeType: image.mimeType,
+      sourcePath: image.sourcePath,
+      outputIndex: index
+    }))
+    .filter((image) => !hiddenSet.has(image.outputIndex));
+
+  if (outputs.length === 0) {
+    return null;
+  }
 
   return {
     jobId: job.jobId,

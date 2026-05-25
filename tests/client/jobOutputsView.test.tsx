@@ -37,11 +37,32 @@ const cluster: RecentJobOutputCluster = {
 
 describe("JobOutputsView", () => {
   it("renders previous and next job buttons in the navigation row and disables previous when unavailable", () => {
-    const html = renderToStaticMarkup(<JobOutputsView cluster={cluster} onBack={() => undefined} onNextJob={() => undefined} />);
+    const html = renderToStaticMarkup(
+      <JobOutputsView
+        cluster={cluster}
+        onBack={() => undefined}
+        onNextJob={() => undefined}
+        onRemoveImage={() => undefined}
+        onRemoveAllOutputs={() => undefined}
+      />
+    );
 
     expect(html).toContain("outputs-job-navigation");
     expect(html).toContain(">Previous job</button>");
     expect(html).toContain(">Next job</button>");
     expect(html).toMatch(/<button class="btn btn-primary" type="button" disabled="">Previous job<\/button>/);
+  });
+
+  it("renders remove all outputs button", () => {
+    const html = renderToStaticMarkup(
+      <JobOutputsView
+        cluster={cluster}
+        onBack={() => undefined}
+        onRemoveImage={() => undefined}
+        onRemoveAllOutputs={() => undefined}
+      />
+    );
+
+    expect(html).toContain("Remove all outputs");
   });
 });

@@ -7,9 +7,10 @@ type OutputLightboxProps = {
   images: RecentJobOutputImage[];
   imagePrefix: string;
   maxVisible?: number;
+  onRemoveImage?: (outputIndex: number) => void;
 };
 
-export function OutputLightbox({ images, imagePrefix, maxVisible = images.length }: OutputLightboxProps) {
+export function OutputLightbox({ images, imagePrefix, maxVisible = images.length, onRemoveImage }: OutputLightboxProps) {
   const [imageDimensions, setImageDimensions] = useState<Record<number, { width: number; height: number }>>({});
 
   const handleImageLoad = (index: number, event: SyntheticEvent<HTMLImageElement>) => {
@@ -59,15 +60,29 @@ export function OutputLightbox({ images, imagePrefix, maxVisible = images.length
               caption={`${imagePrefix} #${index + 1}`}
             >
               {({ ref, open }) => (
-                <button
-                  type="button"
-                  className={`outputs-image-tile ${index >= maxVisible ? "outputs-image-tile-hidden" : ""}`}
-                  onClick={open}
-                  ref={ref as never}
-                  aria-label={`Open ${imagePrefix} image ${index + 1}`}
+                <div
+                  className={`outputs-image-tile-wrapper ${index >= maxVisible ? "outputs-image-tile-hidden" : ""}`}
                 >
-                  <img src={image.dataUrl} alt={`${imagePrefix} ${index + 1}`} loading="lazy" onLoad={(event) => handleImageLoad(index, event)} />
-                </button>
+                  <button
+                    type="button"
+                    className="outputs-image-tile"
+                    onClick={open}
+                    ref={ref as never}
+                    aria-label={`Open ${imagePrefix} image ${index + 1}`}
+                  >
+                    <img src={image.dataUrl} alt={`${imagePrefix} ${index + 1}`} loading="lazy" onLoad={(event) => handleImageLoad(index, event)} />
+                  </button>
+                  {onRemoveImage ? (
+                    <button
+                      type="button"
+                      className="outputs-image-remove-btn"
+                      aria-label={`Remove ${imagePrefix} image ${index + 1}`}
+                      onClick={() => onRemoveImage(image.outputIndex)}
+                    >
+                      ✕
+                    </button>
+                  ) : null}
+                </div>
               )}
             </Item>
           );

@@ -7,6 +7,8 @@ type JobOutputsViewProps = {
   onBack: () => void;
   onPreviousJob?: () => void;
   onNextJob?: () => void;
+  onRemoveImage: (outputIndex: number) => void;
+  onRemoveAllOutputs: () => void;
 };
 
 const PAGE_SIZE = 24;
@@ -38,7 +40,7 @@ function toRelativeTimestamp(isoValue: string | null): string {
   return `${deltaDays}d ago`;
 }
 
-export function JobOutputsView({ cluster, onBack, onPreviousJob, onNextJob }: JobOutputsViewProps) {
+export function JobOutputsView({ cluster, onBack, onPreviousJob, onNextJob, onRemoveImage, onRemoveAllOutputs }: JobOutputsViewProps) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const visibleImages = useMemo(() => cluster.outputs.slice(0, visibleCount), [cluster.outputs, visibleCount]);
@@ -57,13 +59,16 @@ export function JobOutputsView({ cluster, onBack, onPreviousJob, onNextJob }: Jo
             Next job
           </button>
         </div>
+        <button className="btn btn-destructive" type="button" onClick={onRemoveAllOutputs}>
+          Remove all outputs
+        </button>
       </div>
 
       <p className="outputs-provenance-line">
         {cluster.jobId} | {toRelativeTimestamp(cluster.finishedAt ?? cluster.submittedAt)} | {cluster.workflowFileName ?? "Workflow unknown"}
       </p>
 
-      <OutputLightbox images={cluster.outputs} imagePrefix={cluster.jobId} maxVisible={visibleCount} />
+      <OutputLightbox images={cluster.outputs} imagePrefix={cluster.jobId} maxVisible={visibleCount} onRemoveImage={onRemoveImage} />
 
       {visibleImages.length < cluster.outputs.length ? (
         <div className="outputs-job-view-more">
