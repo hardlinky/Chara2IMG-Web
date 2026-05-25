@@ -3,7 +3,7 @@ import type { RecentJobRecord } from "../../../shared/contracts/jobs";
 import { cancelViaProxy, statusViaProxy } from "../../lib/api/runpodProxyClient";
 import { submitRunAndPersistRecentJob } from "../../lib/jobSubmission";
 import { projectRecentJobOutputClusters } from "../../lib/jobOutputProjection";
-import { getRecentJob, hideRecentJob, listRecentJobs, updateRecentJobLifecycle } from "../../lib/recentJobsStorage";
+import { getRecentJob, hideRecentJob, hideJobOutputImage, hideJobOutputs, listRecentJobs, updateRecentJobLifecycle } from "../../lib/recentJobsStorage";
 import {
   JOB_POLL_INTERVAL_MS,
   buildLifecycleSnapshotFromStatus,
@@ -201,6 +201,14 @@ export async function rerunRecentJobWithDependencies(
   return job;
 }
 
+export async function removeRecentJobOutputImage(jobId: string, outputIndex: number): Promise<void> {
+  await hideJobOutputImage(jobId, outputIndex);
+}
+
+export async function removeRecentJobOutputs(jobId: string): Promise<void> {
+  await hideJobOutputs(jobId);
+}
+
 export async function removeRecentJobFromVisibleList(jobId: string): Promise<void> {
   await hideRecentJob(jobId);
 }
@@ -265,6 +273,16 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
 
   const removeVisibleJob = useCallback(async (jobId: string) => {
     await removeRecentJobFromVisibleList(jobId);
+    await refreshRecentJobs();
+  }, [refreshRecentJobs]);
+
+  const removeOutputImage = useCallback(async (jobId: string, outputIndex: number) => {
+    await removeRecentJobOutputImage(jobId, outputIndex);
+    await refreshRecentJobs();
+  }, [refreshRecentJobs]);
+
+  const removeJobOutputs = useCallback(async (jobId: string) => {
+    await removeRecentJobOutputs(jobId);
     await refreshRecentJobs();
   }, [refreshRecentJobs]);
 
@@ -349,6 +367,8 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
     rerunJob,
     loadJobInputs,
     removeVisibleJob,
+    removeOutputImage,
+    removeJobOutputs,
     formatSubmittedAtRelative,
     hasTimedOut: hasJobObservationTimedOut
   };

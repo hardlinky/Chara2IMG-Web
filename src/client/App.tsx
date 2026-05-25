@@ -305,7 +305,7 @@ export function App() {
             />
           </div>
         ),
-        output: <OutputsTab clusters={recentJobs.completedOutputClusters} />
+        output: <OutputsTab clusters={recentJobs.completedOutputClusters} onRemoveJobOutputs={(jobId) => void recentJobs.removeJobOutputs(jobId)} onRemoveOutputImage={(jobId, outputIndex) => void recentJobs.removeOutputImage(jobId, outputIndex)} />
       }}
     />
   );

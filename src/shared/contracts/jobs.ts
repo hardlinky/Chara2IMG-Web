@@ -66,6 +66,8 @@ export type RecentJobRecord = {
   provenance: RecentJobProvenance;
   lastResponse: Record<string, unknown> | null;
   lastError: string | null;
+  hiddenOutputIndices?: number[];
+  outputsHidden?: boolean;
 };
 
 export type RecentJobSubmissionInput = {

@@ -6,13 +6,15 @@ import "../../styles/jobsOutput.css";
 
 type OutputsTabProps = {
   clusters: RecentJobOutputCluster[];
+  onRemoveJobOutputs: (jobId: string) => void;
+  onRemoveOutputImage: (jobId: string, outputIndex: number) => void;
 };
 
 function getGalleryClassName(density: (typeof OUTPUT_DENSITIES)[number]): string {
   return `outputs-gallery outputs-gallery-${density}`;
 }
 
-export function OutputsTab({ clusters }: OutputsTabProps) {
+export function OutputsTab({ clusters, onRemoveJobOutputs, onRemoveOutputImage }: OutputsTabProps) {
   const gallery = useOutputGallery(clusters);
 
   if (gallery.view.mode === "job" && gallery.selectedCluster) {
@@ -22,6 +24,11 @@ export function OutputsTab({ clusters }: OutputsTabProps) {
         onBack={gallery.goBackToGallery}
         onPreviousJob={gallery.selectedClusterIndex > 0 ? gallery.goToPreviousJob : undefined}
         onNextJob={gallery.selectedClusterIndex >= 0 && gallery.selectedClusterIndex + 1 < clusters.length ? gallery.goToNextJob : undefined}
+        onRemoveImage={(outputIndex) => onRemoveOutputImage(gallery.selectedCluster!.jobId, outputIndex)}
+        onRemoveAllOutputs={() => {
+          onRemoveJobOutputs(gallery.selectedCluster!.jobId);
+          gallery.goBackToGallery();
+        }}
       />
     );
   }
@@ -57,9 +64,14 @@ export function OutputsTab({ clusters }: OutputsTabProps) {
             </button>
             <div className="outputs-cluster-meta">
               <span>{cluster.jobId}</span>
-              <button className="btn btn-secondary" type="button" onClick={() => gallery.openJobOutputs(cluster.jobId)}>
-                View job outputs
-              </button>
+              <div className="outputs-cluster-actions">
+                <button className="btn btn-secondary" type="button" onClick={() => gallery.openJobOutputs(cluster.jobId)}>
+                  View job outputs
+                </button>
+                <button className="btn btn-destructive" type="button" onClick={() => onRemoveJobOutputs(cluster.jobId)}>
+                  Remove outputs
+                </button>
+              </div>
             </div>
           </article>
         ))}

@@ -40,17 +40,30 @@ function createCluster(overrides: Partial<RecentJobOutputCluster>): RecentJobOut
 
 describe("OutputsTab", () => {
   it("renders outputs tab shell with density control and collapsed cards", () => {
-    const html = renderToStaticMarkup(<OutputsTab clusters={[createCluster({ jobId: "job-123" })]} />);
+    const html = renderToStaticMarkup(
+      <OutputsTab
+        clusters={[createCluster({ jobId: "job-123" })]}
+        onRemoveJobOutputs={() => undefined}
+        onRemoveOutputImage={() => undefined}
+      />
+    );
 
     expect(html).toContain("Outputs");
     expect(html).toContain("Density");
     expect(html).toContain("job-123");
     expect(html).toContain("2 images");
     expect(html).toContain("View job outputs");
+    expect(html).toContain("Remove outputs");
   });
 
   it("renders empty state when there are no completed output clusters", () => {
-    const html = renderToStaticMarkup(<OutputsTab clusters={[]} />);
+    const html = renderToStaticMarkup(
+      <OutputsTab
+        clusters={[]}
+        onRemoveJobOutputs={() => undefined}
+        onRemoveOutputImage={() => undefined}
+      />
+    );
 
     expect(html).toContain("No completed job outputs yet.");
   });
