@@ -43,16 +43,20 @@ export function App() {
   const [runEndpointId, setRunEndpointId] = useState(() => getStoredEndpointId() ?? "");
 
   useEffect(() => {
-    if (runEndpointId) {
+    if (!invited || runEndpointId) {
       return;
     }
 
-    void fetchSystemConfig().then((config) => {
-      if (config.endpointId) {
-        setRunEndpointId(config.endpointId);
-      }
-    });
-  }, []);
+    void fetchSystemConfig()
+      .then((config) => {
+        if (config.endpointId) {
+          setRunEndpointId(config.endpointId);
+        }
+      })
+      .catch(() => {
+        // Keep setup usable even when config bootstrap is temporarily unavailable.
+      });
+  }, [invited, runEndpointId]);
 
   function updateEndpointId(value: string): void {
     setRunEndpointId(value);
