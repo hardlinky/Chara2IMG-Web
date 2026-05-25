@@ -42,6 +42,6 @@ describe("JobOutputsView", () => {
     expect(html).toContain("outputs-job-navigation");
     expect(html).toContain(">Previous job</button>");
     expect(html).toContain(">Next job</button>");
-    expect(html).toMatch(/<button class="btn btn-secondary" type="button" disabled="">Previous job<\/button>/);
+    expect(html).toMatch(/<button class="btn btn-primary" type="button" disabled="">Previous job<\/button>/);
   });
 });
