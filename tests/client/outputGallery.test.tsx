@@ -43,6 +43,8 @@ describe("OutputsTab", () => {
     const html = renderToStaticMarkup(
       <OutputsTab
         clusters={[createCluster({ jobId: "job-123" })]}
+        onRerun={() => undefined}
+        onLoadInputs={() => undefined}
         onRemoveJobOutputs={() => undefined}
         onRemoveOutputImage={() => undefined}
       />
@@ -60,6 +62,8 @@ describe("OutputsTab", () => {
     const html = renderToStaticMarkup(
       <OutputsTab
         clusters={[]}
+        onRerun={() => undefined}
+        onLoadInputs={() => undefined}
         onRemoveJobOutputs={() => undefined}
         onRemoveOutputImage={() => undefined}
       />

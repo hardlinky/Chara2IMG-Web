@@ -42,6 +42,8 @@ describe("JobOutputsView", () => {
         cluster={cluster}
         onBack={() => undefined}
         onNextJob={() => undefined}
+        onRerun={() => undefined}
+        onLoadInputs={() => undefined}
         onRemoveImage={() => undefined}
         onRemoveAllOutputs={() => undefined}
       />
@@ -58,6 +60,8 @@ describe("JobOutputsView", () => {
       <JobOutputsView
         cluster={cluster}
         onBack={() => undefined}
+        onRerun={() => undefined}
+        onLoadInputs={() => undefined}
         onRemoveImage={() => undefined}
         onRemoveAllOutputs={() => undefined}
       />

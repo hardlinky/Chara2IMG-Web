@@ -7,6 +7,8 @@ type JobOutputsViewProps = {
   onBack: () => void;
   onPreviousJob?: () => void;
   onNextJob?: () => void;
+  onRerun: () => void;
+  onLoadInputs: () => void;
   onRemoveImage: (outputIndex: number) => void;
   onRemoveAllOutputs: () => void;
 };
@@ -40,7 +42,7 @@ function toRelativeTimestamp(isoValue: string | null): string {
   return `${deltaDays}d ago`;
 }
 
-export function JobOutputsView({ cluster, onBack, onPreviousJob, onNextJob, onRemoveImage, onRemoveAllOutputs }: JobOutputsViewProps) {
+export function JobOutputsView({ cluster, onBack, onPreviousJob, onNextJob, onRerun, onLoadInputs, onRemoveImage, onRemoveAllOutputs }: JobOutputsViewProps) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const visibleImages = useMemo(() => cluster.outputs.slice(0, visibleCount), [cluster.outputs, visibleCount]);
@@ -61,6 +63,12 @@ export function JobOutputsView({ cluster, onBack, onPreviousJob, onNextJob, onRe
         </div>
         <button className="btn btn-destructive" type="button" onClick={onRemoveAllOutputs}>
           Remove all outputs
+        </button>
+        <button className="btn btn-primary" type="button" onClick={onRerun}>
+          Rerun
+        </button>
+        <button className="btn btn-secondary" type="button" onClick={onLoadInputs}>
+          Load Inputs
         </button>
       </div>
 
