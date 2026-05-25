@@ -6,6 +6,7 @@ import {
   type RecentJobRecord,
   type RecentJobSubmissionInput
 } from "../../shared/contracts/jobs";
+import { extractRunpodOutputImages } from "./runpodOutputImage";
 
 type StoredRecentJob = RecentJobRecord;
 
@@ -21,6 +22,154 @@ class RecentJobsDatabase extends Dexie {
 }
 
 const db = new RecentJobsDatabase();
+
+type JsonPathToken = string | number;
+
+function parseSourcePath(sourcePath: string): JsonPathToken[] | null {
+  if (!sourcePath.startsWith("$")) {
+    return null;
+  }
+
+  const tokens: JsonPathToken[] = [];
+  let cursor = 1;
+
+  while (cursor < sourcePath.length) {
+    const char = sourcePath[cursor];
+
+    if (char === ".") {
+      const start = cursor + 1;
+      let end = start;
+      while (end < sourcePath.length && sourcePath[end] !== "." && sourcePath[end] !== "[") {
+        end += 1;
+      }
+      if (end <= start) {
+        return null;
+      }
+      tokens.push(sourcePath.slice(start, end));
+      cursor = end;
+      continue;
+    }
+
+    if (char === "[") {
+      const close = sourcePath.indexOf("]", cursor);
+      if (close === -1) {
+        return null;
+      }
+      const rawIndex = sourcePath.slice(cursor + 1, close);
+      if (!/^\d+$/.test(rawIndex)) {
+        return null;
+      }
+      tokens.push(Number(rawIndex));
+      cursor = close + 1;
+      continue;
+    }
+
+    return null;
+  }
+
+  return tokens;
+}
+
+function cloneResponseBody(response: Record<string, unknown>): Record<string, unknown> {
+  if (typeof globalThis.structuredClone === "function") {
+    return globalThis.structuredClone(response) as Record<string, unknown>;
+  }
+
+  return JSON.parse(JSON.stringify(response)) as Record<string, unknown>;
+}
+
+function removeImageAtPath(response: Record<string, unknown>, tokens: JsonPathToken[]): boolean {
+  if (tokens.length === 0) {
+    return false;
+  }
+
+  const removeArrayElementIfAddressable = (): boolean => {
+    if (tokens.length < 2 || typeof tokens[tokens.length - 1] !== "string" || typeof tokens[tokens.length - 2] !== "number") {
+      return false;
+    }
+
+    let current: unknown = response;
+    for (let index = 0; index < tokens.length - 2; index += 1) {
+      const token = tokens[index];
+      if (typeof token === "number") {
+        if (!Array.isArray(current) || token < 0 || token >= current.length) {
+          return false;
+        }
+        current = current[token];
+        continue;
+      }
+
+      if (!current || typeof current !== "object" || !(token in (current as Record<string, unknown>))) {
+        return false;
+      }
+      current = (current as Record<string, unknown>)[token];
+    }
+
+    const itemIndexToken = tokens[tokens.length - 2];
+    if (typeof itemIndexToken !== "number") {
+      return false;
+    }
+
+    const itemIndex = itemIndexToken;
+    if (!Array.isArray(current) || itemIndex < 0 || itemIndex >= current.length) {
+      return false;
+    }
+
+    current.splice(itemIndex, 1);
+    return true;
+  };
+
+  if (removeArrayElementIfAddressable()) {
+    return true;
+  }
+
+  let current: unknown = response;
+  for (let index = 0; index < tokens.length - 1; index += 1) {
+    const token = tokens[index];
+
+    if (typeof token === "number") {
+      if (!Array.isArray(current) || token < 0 || token >= current.length) {
+        return false;
+      }
+      current = current[token];
+      continue;
+    }
+
+    if (!current || typeof current !== "object" || !(token in (current as Record<string, unknown>))) {
+      return false;
+    }
+    current = (current as Record<string, unknown>)[token];
+  }
+
+  const lastToken = tokens[tokens.length - 1];
+  if (typeof lastToken === "number") {
+    if (!Array.isArray(current) || lastToken < 0 || lastToken >= current.length) {
+      return false;
+    }
+    current.splice(lastToken, 1);
+    return true;
+  }
+
+  if (!current || typeof current !== "object" || !(lastToken in (current as Record<string, unknown>))) {
+    return false;
+  }
+
+  (current as Record<string, unknown>)[lastToken] = null;
+  return true;
+}
+
+function normalizeHiddenOutputIndices(indices: number[] | undefined, removedIndex: number): number[] | undefined {
+  if (!indices || indices.length === 0) {
+    return undefined;
+  }
+
+  const normalized = [...new Set(indices)]
+    .filter((index) => index !== removedIndex)
+    .map((index) => (index > removedIndex ? index - 1 : index))
+    .sort((left, right) => left - right);
+
+  return normalized.length > 0 ? normalized : undefined;
+}
 
 function normalizeJobRecord(input: RecentJobSubmissionInput): StoredRecentJob {
   return {
@@ -113,17 +262,30 @@ export async function pruneRecentJobs(now: number = Date.now()): Promise<void> {
 
 export async function hideJobOutputImage(jobId: string, outputIndex: number): Promise<void> {
   const job = await db.table<StoredRecentJob, string>("jobs").get(jobId);
-  if (!job) {
+  if (!job || !job.lastResponse || outputIndex < 0) {
     return;
   }
 
-  const existing = job.hiddenOutputIndices ?? [];
-  if (existing.includes(outputIndex)) {
+  const extractedImages = extractRunpodOutputImages(job.lastResponse);
+  const targetImage = extractedImages[outputIndex];
+  if (!targetImage) {
+    return;
+  }
+
+  const tokens = parseSourcePath(targetImage.sourcePath);
+  if (!tokens) {
+    return;
+  }
+
+  const clonedResponse = cloneResponseBody(job.lastResponse);
+  const removed = removeImageAtPath(clonedResponse, tokens);
+  if (!removed) {
     return;
   }
 
   await db.table<StoredRecentJob, string>("jobs").update(jobId, {
-    hiddenOutputIndices: [...existing, outputIndex]
+    lastResponse: clonedResponse,
+    hiddenOutputIndices: normalizeHiddenOutputIndices(job.hiddenOutputIndices, outputIndex)
   });
 }
 

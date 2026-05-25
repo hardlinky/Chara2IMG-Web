@@ -7,10 +7,15 @@ import {
   hideRecentJob,
   hideJobOutputImage,
   hideJobOutputs,
+  listRecentJobs,
   listVisibleRecentJobs,
   upsertRecentJob,
   pruneRecentJobs
 } from "../../src/client/lib/recentJobsStorage";
+
+const tinyPngBase64 =
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO5WvJwAAAAASUVORK5CYII=";
+const tinyGifBase64 = "R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
 
 function createJob(jobId: string, submittedAt: string) {
   return {
@@ -28,6 +33,17 @@ function createJob(jobId: string, submittedAt: string) {
     lastResponse: { id: jobId },
     lastError: null,
     submittedAt
+  };
+}
+
+function createJobWithImages(jobId: string, submittedAt: string) {
+  return {
+    ...createJob(jobId, submittedAt),
+    lastResponse: {
+      output: {
+        images: [{ image: tinyPngBase64 }, { image: `data:image/gif;base64,${tinyGifBase64}` }]
+      }
+    }
   };
 }
 
@@ -57,25 +73,26 @@ describe("recentJobsStorage", () => {
     expect(await getRecentJob("job-hide")).toBeNull();
   });
 
-  it("hides a specific output image by index", async () => {
-    await upsertRecentJob(createJob("job-img", "2026-05-23T10:00:00.000Z"));
-    await hideJobOutputImage("job-img", 2);
+  it("removes a specific output image from lastResponse while preserving valid JSON", async () => {
+    await upsertRecentJob(createJobWithImages("job-img", "2026-05-23T10:00:00.000Z"));
+    await hideJobOutputImage("job-img", 0);
 
     const job = await getRecentJob("job-img");
-    expect(job?.hiddenOutputIndices).toEqual([2]);
+    const images = (job?.lastResponse as { output?: { images?: Array<{ image: string }> } } | null)?.output?.images ?? [];
 
-    await hideJobOutputImage("job-img", 5);
-    const updated = await getRecentJob("job-img");
-    expect(updated?.hiddenOutputIndices).toEqual([2, 5]);
+    expect(images).toHaveLength(1);
+    expect(images[0]?.image).toBe(`data:image/gif;base64,${tinyGifBase64}`);
+    expect(job?.hiddenOutputIndices).toBeUndefined();
+    expect(() => JSON.parse(JSON.stringify(job?.lastResponse))).not.toThrow();
   });
 
-  it("does not duplicate hidden indices when hiding the same image twice", async () => {
-    await upsertRecentJob(createJob("job-dedup", "2026-05-23T10:00:00.000Z"));
-    await hideJobOutputImage("job-dedup", 3);
-    await hideJobOutputImage("job-dedup", 3);
+  it("no-ops when removing an out-of-range image index", async () => {
+    await upsertRecentJob(createJobWithImages("job-oob", "2026-05-23T10:00:00.000Z"));
+    await hideJobOutputImage("job-oob", 9);
 
-    const job = await getRecentJob("job-dedup");
-    expect(job?.hiddenOutputIndices).toEqual([3]);
+    const job = await getRecentJob("job-oob");
+    const images = (job?.lastResponse as { output?: { images?: Array<{ image: string }> } } | null)?.output?.images ?? [];
+    expect(images).toHaveLength(2);
   });
 
   it("marks all outputs as hidden with hideJobOutputs", async () => {
@@ -84,5 +101,16 @@ describe("recentJobsStorage", () => {
 
     const job = await getRecentJob("job-all-hidden");
     expect(job?.outputsHidden).toBe(true);
+  });
+
+  it("keeps only the 10 most recent jobs", async () => {
+    for (let index = 0; index < 12; index += 1) {
+      await upsertRecentJob(createJob(`job-${index}`, `2026-05-23T10:${String(index).padStart(2, "0")}:00.000Z`));
+    }
+
+    const jobs = await listRecentJobs();
+    expect(jobs).toHaveLength(10);
+    expect(jobs[0]?.jobId).toBe("job-11");
+    expect(jobs[9]?.jobId).toBe("job-2");
   });
 });
