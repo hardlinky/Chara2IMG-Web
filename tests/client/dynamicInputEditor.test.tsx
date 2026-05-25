@@ -123,7 +123,7 @@ describe("dynamic input editor", () => {
 
     expect(html).toContain("Fix validation before running");
     expect(html).toContain("Unsaved changes since last successful run.");
-    expect(html).toContain("input-run-bar");
+    expect(html).toContain("input-run-fab");
     expect(html).toContain("input-category");
     expect(html).not.toContain("Show source mapping");
   });

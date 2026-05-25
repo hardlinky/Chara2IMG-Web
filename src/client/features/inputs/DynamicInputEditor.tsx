@@ -576,12 +576,6 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
         leftColumnSections.map((section) => renderCategorySection(section))
       )}
 
-      <div className="input-run-bar">
-        <button className="btn btn-primary" type="button" onClick={props.onRun}>
-          Run with current inputs
-        </button>
-      </div>
-
       <button className="btn btn-primary input-run-fab" type="button" onClick={props.onRun} aria-label="Run with current inputs">
         Run
       </button>
