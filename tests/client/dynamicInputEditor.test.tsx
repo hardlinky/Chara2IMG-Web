@@ -175,8 +175,50 @@ describe("dynamic input editor", () => {
 
     expect(html).toContain("Use Different Detailer Loras?");
     expect(html).toContain("input-inline-hint-button");
-    expect(html).toContain("Enable &quot;Use Different Detailer Loras?&quot; to edit detailer lora rows.");
+    expect(html).toContain("Toggle &quot;Use Different Detailer Loras?&quot; to show or hide detailer lora rows.");
     expect(html).not.toContain("Bhive_Style.safetensors");
+  });
+
+  it("keeps detailer info hint visible when master toggle is on", () => {
+    const controls: DynamicInputControl[] = [
+      {
+        id: "detailer:boolean:toggle",
+        kind: "boolean",
+        inputIndex: 1,
+        fullTitle: "[Input1] Detailer.Use Different Detailer Loras?",
+        category: "Detailer",
+        name: "Use Different Detailer Loras?",
+        source: {
+          nodeId: "a",
+          titlePath: "a._meta.title",
+          valuePath: ["value"]
+        },
+        constraints: {},
+        defaultValue: true,
+        orderKey: "000001:[Input1] Detailer.Use Different Detailer Loras?"
+      }
+    ];
+
+    const html = renderToStaticMarkup(
+      <DynamicInputEditorView
+        controls={controls}
+        warnings={[]}
+        draftValues={{
+          "detailer:boolean:toggle": true
+        }}
+        hasDraftDiffFromTemplate={false}
+        hasUnsavedChangesSinceLastRun={false}
+        inlineErrorsByControlId={{}}
+        runBlockingMessage={null}
+        setValue={vi.fn()}
+        resetToTemplateDefaults={vi.fn()}
+        onRun={vi.fn()}
+      />
+    );
+
+    expect(html).toContain("Use Different Detailer Loras?");
+    expect(html).toContain("input-inline-hint-button");
+    expect(html).toContain("Toggle &quot;Use Different Detailer Loras?&quot; to show or hide detailer lora rows.");
   });
 
   it("applies overlay order and keeps new controls by default order", () => {

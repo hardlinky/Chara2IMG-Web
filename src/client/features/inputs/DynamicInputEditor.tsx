@@ -322,21 +322,21 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
                       )}
                       <span>{control.name}</span>
                     </label>
-                    {detailerLoraMasterControl?.id === control.id && !detailerLorasEnabled ? (
+                    {detailerLoraMasterControl?.id === control.id ? (
                       <button
                         type="button"
                         className="input-inline-hint-button"
-                        aria-label={'Enable "Use Different Detailer Loras?" to edit detailer lora rows.'}
-                        data-tooltip={'Enable "Use Different Detailer Loras?" to edit detailer lora rows.'}
+                        aria-label={'Toggle "Use Different Detailer Loras?" to show or hide detailer lora rows.'}
+                        data-tooltip={'Toggle "Use Different Detailer Loras?" to show or hide detailer lora rows.'}
                         onClick={toggleDetailerHintForMobile}
                       >
                         info
                       </button>
                     ) : null}
                   </div>
-                  {detailerLoraMasterControl?.id === control.id && !detailerLorasEnabled && showDetailerHint ? (
+                  {detailerLoraMasterControl?.id === control.id && showDetailerHint ? (
                     <p className="input-status input-inline-hint-mobile">
-                      Enable "Use Different Detailer Loras?" to edit detailer lora rows.
+                      Toggle "Use Different Detailer Loras?" to show or hide detailer lora rows.
                     </p>
                   ) : null}
                 </>
