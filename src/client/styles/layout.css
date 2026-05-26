@@ -53,6 +53,10 @@
   display: none;
 }
 
+.app-scroll-top-fab {
+  display: none;
+}
+
 .panel-surface {
   background: var(--color-surface-panel);
   border: 1px solid var(--color-border-subtle);
@@ -83,6 +87,23 @@
     background: linear-gradient(180deg, rgba(22, 28, 33, 0.95), rgba(17, 21, 24, 0.98));
     backdrop-filter: blur(8px);
     z-index: 20;
+  }
+
+  .app-scroll-top-fab {
+    position: fixed;
+    right: max(var(--space-3), env(safe-area-inset-right));
+    bottom: calc(4.75rem + var(--space-2) + env(safe-area-inset-bottom));
+    z-index: 21;
+    width: 2.25rem;
+    height: 2.25rem;
+    min-width: 2.25rem;
+    border-radius: 999px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.86;
+    box-shadow: var(--shadow-sm);
   }
 
   .tab-rail {

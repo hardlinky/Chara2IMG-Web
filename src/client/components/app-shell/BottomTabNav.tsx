@@ -22,8 +22,10 @@ export function BottomTabNav({ tabs, activeTab, onTabChange }: BottomTabNavProps
             className={`bottom-tab-item interactive ${selected ? "bottom-tab-item-active" : ""}`}
             onClick={() => onTabChange(tab.id)}
           >
-            <span>{tab.label}</span>
-            {tab.badge != null && tab.badge > 0 ? <span className="tab-badge">{tab.badge}</span> : null}
+            <span className="bottom-tab-label-row">
+              <span>{tab.label}</span>
+              {tab.badge != null && tab.badge > 0 ? <span className="tab-badge">{tab.badge}</span> : null}
+            </span>
           </button>
         );
       })}

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { BottomTabNav } from "./BottomTabNav";
 import { TopTabRail, type AppTabDefinition, type AppTabId } from "./TopTabRail";
 
@@ -12,6 +12,24 @@ type AppShellProps = {
 };
 
 export function AppShell({ tabs, activeTab, onTabChange, headerRowOne, headerRowTwo, panels }: AppShellProps) {
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  useEffect(() => {
+    function onScroll(): void {
+      setShowScrollTop(window.scrollY > 320);
+    }
+
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, []);
+
+  function scrollToTop(): void {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   return (
     <main className="app-shell" data-theme="theme-01">
       <div className="app-shell-main section-stack">
@@ -38,6 +56,18 @@ export function AppShell({ tabs, activeTab, onTabChange, headerRowOne, headerRow
           );
         })}
       </div>
+
+      {showScrollTop ? (
+        <button
+          type="button"
+          className="btn btn-secondary app-scroll-top-fab"
+          onClick={scrollToTop}
+          aria-label="Scroll to top"
+          title="Scroll to top"
+        >
+          ↑
+        </button>
+      ) : null}
 
       <BottomTabNav tabs={tabs} activeTab={activeTab} onTabChange={onTabChange} />
     </main>
