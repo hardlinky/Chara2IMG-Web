@@ -253,7 +253,6 @@ export async function setRecentJobPinned(
   }
 
   await db.table<StoredRecentJob, string>("jobs").update(jobId, { pinnedAt: null });
-  await pruneRecentJobs();
   return { ok: true };
 }
 
