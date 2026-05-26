@@ -19,6 +19,12 @@ function getGalleryClassName(density: (typeof OUTPUT_DENSITIES)[number]): string
 export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs, onRemoveOutputImage }: OutputsTabProps) {
   const gallery = useOutputGallery(clusters);
 
+  // Expose openJobOutputs globally for cross-tab hack
+  if (typeof window !== "undefined") {
+    // @ts-ignore
+    window.__openJobOutputs = gallery.openJobOutputs;
+  }
+
   if (gallery.view.mode === "job" && gallery.selectedCluster) {
     return (
       <JobOutputsView

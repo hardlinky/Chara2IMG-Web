@@ -311,6 +311,13 @@ export function App() {
               onLoadInputs={(jobId) => void onLoadInputs(jobId)}
               onExportWorkflow={(jobId) => void onExportWorkflow(jobId)}
               onRemoveVisible={(jobId) => void recentJobs.removeVisibleJob(jobId)}
+              onViewOutputs={(jobId) => {
+                setActiveTab("output");
+                setTimeout(() => {
+                  // @ts-ignore: OutputsTab uses useOutputGallery, which exposes openJobOutputs on window for this hack
+                  if (window.__openJobOutputs) window.__openJobOutputs(jobId);
+                }, 0);
+              }}
               formatSubmittedAtRelative={formatSubmittedAtRelative}
             />
           </div>
