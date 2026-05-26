@@ -218,7 +218,7 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
                   {job.lifecycle.status === "COMPLETED" ? (
                     <>
                       <button className="btn btn-secondary" type="button" onClick={() => props.onExportWorkflow(job.jobId)}>
-                        Export
+                        Export Workflow
                       </button>
                       {props.onViewOutputs ? (
                         <button className="btn btn-secondary" type="button" onClick={() => props.onViewOutputs?.(job.jobId)}>

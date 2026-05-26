@@ -11,6 +11,7 @@ type JobOutputsViewProps = {
   onLoadInputs: () => void;
   onRemoveImage: (outputIndex: number) => void;
   onRemoveAllOutputs: () => void;
+  onExportWorkflow?: () => void;
 };
 
 const PAGE_SIZE = 24;
@@ -42,7 +43,7 @@ function toRelativeTimestamp(isoValue: string | null): string {
   return `${deltaDays}d ago`;
 }
 
-export function JobOutputsView({ cluster, onBack, onPreviousJob, onNextJob, onRerun, onLoadInputs, onRemoveImage, onRemoveAllOutputs }: JobOutputsViewProps) {
+export function JobOutputsView({ cluster, onBack, onPreviousJob, onNextJob, onRerun, onLoadInputs, onRemoveImage, onRemoveAllOutputs, onExportWorkflow }: JobOutputsViewProps) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const visibleImages = useMemo(() => cluster.outputs.slice(0, visibleCount), [cluster.outputs, visibleCount]);
@@ -70,6 +71,11 @@ export function JobOutputsView({ cluster, onBack, onPreviousJob, onNextJob, onRe
         <button className="btn btn-secondary" type="button" onClick={onLoadInputs}>
           Load Inputs
         </button>
+        {onExportWorkflow ? (
+          <button className="btn btn-secondary" type="button" onClick={onExportWorkflow}>
+            Export Workflow
+          </button>
+        ) : null}
       </div>
 
       <p className="outputs-provenance-line">

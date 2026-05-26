@@ -55,7 +55,7 @@ describe("OutputsTab", () => {
     expect(html).toContain("job-123");
     expect(html).toContain("2 images");
     expect(html).not.toContain("View job outputs");
-    expect(html).toContain("Remove outputs");
+    expect(html).not.toContain("Remove outputs");
   });
 
   it("renders empty state when there are no completed output clusters", () => {

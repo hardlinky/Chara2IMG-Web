@@ -6,6 +6,7 @@
 .app-shell-main {
   max-width: 1160px;
   margin: 0 auto;
+  width: 100%;
 }
 
 .app-header {

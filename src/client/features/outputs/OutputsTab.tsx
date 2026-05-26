@@ -10,13 +10,14 @@ type OutputsTabProps = {
   onLoadInputs: (jobId: string) => void;
   onRemoveJobOutputs: (jobId: string) => void;
   onRemoveOutputImage: (jobId: string, outputIndex: number) => void;
+  onExportWorkflow?: (jobId: string) => void;
 };
 
 function getGalleryClassName(density: (typeof OUTPUT_DENSITIES)[number]): string {
   return `outputs-gallery outputs-gallery-${density}`;
 }
 
-export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs, onRemoveOutputImage }: OutputsTabProps) {
+export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs, onRemoveOutputImage, onExportWorkflow }: OutputsTabProps) {
   const gallery = useOutputGallery(clusters);
 
   // Expose openJobOutputs globally for cross-tab hack
@@ -39,6 +40,7 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
           onRemoveJobOutputs(gallery.selectedCluster!.jobId);
           gallery.goBackToGallery();
         }}
+        onExportWorkflow={onExportWorkflow ? () => onExportWorkflow(gallery.selectedCluster!.jobId) : undefined}
       />
     );
   }
@@ -74,17 +76,6 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
             </button>
             <div className="outputs-cluster-meta">
               <span>{cluster.jobId}</span>
-              <div className="outputs-cluster-actions">
-                <button className="btn btn-primary" type="button" onClick={() => onRerun(cluster.jobId)}>
-                  Rerun
-                </button>
-                <button className="btn btn-secondary" type="button" onClick={() => onLoadInputs(cluster.jobId)}>
-                  Load Inputs
-                </button>
-                <button className="btn btn-destructive" type="button" onClick={() => onRemoveJobOutputs(cluster.jobId)}>
-                  Remove outputs
-                </button>
-              </div>
             </div>
           </article>
         ))}
