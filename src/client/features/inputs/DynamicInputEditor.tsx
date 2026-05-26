@@ -483,40 +483,42 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
               </button>
               <span className="input-category-title">{category}</span>
             </div>
-            <div className="input-category-actions">
-              <button
-                type="button"
-                className="btn btn-secondary input-category-icon-button"
-                onClick={() => onMoveCategoryToOtherColumn(category)}
-                aria-label={`Move ${category} to ${
-                  (props.sectionColumnByCategory[category] ?? "left") === "left" ? "right" : "left"
-                } column`}
-              >
-                <span aria-hidden="true">
-                  {(props.sectionColumnByCategory[category] ?? "left") === "left" ? "⇢" : "⇠"}
-                </span>
-              </button>
-              <button
-                type="button"
-                className="btn btn-secondary input-category-icon-button"
-                onClick={() => onMoveCategory(category, "up")}
-                disabled={sectionIndex === 0}
-                aria-label={`Move ${category} up`}
-              >
-                <span aria-hidden="true">↑</span>
-              </button>
-              <button
-                type="button"
-                className="btn btn-secondary input-category-icon-button"
-                onClick={() => onMoveCategory(category, "down")}
-                disabled={sectionIndex === visibleSections.length - 1}
-                aria-label={`Move ${category} down`}
-              >
-                <span aria-hidden="true">↓</span>
-              </button>
-            </div>
           </div>
         </legend>
+        <div className="input-category-actions-row">
+          <div className="input-category-actions">
+            <button
+              type="button"
+              className="btn btn-secondary input-category-icon-button"
+              onClick={() => onMoveCategoryToOtherColumn(category)}
+              aria-label={`Move ${category} to ${
+                (props.sectionColumnByCategory[category] ?? "left") === "left" ? "right" : "left"
+              } column`}
+            >
+              <span aria-hidden="true">
+                {(props.sectionColumnByCategory[category] ?? "left") === "left" ? "⇢" : "⇠"}
+              </span>
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary input-category-icon-button"
+              onClick={() => onMoveCategory(category, "up")}
+              disabled={sectionIndex === 0}
+              aria-label={`Move ${category} up`}
+            >
+              <span aria-hidden="true">↑</span>
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary input-category-icon-button"
+              onClick={() => onMoveCategory(category, "down")}
+              disabled={sectionIndex === visibleSections.length - 1}
+              aria-label={`Move ${category} down`}
+            >
+              <span aria-hidden="true">↓</span>
+            </button>
+          </div>
+        </div>
         {collapsedByCategory[category]
           ? null
           : controls
@@ -571,9 +573,9 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
             ) : (
               <label className="field">
                 <span className="field-label-row">
-                  <span>{control.name}</span>
-                  {renderVariableLinks(control, sectionNamesByCategory[category], categoriesWithName.has(category))}
+                  <span className="field-label-title">{control.name}</span>
                 </span>
+                {renderVariableLinks(control, sectionNamesByCategory[category], categoriesWithName.has(category))}
                 {renderInputControl(
                   control,
                   props.draftValues,
