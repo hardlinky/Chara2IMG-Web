@@ -322,7 +322,25 @@ export function App() {
             />
           </div>
         ),
-        output: <OutputsTab clusters={recentJobs.completedOutputClusters} onRerun={(jobId) => void recentJobs.rerunJob(jobId)} onLoadInputs={(jobId) => void onLoadInputs(jobId)} onRemoveJobOutputs={(jobId) => void recentJobs.removeJobOutputs(jobId)} onRemoveOutputImage={(jobId, outputIndex) => void recentJobs.removeOutputImage(jobId, outputIndex)} onExportWorkflow={(jobId) => void onExportWorkflow(jobId)} />
+        output: (
+          <OutputsTab
+            clusters={recentJobs.completedOutputClusters}
+            onRerun={(jobId) => void recentJobs.rerunJob(jobId)}
+            onLoadInputs={(jobId) => void onLoadInputs(jobId)}
+            onRemoveJobOutputs={(jobId) => void recentJobs.removeJobOutputs(jobId)}
+            onRemoveOutputImage={(jobId, outputIndex) => void recentJobs.removeOutputImage(jobId, outputIndex)}
+            onExportWorkflow={(jobId) => void onExportWorkflow(jobId)}
+            onTogglePinned={async (jobId, pinned) => {
+              const result = await recentJobs.togglePinnedJob(jobId, pinned);
+              if (!result.ok) {
+                setJobActionMessage(result.reason);
+              } else {
+                setJobActionMessage(pinned ? `Pinned ${jobId}.` : `Unpinned ${jobId}.`);
+              }
+            }}
+            canPinMore={recentJobs.canPinMoreJobs}
+          />
+        )
       }}
     />
   );

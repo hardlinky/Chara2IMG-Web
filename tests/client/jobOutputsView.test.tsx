@@ -8,6 +8,7 @@ const tinyPngDataUrl =
 
 const cluster: RecentJobOutputCluster = {
   jobId: "job-1",
+  isPinned: false,
   endpointId: "endpoint-1",
   submittedAt: "2026-05-24T10:00:00.000Z",
   finishedAt: "2026-05-24T10:02:00.000Z",
@@ -68,5 +69,21 @@ describe("JobOutputsView", () => {
     );
 
     expect(html).toContain("Remove all outputs");
+  });
+
+  it("renders pin icon button when pin handler is provided", () => {
+    const html = renderToStaticMarkup(
+      <JobOutputsView
+        cluster={cluster}
+        onBack={() => undefined}
+        onRerun={() => undefined}
+        onLoadInputs={() => undefined}
+        onRemoveImage={() => undefined}
+        onRemoveAllOutputs={() => undefined}
+        onTogglePinned={() => undefined}
+      />
+    );
+
+    expect(html).toContain("📍");
   });
 });

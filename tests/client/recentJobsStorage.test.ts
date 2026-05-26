@@ -1,6 +1,6 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it } from "vitest";
-import { RECENT_JOBS_HIDDEN_RETENTION_MS } from "../../src/shared/contracts/jobs";
+import { RECENT_JOBS_HIDDEN_RETENTION_MS, RECENT_JOBS_PINNED_LIMIT } from "../../src/shared/contracts/jobs";
 import {
   clearRecentJobs,
   getRecentJob,
@@ -9,6 +9,7 @@ import {
   hideJobOutputs,
   listRecentJobs,
   listVisibleRecentJobs,
+  setRecentJobPinned,
   upsertRecentJob,
   pruneRecentJobs
 } from "../../src/client/lib/recentJobsStorage";
@@ -103,7 +104,7 @@ describe("recentJobsStorage", () => {
     expect(job?.outputsHidden).toBe(true);
   });
 
-  it("keeps only the 10 most recent jobs", async () => {
+  it("keeps only the 10 most recent unpinned jobs", async () => {
     for (let index = 0; index < 12; index += 1) {
       await upsertRecentJob(createJob(`job-${index}`, `2026-05-23T10:${String(index).padStart(2, "0")}:00.000Z`));
     }
@@ -112,5 +113,42 @@ describe("recentJobsStorage", () => {
     expect(jobs).toHaveLength(10);
     expect(jobs[0]?.jobId).toBe("job-11");
     expect(jobs[9]?.jobId).toBe("job-2");
+  });
+
+  it("keeps pinned jobs while pruning oldest unpinned jobs", async () => {
+    for (let index = 0; index < 10; index += 1) {
+      await upsertRecentJob(createJob(`job-${index}`, `2026-05-23T10:${String(index).padStart(2, "0")}:00.000Z`));
+    }
+
+    const pinResult = await setRecentJobPinned("job-0", true, "2026-05-23T11:00:00.000Z");
+    expect(pinResult).toEqual({ ok: true });
+
+    await upsertRecentJob(createJob("job-10", "2026-05-23T10:10:00.000Z"));
+
+    const jobs = await listRecentJobs();
+    expect(jobs).toHaveLength(11);
+    expect(jobs.find((job) => job.jobId === "job-0")?.pinnedAt).toBeTruthy();
+    expect(jobs.find((job) => job.jobId === "job-1")).toBeDefined();
+
+    await upsertRecentJob(createJob("job-11", "2026-05-23T10:11:00.000Z"));
+    const afterSecondSubmission = await listRecentJobs();
+    expect(afterSecondSubmission).toHaveLength(11);
+    expect(afterSecondSubmission.find((job) => job.jobId === "job-1")).toBeUndefined();
+  });
+
+  it("enforces the 10 pinned jobs cap", async () => {
+    for (let index = 0; index < RECENT_JOBS_PINNED_LIMIT; index += 1) {
+      await upsertRecentJob(createJob(`job-pin-${index}`, `2026-05-23T12:${String(index).padStart(2, "0")}:00.000Z`));
+    }
+
+    for (let index = 0; index < RECENT_JOBS_PINNED_LIMIT; index += 1) {
+      const result = await setRecentJobPinned(`job-pin-${index}`, true);
+      expect(result).toEqual({ ok: true });
+    }
+
+    await upsertRecentJob(createJob("job-pin-extra", "2026-05-23T12:59:00.000Z"));
+
+    const overLimit = await setRecentJobPinned("job-pin-extra", true);
+    expect(overLimit.ok).toBe(false);
   });
 });

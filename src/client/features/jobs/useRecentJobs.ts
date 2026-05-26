@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { RecentJobRecord } from "../../../shared/contracts/jobs";
+import { RECENT_JOBS_PINNED_LIMIT, type RecentJobRecord } from "../../../shared/contracts/jobs";
 import { cancelViaProxy, statusViaProxy } from "../../lib/api/runpodProxyClient";
 import { submitRunAndPersistRecentJob } from "../../lib/jobSubmission";
 import { projectRecentJobOutputClusters } from "../../lib/jobOutputProjection";
-import { getRecentJob, hideRecentJob, hideJobOutputImage, hideJobOutputs, listRecentJobs, updateRecentJobLifecycle } from "../../lib/recentJobsStorage";
+import { getRecentJob, hideRecentJob, hideJobOutputImage, hideJobOutputs, listRecentJobs, setRecentJobPinned, updateRecentJobLifecycle } from "../../lib/recentJobsStorage";
 import {
   JOB_POLL_INTERVAL_MS,
   buildLifecycleSnapshotFromStatus,
@@ -253,6 +253,10 @@ export async function removeRecentJobFromVisibleList(jobId: string): Promise<voi
   await hideRecentJob(jobId);
 }
 
+export async function setRecentJobPinnedState(jobId: string, pinned: boolean): Promise<{ ok: true } | { ok: false; reason: string }> {
+  return setRecentJobPinned(jobId, pinned);
+}
+
 export function useRecentJobs(options: UseRecentJobsOptions = {}) {
   const endpointId = options.endpointId;
   const apiKey = options.apiKey;
@@ -343,6 +347,15 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
     await refreshRecentJobs();
   }, [refreshRecentJobs]);
 
+  const togglePinnedJob = useCallback(async (jobId: string, pinned: boolean) => {
+    const result = await setRecentJobPinnedState(jobId, pinned);
+    await refreshRecentJobs();
+    if (!result.ok) {
+      setError(result.reason);
+    }
+    return result;
+  }, [refreshRecentJobs]);
+
   const setStatusFilter = useCallback((nextStatusFilter: RecentJobStatusFilter) => {
     setStatusFilterState(nextStatusFilter);
     persistStatusFilter(nextStatusFilter);
@@ -385,6 +398,8 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
   }, [pollNow]);
 
   const visibleJobs = useMemo(() => jobs.filter((job) => job.hiddenAt === null).sort(sortNewestFirst), [jobs]);
+  const pinnedVisibleCount = useMemo(() => visibleJobs.filter((job) => Boolean(job.pinnedAt)).length, [visibleJobs]);
+  const canPinMoreJobs = pinnedVisibleCount < RECENT_JOBS_PINNED_LIMIT;
   const completedOutputClusters = useMemo(() => projectRecentJobOutputClusters(visibleJobs), [visibleJobs]);
   const filteredJobs = useMemo(() => filterJobsByStatus(visibleJobs, statusFilter), [statusFilter, visibleJobs]);
   const pageCount = Math.max(1, Math.ceil(filteredJobs.length / RECENT_JOB_PAGE_SIZE));
@@ -427,6 +442,9 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
     removeVisibleJob,
     removeOutputImage,
     removeJobOutputs,
+    togglePinnedJob,
+    pinnedVisibleCount,
+    canPinMoreJobs,
     formatSubmittedAtRelative,
     hasTimedOut: hasJobObservationTimedOut
   };

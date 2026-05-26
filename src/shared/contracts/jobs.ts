@@ -1,7 +1,8 @@
 import type { DynamicInputDraftValues } from "./inputs";
 
 export const RECENT_JOBS_VISIBLE_LIMIT = 25;
-export const RECENT_JOBS_TOTAL_LIMIT = 10;
+export const RECENT_JOBS_UNPINNED_LIMIT = 10;
+export const RECENT_JOBS_PINNED_LIMIT = 10;
 export const RECENT_JOBS_HIDDEN_RETENTION_MS = 24 * 60 * 60 * 1000;
 
 export const RUNPOD_JOB_STATUSES = ["IN_QUEUE", "IN_PROGRESS", "COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT"] as const;
@@ -48,6 +49,7 @@ export type RecentJobOutputImage = {
 
 export type RecentJobOutputCluster = {
   jobId: string;
+  isPinned: boolean;
   endpointId: string;
   submittedAt: string;
   finishedAt: string | null;
@@ -62,6 +64,7 @@ export type RecentJobRecord = {
   endpointId: string;
   submittedAt: string;
   hiddenAt: string | null;
+  pinnedAt?: string | null;
   lifecycle: JobLifecycleSnapshot;
   provenance: RecentJobProvenance;
   lastResponse: Record<string, unknown> | null;

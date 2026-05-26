@@ -41,6 +41,7 @@ export function projectJobOutputCluster(job: RecentJobRecord): RecentJobOutputCl
 
   return {
     jobId: job.jobId,
+    isPinned: Boolean(job.pinnedAt),
     endpointId: job.endpointId,
     submittedAt: job.submittedAt,
     finishedAt: job.lifecycle.finishedAt ?? null,

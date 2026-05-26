@@ -40,6 +40,7 @@ describe("jobOutputProjection", () => {
 
     expect(cluster).not.toBeNull();
     expect(cluster?.jobId).toBe("job-1");
+    expect(cluster?.isPinned).toBe(false);
     expect(cluster?.outputCount).toBe(2);
     expect(cluster?.representative.outputIndex).toBe(0);
     expect(cluster?.workflowFileName).toBe("workflow-a.json");
@@ -128,5 +129,12 @@ describe("jobOutputProjection", () => {
 
     const cluster = projectJobOutputCluster(legacy);
     expect(cluster?.workflowFileName).toBeUndefined();
+  });
+
+  it("includes pinned state in projected cluster", () => {
+    const pinned = createJob({ pinnedAt: "2026-05-24T10:04:00.000Z" });
+    const cluster = projectJobOutputCluster(pinned);
+
+    expect(cluster?.isPinned).toBe(true);
   });
 });

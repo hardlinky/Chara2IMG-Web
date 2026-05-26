@@ -11,13 +11,15 @@ type OutputsTabProps = {
   onRemoveJobOutputs: (jobId: string) => void;
   onRemoveOutputImage: (jobId: string, outputIndex: number) => void;
   onExportWorkflow?: (jobId: string) => void;
+  onTogglePinned?: (jobId: string, pinned: boolean) => void;
+  canPinMore?: boolean;
 };
 
 function getGalleryClassName(density: (typeof OUTPUT_DENSITIES)[number]): string {
   return `outputs-gallery outputs-gallery-${density}`;
 }
 
-export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs, onRemoveOutputImage, onExportWorkflow }: OutputsTabProps) {
+export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs, onRemoveOutputImage, onExportWorkflow, onTogglePinned, canPinMore = true }: OutputsTabProps) {
   const gallery = useOutputGallery(clusters);
 
   // Expose openJobOutputs globally for cross-tab hack
@@ -41,6 +43,8 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
           gallery.goBackToGallery();
         }}
         onExportWorkflow={onExportWorkflow ? () => onExportWorkflow(gallery.selectedCluster!.jobId) : undefined}
+        onTogglePinned={onTogglePinned ? () => onTogglePinned(gallery.selectedCluster!.jobId, !gallery.selectedCluster!.isPinned) : undefined}
+        canPinMore={canPinMore}
       />
     );
   }

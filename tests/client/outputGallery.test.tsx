@@ -9,6 +9,7 @@ const tinyPngDataUrl =
 function createCluster(overrides: Partial<RecentJobOutputCluster>): RecentJobOutputCluster {
   return {
     jobId: "job-1",
+    isPinned: false,
     endpointId: "endpoint-1",
     submittedAt: "2026-05-24T10:00:00.000Z",
     finishedAt: "2026-05-24T10:02:00.000Z",
