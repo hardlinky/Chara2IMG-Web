@@ -166,6 +166,17 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
                 </div>
                 {workerId ? <span>Worker ID: {workerId}</span> : null}
                 <div className="jobs-status-row">
+                  {job.lifecycle.status === "IN_PROGRESS" ? (
+                    <button
+                      className="btn btn-secondary jobs-refresh-btn"
+                      type="button"
+                      aria-label="Refresh job status"
+                      title="Refresh job status"
+                      onClick={() => props.onPollStatus(job.jobId)}
+                    >
+                      ↻
+                    </button>
+                  ) : null}
                   <span className="jobs-status-chip">Status: {job.lifecycle.status}</span>
                   {props.warningJobIds.includes(job.jobId) ? (
                     <span className="jobs-status-chip jobs-warning-chip">Polling warning</span>
@@ -186,17 +197,6 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
                       onClick={() => props.onCancel(job.jobId)}
                     >
                       Cancel
-                    </button>
-                  ) : null}
-                  {job.lifecycle.status === "IN_PROGRESS" ? (
-                    <button
-                      className="btn btn-secondary jobs-refresh-btn"
-                      type="button"
-                      aria-label="Refresh job status"
-                      title="Refresh job status"
-                      onClick={() => props.onPollStatus(job.jobId)}
-                    >
-                      ↻
                     </button>
                   ) : null}
                   <button className="btn btn-primary" type="button" onClick={() => props.onRerun(job.jobId)}>
