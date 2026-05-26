@@ -413,7 +413,7 @@
     margin-right: -2px;
     background: rgba(18, 23, 28, 0.92);
     border-bottom: 1px solid var(--color-border-subtle);
-    padding: 0.25rem 0;
+    padding: 0.25rem 0.45rem;
   }
 
   .input-category-actions {
