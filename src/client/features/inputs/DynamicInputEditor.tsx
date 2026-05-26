@@ -302,6 +302,7 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
   const [isResizingColumns, setIsResizingColumns] = useState(false);
   const previousDetailerLorasEnabled = useRef<boolean>(true);
   const categoryRefs = useRef<Record<string, HTMLFieldSetElement | null>>({});
+  const controlRowRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const columnsContainerRef = useRef<HTMLDivElement | null>(null);
   const sectionNamesByCategory = props.sectionNamesByCategory ?? {};
   const nameValidationErrorsByControlId = props.nameValidationErrorsByControlId ?? {};
@@ -454,6 +455,40 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
     props.toggleSectionColumn(category);
   }
 
+  function scrollCategoryToStart(category: string): void {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const fieldset = categoryRefs.current[category];
+    if (!fieldset) {
+      return;
+    }
+
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    fieldset.scrollIntoView({
+      block: "start",
+      behavior: prefersReducedMotion ? "auto" : "smooth"
+    });
+  }
+
+  function scrollControlToStart(controlId: string): void {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const row = controlRowRefs.current[controlId];
+    if (!row) {
+      return;
+    }
+
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    row.scrollIntoView({
+      block: "start",
+      behavior: prefersReducedMotion ? "auto" : "smooth"
+    });
+  }
+
   function renderCategorySection(section: {
     category: string;
     controls: DynamicInputControl[];
@@ -481,44 +516,50 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
               >
                 <span aria-hidden="true">{collapsedByCategory[category] ? "▸" : "▾"}</span>
               </button>
-              <span className="input-category-title">{category}</span>
+              <button
+                type="button"
+                className="input-sticky-title-button input-category-title"
+                onClick={() => scrollCategoryToStart(category)}
+                aria-label={`Scroll to start of ${category}`}
+                title="Jump to category start"
+              >
+                {category}
+              </button>
+            </div>
+            <div className="input-category-actions">
+              <button
+                type="button"
+                className="btn btn-secondary input-category-icon-button"
+                onClick={() => onMoveCategoryToOtherColumn(category)}
+                aria-label={`Move ${category} to ${
+                  (props.sectionColumnByCategory[category] ?? "left") === "left" ? "right" : "left"
+                } column`}
+              >
+                <span aria-hidden="true">
+                  {(props.sectionColumnByCategory[category] ?? "left") === "left" ? "⇢" : "⇠"}
+                </span>
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary input-category-icon-button"
+                onClick={() => onMoveCategory(category, "up")}
+                disabled={sectionIndex === 0}
+                aria-label={`Move ${category} up`}
+              >
+                <span aria-hidden="true">↑</span>
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary input-category-icon-button"
+                onClick={() => onMoveCategory(category, "down")}
+                disabled={sectionIndex === visibleSections.length - 1}
+                aria-label={`Move ${category} down`}
+              >
+                <span aria-hidden="true">↓</span>
+              </button>
             </div>
           </div>
         </legend>
-        <div className="input-category-actions-row">
-          <div className="input-category-actions">
-            <button
-              type="button"
-              className="btn btn-secondary input-category-icon-button"
-              onClick={() => onMoveCategoryToOtherColumn(category)}
-              aria-label={`Move ${category} to ${
-                (props.sectionColumnByCategory[category] ?? "left") === "left" ? "right" : "left"
-              } column`}
-            >
-              <span aria-hidden="true">
-                {(props.sectionColumnByCategory[category] ?? "left") === "left" ? "⇢" : "⇠"}
-              </span>
-            </button>
-            <button
-              type="button"
-              className="btn btn-secondary input-category-icon-button"
-              onClick={() => onMoveCategory(category, "up")}
-              disabled={sectionIndex === 0}
-              aria-label={`Move ${category} up`}
-            >
-              <span aria-hidden="true">↑</span>
-            </button>
-            <button
-              type="button"
-              className="btn btn-secondary input-category-icon-button"
-              onClick={() => onMoveCategory(category, "down")}
-              disabled={sectionIndex === visibleSections.length - 1}
-              aria-label={`Move ${category} down`}
-            >
-              <span aria-hidden="true">↓</span>
-            </button>
-          </div>
-        </div>
         {collapsedByCategory[category]
           ? null
           : controls
@@ -538,6 +579,9 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
                 ? "input-row-lora-reveal"
                 : ""
             }`}
+            ref={(node) => {
+              controlRowRefs.current[control.id] = node;
+            }}
           >
             {control.kind === "boolean" ? (
               <>
@@ -573,7 +617,15 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
             ) : (
               <label className="field">
                 <span className="field-label-row">
-                  <span className="field-label-title">{control.name}</span>
+                  <button
+                    type="button"
+                    className="input-sticky-title-button field-label-title"
+                    onClick={() => scrollControlToStart(control.id)}
+                    aria-label={`Scroll to start of ${control.name}`}
+                    title="Jump to input start"
+                  >
+                    {control.name}
+                  </button>
                 </span>
                 {renderVariableLinks(control, sectionNamesByCategory[category], categoriesWithName.has(category))}
                 {renderInputControl(
