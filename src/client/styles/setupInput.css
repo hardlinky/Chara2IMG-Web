@@ -380,6 +380,9 @@
     position: sticky;
     top: 0;
     z-index: 5;
+    display: block;
+    box-sizing: border-box;
+    width: calc(100% + (var(--space-3) * 2));
     background: rgba(18, 23, 28, 0.95);
     margin: calc(-1 * var(--space-3)) calc(-1 * var(--space-3)) 0;
     padding: var(--space-2) var(--space-2);
@@ -397,7 +400,7 @@
     z-index: 6;
     margin-top: calc(-2.2rem - var(--space-1));
     margin-bottom: var(--space-1);
-    padding-right: var(--space-1);
+    padding-right: 0;
   }
 
   .field-label-row {
