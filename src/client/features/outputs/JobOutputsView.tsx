@@ -51,31 +51,38 @@ export function JobOutputsView({ cluster, onBack, onPreviousJob, onNextJob, onRe
   return (
     <section className="outputs-job-view">
       <div className="outputs-job-view-actions">
-        <button className="btn btn-secondary" type="button" onClick={onBack}>
-          Back to gallery
-        </button>
-        <div className="outputs-job-navigation">
-          <button className="btn btn-primary" type="button" onClick={onPreviousJob} disabled={!onPreviousJob}>
-            Previous job
+        <div className="outputs-job-actions-row-1">
+          <button className="btn btn-secondary" type="button" onClick={onBack}>
+            Back
           </button>
-          <button className="btn btn-primary" type="button" onClick={onNextJob} disabled={!onNextJob}>
-            Next job
+          <div className="outputs-job-navigation">
+            <button className="btn btn-primary" type="button" onClick={onPreviousJob} disabled={!onPreviousJob}>
+              Prev
+            </button>
+            <button className="btn btn-primary" type="button" onClick={onNextJob} disabled={!onNextJob}>
+              Next
+            </button>
+          </div>
+          <div className="outputs-job-actions-spacer"></div>
+          <div className="outputs-job-actions-group">
+            <button className="btn btn-primary" type="button" onClick={onRerun}>
+              Rerun
+            </button>
+            <button className="btn btn-secondary" type="button" onClick={onLoadInputs}>
+              Load Inputs
+            </button>
+            {onExportWorkflow ? (
+              <button className="btn btn-secondary" type="button" onClick={onExportWorkflow}>
+                Export Workflow
+              </button>
+            ) : null}
+          </div>
+        </div>
+        <div className="outputs-job-actions-row-2">
+          <button className="btn btn-destructive" type="button" onClick={onRemoveAllOutputs}>
+            Remove all outputs
           </button>
         </div>
-        <button className="btn btn-destructive" type="button" onClick={onRemoveAllOutputs}>
-          Remove all outputs
-        </button>
-        <button className="btn btn-primary" type="button" onClick={onRerun}>
-          Rerun
-        </button>
-        <button className="btn btn-secondary" type="button" onClick={onLoadInputs}>
-          Load Inputs
-        </button>
-        {onExportWorkflow ? (
-          <button className="btn btn-secondary" type="button" onClick={onExportWorkflow}>
-            Export Workflow
-          </button>
-        ) : null}
       </div>
 
       <p className="outputs-provenance-line">

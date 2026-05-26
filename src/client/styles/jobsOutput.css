@@ -101,19 +101,42 @@
 }
 
 .outputs-job-view-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.outputs-job-actions-row-1 {
+  display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.outputs-job-actions-spacer {
+  flex: 1 1 auto;
+}
+
+.outputs-job-actions-group {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.outputs-job-actions-row-2 {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .outputs-job-navigation {
   display: flex;
   gap: var(--space-2);
-  flex: 1 1 18rem;
-  max-width: 24rem;
+  flex: 0 1 auto;
 }
 
 .outputs-job-navigation .btn {
-  flex: 1 1 0;
+  flex: 1 1 auto;
+  min-width: 4.5rem;
 }
 
 .outputs-lightbox {
@@ -135,14 +158,46 @@
 @media (max-width: 720px) {
   .jobs-actions .btn,
   .jobs-pagination .btn,
-  .outputs-job-view-actions > .btn,
   .outputs-job-view-more .btn,
   .outputs-toolbar .btn {
     width: 100%;
   }
 
+  .outputs-job-view-actions {
+    flex-direction: column;
+  }
+
+  .outputs-job-actions-row-1 {
+    flex-direction: column;
+  }
+
+  .outputs-job-actions-row-1 > .btn,
+  .outputs-job-actions-row-1 .outputs-job-navigation,
+  .outputs-job-actions-row-1 .outputs-job-actions-group {
+    width: 100%;
+  }
+
   .outputs-job-navigation {
     max-width: none;
+  }
+
+  .outputs-job-navigation .btn {
+    flex: 1 1 auto;
+  }
+
+  .outputs-job-actions-spacer {
+    display: none;
+  }
+
+  .outputs-job-actions-group {
+    flex-direction: column;
+  }
+
+  .outputs-job-actions-row-2 {
+    justify-content: stretch;
+  }
+
+  .outputs-job-actions-row-2 .btn {
     width: 100%;
   }
 }
