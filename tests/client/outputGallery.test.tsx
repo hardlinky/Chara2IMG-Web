@@ -54,7 +54,7 @@ describe("OutputsTab", () => {
     expect(html).toContain("Density");
     expect(html).toContain("job-123");
     expect(html).toContain("2 images");
-    expect(html).toContain("View job outputs");
+    expect(html).not.toContain("View job outputs");
     expect(html).toContain("Remove outputs");
   });
 

@@ -75,9 +75,6 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
             <div className="outputs-cluster-meta">
               <span>{cluster.jobId}</span>
               <div className="outputs-cluster-actions">
-                <button className="btn btn-secondary" type="button" onClick={() => gallery.openJobOutputs(cluster.jobId)}>
-                  View job outputs
-                </button>
                 <button className="btn btn-primary" type="button" onClick={() => onRerun(cluster.jobId)}>
                   Rerun
                 </button>
