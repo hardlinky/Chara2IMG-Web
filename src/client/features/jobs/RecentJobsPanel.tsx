@@ -189,7 +189,16 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
                   </p>
                 ) : null}
                 <div className="jobs-actions">
-                  {!job.lifecycle.isTerminal && job.lifecycle.status !== "CANCELLING" ? (
+                  {/* Cancel/Remove buttons are mutually exclusive */}
+                  {job.lifecycle.isTerminal ? (
+                    <button
+                      className="btn btn-destructive"
+                      type="button"
+                      onClick={() => props.onRemoveVisible(job.jobId)}
+                    >
+                      Remove
+                    </button>
+                  ) : job.lifecycle.status !== "CANCELLING" ? (
                     <button
                       className="btn btn-destructive"
                       type="button"
@@ -210,9 +219,6 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
                       Export
                     </button>
                   ) : null}
-                  <button className="btn btn-destructive" type="button" onClick={() => props.onRemoveVisible(job.jobId)}>
-                    Remove
-                  </button>
                 </div>
               </li>
             );
