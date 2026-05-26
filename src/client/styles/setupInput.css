@@ -398,7 +398,7 @@
   .input-category-actions-row {
     position: relative;
     z-index: 6;
-    margin-top: calc(-2.2rem - var(--space-1));
+    margin-top: calc(-2.4rem - var(--space-1));
     margin-bottom: var(--space-1);
     padding-right: 0;
   }
