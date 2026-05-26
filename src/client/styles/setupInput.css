@@ -407,6 +407,10 @@
     position: sticky;
     top: 2.4rem;
     z-index: 4;
+    display: flex;
+    box-sizing: border-box;
+    width: calc(100% + 2px);
+    margin-right: -2px;
     background: rgba(18, 23, 28, 0.92);
     border-bottom: 1px solid var(--color-border-subtle);
     padding: 0.25rem 0;
