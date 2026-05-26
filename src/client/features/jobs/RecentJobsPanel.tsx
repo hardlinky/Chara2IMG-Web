@@ -18,6 +18,7 @@ type RecentJobsPanelProps = {
   onLoadInputs: (jobId: string) => void;
   onExportWorkflow: (jobId: string) => void;
   onRemoveVisible: (jobId: string) => void;
+  onViewOutputs?: (jobId: string) => void;
   formatSubmittedAtRelative: (submittedAt: string) => string;
 };
 
@@ -192,7 +193,7 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
                   {/* Cancel/Remove buttons are mutually exclusive */}
                   {job.lifecycle.isTerminal ? (
                     <button
-                      className="btn btn-destructive"
+                      className="btn btn-destructive jobs-cancel-remove-btn"
                       type="button"
                       onClick={() => props.onRemoveVisible(job.jobId)}
                     >
@@ -200,7 +201,7 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
                     </button>
                   ) : job.lifecycle.status !== "CANCELLING" ? (
                     <button
-                      className="btn btn-destructive"
+                      className="btn btn-destructive jobs-cancel-remove-btn"
                       type="button"
                       disabled={props.cancelingJobIds.includes(job.jobId)}
                       onClick={() => props.onCancel(job.jobId)}
@@ -215,9 +216,16 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
                     Load Inputs
                   </button>
                   {job.lifecycle.status === "COMPLETED" ? (
-                    <button className="btn btn-secondary" type="button" onClick={() => props.onExportWorkflow(job.jobId)}>
-                      Export
-                    </button>
+                    <>
+                      <button className="btn btn-secondary" type="button" onClick={() => props.onExportWorkflow(job.jobId)}>
+                        Export
+                      </button>
+                      {props.onViewOutputs ? (
+                        <button className="btn btn-secondary" type="button" onClick={() => props.onViewOutputs?.(job.jobId)}>
+                          View Outputs
+                        </button>
+                      ) : null}
+                    </>
                   ) : null}
                 </div>
               </li>

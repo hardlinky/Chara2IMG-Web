@@ -78,6 +78,10 @@
   margin-right: var(--space-1);
 }
 
+.jobs-cancel-remove-btn {
+  min-width: 5.5rem;
+}
+
 .jobs-pagination {
   display: flex;
   align-items: center;
