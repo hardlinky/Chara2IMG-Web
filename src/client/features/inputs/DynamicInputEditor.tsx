@@ -307,6 +307,8 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
   const sectionNamesByCategory = props.sectionNamesByCategory ?? {};
   const nameValidationErrorsByControlId = props.nameValidationErrorsByControlId ?? {};
   const categoriesWithName = useMemo(() => getCategoriesWithName(props.controls), [props.controls]);
+  const [nextCategoryAtBottom, setNextCategoryAtBottom] = useState<string | null>(null);
+  const [nextControlAtBottom, setNextControlAtBottom] = useState<{ id: string; name: string } | null>(null);
   const inlineErrorsByControlId = {
     ...props.inlineErrorsByControlId,
     ...nameValidationErrorsByControlId
@@ -328,6 +330,34 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
   const rightColumnSections = visibleSections.filter(
     (section) => (props.sectionColumnByCategory[section.category] ?? "left") === "right"
   );
+  const detailerLoraMasterControl = props.controls.find(
+    (control) =>
+      control.kind === "boolean" &&
+      control.category === "Detailer" &&
+      /use different detailer loras\?/i.test(control.name)
+  );
+
+  const detailerLorasEnabled =
+    !detailerLoraMasterControl ||
+    Boolean(
+      props.draftValues[detailerLoraMasterControl.id] ?? detailerLoraMasterControl.defaultValue
+    );
+  const visibleControlEntries = useMemo(
+    () =>
+      visibleSections.flatMap((section) =>
+        section.controls
+          .filter(
+            (control) =>
+              !(
+                section.category === "Detailer" &&
+                control.kind === "lora-row" &&
+                !detailerLorasEnabled
+              )
+          )
+          .map((control) => ({ id: control.id, name: control.name }))
+      ),
+    [detailerLorasEnabled, visibleSections]
+  );
   const showTwoColumns = rightColumnSections.length > 0;
 
   function toggleDetailerHintForMobile(): void {
@@ -341,19 +371,6 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
 
     setShowDetailerHint((previous) => !previous);
   }
-
-  const detailerLoraMasterControl = props.controls.find(
-    (control) =>
-      control.kind === "boolean" &&
-      control.category === "Detailer" &&
-      /use different detailer loras\?/i.test(control.name)
-  );
-
-  const detailerLorasEnabled =
-    !detailerLoraMasterControl ||
-    Boolean(
-      props.draftValues[detailerLoraMasterControl.id] ?? detailerLoraMasterControl.defaultValue
-    );
 
   useEffect(() => {
     const wasEnabled = previousDetailerLorasEnabled.current;
@@ -404,6 +421,83 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
 
     setCategoryToFollow(null);
   }, [categoryToFollow, props.sections]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia("(max-width: 720px)");
+
+    const updateNextStickyTargets = () => {
+      if (!mediaQuery.matches) {
+        setNextCategoryAtBottom(null);
+        setNextControlAtBottom(null);
+        return;
+      }
+
+      const viewportBottom = window.innerHeight;
+      let nextCategory: string | null = null;
+      let nextCategoryTop = Number.POSITIVE_INFINITY;
+
+      for (const section of visibleSections) {
+        const fieldset = categoryRefs.current[section.category];
+        if (!fieldset) {
+          continue;
+        }
+
+        const top = fieldset.getBoundingClientRect().top;
+        if (top > viewportBottom && top < nextCategoryTop) {
+          nextCategory = section.category;
+          nextCategoryTop = top;
+        }
+      }
+
+      let nextControl: { id: string; name: string } | null = null;
+      let nextControlTop = Number.POSITIVE_INFINITY;
+      for (const control of visibleControlEntries) {
+        const row = controlRowRefs.current[control.id];
+        if (!row) {
+          continue;
+        }
+
+        const top = row.getBoundingClientRect().top;
+        if (top > viewportBottom && top < nextControlTop) {
+          nextControl = control;
+          nextControlTop = top;
+        }
+      }
+
+      setNextCategoryAtBottom(nextCategory);
+      setNextControlAtBottom(nextControl);
+    };
+
+    let frameId = 0;
+    const scheduleUpdate = () => {
+      if (frameId) {
+        return;
+      }
+
+      frameId = window.requestAnimationFrame(() => {
+        frameId = 0;
+        updateNextStickyTargets();
+      });
+    };
+
+    updateNextStickyTargets();
+    window.addEventListener("scroll", scheduleUpdate, { passive: true });
+    window.addEventListener("resize", scheduleUpdate);
+    mediaQuery.addEventListener("change", scheduleUpdate);
+
+    return () => {
+      if (frameId) {
+        window.cancelAnimationFrame(frameId);
+      }
+      window.removeEventListener("scroll", scheduleUpdate);
+      window.removeEventListener("resize", scheduleUpdate);
+      mediaQuery.removeEventListener("change", scheduleUpdate);
+    };
+  }, [visibleControlEntries, visibleSections]);
 
   useEffect(() => {
     if (!isResizingColumns || typeof window === "undefined") {
@@ -703,6 +797,31 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
       ) : (
         leftColumnSections.map((section) => renderCategorySection(section))
       )}
+
+      {nextCategoryAtBottom || nextControlAtBottom ? (
+        <div className="input-next-sticky-bar" aria-label="Next input shortcuts">
+          {nextCategoryAtBottom ? (
+            <button
+              type="button"
+              className="input-next-sticky-chip"
+              onClick={() => scrollCategoryToStart(nextCategoryAtBottom)}
+              aria-label={`Scroll to next category ${nextCategoryAtBottom}`}
+            >
+              Next category: {nextCategoryAtBottom}
+            </button>
+          ) : null}
+          {nextControlAtBottom ? (
+            <button
+              type="button"
+              className="input-next-sticky-chip"
+              onClick={() => scrollControlToStart(nextControlAtBottom.id)}
+              aria-label={`Scroll to next input ${nextControlAtBottom.name}`}
+            >
+              Next input: {nextControlAtBottom.name}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       <button className="btn btn-primary input-run-fab" type="button" onClick={props.onRun} aria-label="Run with current inputs">
         Run
