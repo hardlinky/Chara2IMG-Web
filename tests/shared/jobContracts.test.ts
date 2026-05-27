@@ -21,7 +21,9 @@ describe("job contracts", () => {
     expect(normalizeRunpodStatus("PENDING")).toBe("IN_QUEUE");
     expect(normalizeRunpodStatus("running")).toBe("IN_PROGRESS");
     expect(normalizeRunpodStatus("processing")).toBe("IN_PROGRESS");
+    expect(normalizeRunpodStatus("in progress")).toBe("IN_PROGRESS");
     expect(normalizeRunpodStatus("canceled")).toBe("CANCELLED");
     expect(normalizeRunpodStatus("timeout")).toBe("TIMED_OUT");
+    expect(normalizeRunpodStatus("timed out")).toBe("TIMED_OUT");
   });
 });
