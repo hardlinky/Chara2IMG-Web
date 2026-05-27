@@ -182,6 +182,19 @@ describe("useRecentJobs helpers", () => {
     expect(result.warningJobIds).toHaveLength(0);
   });
 
+  it("polls queued aliases and normalizes them when updating lifecycle", async () => {
+    await upsertRecentJob(createJob("job-queued-alias", "queued"));
+    vi.mocked(statusViaProxy).mockResolvedValueOnce({ id: "job-queued-alias", status: "running" });
+
+    const result = await pollSingleJob("job-queued-alias", { apiKey: "key", endpointId: "endpoint-1" });
+
+    expect(vi.mocked(statusViaProxy)).toHaveBeenCalledTimes(1);
+
+    const stored = result.jobs.find((job) => job.jobId === "job-queued-alias");
+    expect(stored?.lifecycle.status).toBe("IN_PROGRESS");
+    expect(stored?.lifecycle.isTerminal).toBe(false);
+  });
+
   it("adds a warning when the single job poll request fails with a non-404 error", async () => {
     await upsertRecentJob(createJob("job-warn", "IN_PROGRESS"));
     vi.mocked(statusViaProxy).mockRejectedValueOnce(new Error("Network error"));
