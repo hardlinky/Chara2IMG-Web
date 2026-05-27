@@ -82,7 +82,7 @@ export function App() {
     saveEndpointId(value);
   }
   const [runError, setRunError] = useState("");
-  const [jobActionMessage, setJobActionMessage] = useState("");
+  const [jobActionError, setJobActionError] = useState("");
   const [isUpdatingApp, setIsUpdatingApp] = useState(false);
   const [updateStatus, setUpdateStatus] = useState("");
   const [editorApi, setEditorApi] = useState<{
@@ -139,28 +139,27 @@ export function App() {
 
   async function onLoadInputs(jobId: string): Promise<void> {
     if (!activeTemplate) {
-      setJobActionMessage("Load a workflow template before loading prior inputs.");
+      setJobActionError("Load a workflow template before loading prior inputs.");
       return;
     }
 
     const job = await recentJobs.loadJobInputs(jobId);
     if (!job) {
-      setJobActionMessage("Selected job is no longer available.");
+      setJobActionError("Selected job is no longer available.");
       return;
     }
 
     if (!editorApi) {
-      setJobActionMessage("Input editor is not ready yet.");
+      setJobActionError("Input editor is not ready yet.");
       return;
     }
 
     const result = await editorApi.applyExternalDraftValues(job.provenance.templateFingerprint, job.provenance.draftValues);
     if (!result.ok) {
-      setJobActionMessage(result.reason);
+      setJobActionError(result.reason);
       return;
     }
-
-    setJobActionMessage(`Loaded inputs from ${job.jobId}.`);
+    setJobActionError("");
   }
 
   async function onUpdateApp(): Promise<void> {
@@ -188,18 +187,18 @@ export function App() {
   async function onExportWorkflow(jobId: string): Promise<void> {
     const job = await recentJobs.loadJobInputs(jobId);
     if (!job) {
-      setJobActionMessage("Selected job is no longer available.");
+      setJobActionError("Selected job is no longer available.");
       return;
     }
 
     if (job.lifecycle.status !== "COMPLETED") {
-      setJobActionMessage("Only completed jobs can be exported.");
+      setJobActionError("Only completed jobs can be exported.");
       return;
     }
 
     const workflowPayload = toWorkflowExportPayload(job.provenance.submittedInput);
     if (!workflowPayload) {
-      setJobActionMessage("This job does not include an exportable workflow payload.");
+      setJobActionError("This job does not include an exportable workflow payload.");
       return;
     }
 
@@ -214,7 +213,7 @@ export function App() {
     link.click();
     URL.revokeObjectURL(objectUrl);
 
-    setJobActionMessage(`Exported populated workflow from ${job.jobId}.`);
+    setJobActionError("");
   }
 
   if (!invited) {
@@ -290,9 +289,9 @@ export function App() {
         ),
         jobs: (
           <div className="section-stack">
-            {jobActionMessage ? (
-              <p role="status" className="status-inline" data-tone="success">
-                {jobActionMessage}
+            {jobActionError ? (
+              <p role="alert" className="status-inline" data-tone="error">
+                {jobActionError}
               </p>
             ) : null}
             <RecentJobsPanel
@@ -334,9 +333,9 @@ export function App() {
             onToggleOutputPinned={async (jobId, outputIndex, pinned) => {
               const result = await recentJobs.togglePinnedImage(jobId, outputIndex, pinned);
               if (!result.ok) {
-                setJobActionMessage(result.reason);
+                setJobActionError(result.reason);
               } else {
-                setJobActionMessage(pinned ? `Pinned ${jobId} image #${outputIndex + 1}.` : `Unpinned ${jobId} image #${outputIndex + 1}.`);
+                setJobActionError("");
               }
             }}
             canPinMore={recentJobs.canPinMoreJobs}
