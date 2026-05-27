@@ -451,24 +451,26 @@
     bottom: calc(4.75rem + env(safe-area-inset-bottom));
     z-index: 9;
     display: grid;
-    gap: 0.35rem;
-    margin: var(--space-2) 0 0;
-    padding: 0.35rem;
-    border: 1px solid var(--color-border-subtle);
-    border-radius: var(--radius-sm);
-    background: rgba(17, 21, 24, 0.9);
-    backdrop-filter: blur(6px);
+    gap: 0;
+    margin: 0;
+    border-top: 1px solid var(--color-border-subtle);
+    background: rgba(18, 23, 28, 0.95);
   }
 
   .input-next-sticky-chip {
     width: 100%;
-    border: 1px solid var(--color-border-subtle);
-    border-radius: var(--radius-sm);
-    background: rgba(26, 33, 39, 0.84);
+    border: 0;
+    border-radius: 0;
+    border-top: 1px solid var(--color-border-subtle);
+    background: rgba(18, 23, 28, 0.92);
     color: var(--color-text-primary);
-    padding: 0.35rem 0.5rem;
+    padding: 0.35rem 0.45rem;
     font-size: var(--font-size-xs);
     text-align: left;
+  }
+
+  .input-next-sticky-chip:first-child {
+    border-top: 0;
   }
 
   .input-next-sticky-chip:active {
