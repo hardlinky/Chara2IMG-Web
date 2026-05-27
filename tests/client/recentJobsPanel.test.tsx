@@ -204,7 +204,7 @@ describe("RecentJobsPanel", () => {
     expect(html).toContain("No recent jobs yet");
   });
 
-  it("shows refresh icon button only for IN_PROGRESS jobs", () => {
+  it("shows refresh icon button for transient jobs and hides it for terminal jobs", () => {
     const inProgressHtml = renderToStaticMarkup(
       <RecentJobsPanel
         jobs={[
@@ -240,6 +240,78 @@ describe("RecentJobsPanel", () => {
     );
 
     expect(inProgressHtml).toContain('aria-label="Refresh job status"');
+
+    const inQueueHtml = renderToStaticMarkup(
+      <RecentJobsPanel
+        jobs={[
+          createJob({
+            jobId: "job-in-queue",
+            lifecycle: {
+              status: "IN_QUEUE",
+              isTerminal: false,
+              terminalReason: undefined,
+              lastCheckedAt: "2026-05-23T10:05:00.000Z",
+              warning: null,
+              executionTimeMs: undefined,
+              failureReason: null
+            }
+          })
+        ]}
+        warningJobIds={[]}
+        cancelingJobIds={[]}
+        statusFilter="All"
+        page={1}
+        pageCount={1}
+        pageNumbers={[1]}
+        onStatusFilterChange={vi.fn()}
+        onPageChange={vi.fn()}
+        onCancel={vi.fn()}
+        onRerun={vi.fn()}
+        onPollStatus={vi.fn()}
+        onLoadInputs={vi.fn()}
+        onExportWorkflow={vi.fn()}
+        onRemoveVisible={vi.fn()}
+        formatSubmittedAtRelative={() => "just now"}
+      />
+    );
+
+    expect(inQueueHtml).toContain('aria-label="Refresh job status"');
+
+    const cancellingHtml = renderToStaticMarkup(
+      <RecentJobsPanel
+        jobs={[
+          createJob({
+            jobId: "job-cancelling",
+            lifecycle: {
+              status: "CANCELLING",
+              isTerminal: false,
+              terminalReason: undefined,
+              lastCheckedAt: "2026-05-23T10:05:00.000Z",
+              warning: null,
+              executionTimeMs: undefined,
+              failureReason: null
+            }
+          })
+        ]}
+        warningJobIds={[]}
+        cancelingJobIds={[]}
+        statusFilter="All"
+        page={1}
+        pageCount={1}
+        pageNumbers={[1]}
+        onStatusFilterChange={vi.fn()}
+        onPageChange={vi.fn()}
+        onCancel={vi.fn()}
+        onRerun={vi.fn()}
+        onPollStatus={vi.fn()}
+        onLoadInputs={vi.fn()}
+        onExportWorkflow={vi.fn()}
+        onRemoveVisible={vi.fn()}
+        formatSubmittedAtRelative={() => "just now"}
+      />
+    );
+
+    expect(cancellingHtml).toContain('aria-label="Refresh job status"');
 
     const failedHtml = renderToStaticMarkup(
       <RecentJobsPanel

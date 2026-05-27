@@ -169,7 +169,7 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
                 </div>
                 {workerId ? <span>Worker ID: {workerId}</span> : null}
                 <div className="jobs-status-row">
-                  {job.lifecycle.status === "IN_PROGRESS" ? (
+                  {!job.lifecycle.isTerminal ? (
                     <button
                       className="btn btn-secondary jobs-refresh-btn"
                       type="button"
