@@ -15,6 +15,7 @@ import "../../styles/setupInput.css";
 type DynamicInputEditorViewProps = {
   controls: DynamicInputControl[];
   sections: DynamicInputSection[];
+  isActive?: boolean;
   sectionNamesByCategory?: Record<string, string>;
   nameValidationErrorsByControlId?: Record<string, string>;
   sectionColumnByCategory: Record<string, "left" | "right">;
@@ -304,6 +305,7 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
   const categoryRefs = useRef<Record<string, HTMLFieldSetElement | null>>({});
   const controlRowRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const columnsContainerRef = useRef<HTMLDivElement | null>(null);
+  const rootRef = useRef<HTMLElement | null>(null);
   const sectionNamesByCategory = props.sectionNamesByCategory ?? {};
   const nameValidationErrorsByControlId = props.nameValidationErrorsByControlId ?? {};
   const categoriesWithName = useMemo(() => getCategoriesWithName(props.controls), [props.controls]);
@@ -498,6 +500,32 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
       mediaQuery.removeEventListener("change", scheduleUpdate);
     };
   }, [visibleControlEntries, visibleSections]);
+
+  useEffect(() => {
+    if (!props.isActive || typeof window === "undefined") {
+      return;
+    }
+
+    let frameId = 0;
+    frameId = window.requestAnimationFrame(() => {
+      const container = rootRef.current;
+      if (!container) {
+        return;
+      }
+
+      const textareas = container.querySelectorAll<HTMLTextAreaElement>("textarea.textarea");
+      for (const textarea of textareas) {
+        textarea.style.height = "auto";
+        textarea.style.height = `${Math.max(textarea.scrollHeight, 96)}px`;
+      }
+    });
+
+    return () => {
+      if (frameId) {
+        window.cancelAnimationFrame(frameId);
+      }
+    };
+  }, [props.draftValues, props.isActive]);
 
   useEffect(() => {
     if (!isResizingColumns || typeof window === "undefined") {
@@ -742,7 +770,7 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
   }
 
   return (
-    <section className="input-card">
+    <section className="input-card" ref={rootRef}>
       <h2>Dynamic Inputs</h2>
       <p>Edit the workflow-derived input values below.</p>
 
@@ -801,24 +829,73 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
       {nextCategoryAtBottom || nextControlAtBottom ? (
         <div className="input-next-sticky-bar" aria-label="Next input shortcuts">
           {nextControlAtBottom ? (
-            <button
-              type="button"
-              className="input-next-sticky-chip"
-              onClick={() => scrollControlToStart(nextControlAtBottom.id)}
-              aria-label={`Scroll to next input ${nextControlAtBottom.name}`}
-            >
-              {nextControlAtBottom.name}
-            </button>
+            <div className="input-next-sticky-input-row">
+              <button
+                type="button"
+                className="input-sticky-title-button input-next-sticky-input-button"
+                onClick={() => scrollControlToStart(nextControlAtBottom.id)}
+                aria-label={`Scroll to next input ${nextControlAtBottom.name}`}
+                title="Jump to input start"
+              >
+                {nextControlAtBottom.name}
+              </button>
+            </div>
           ) : null}
           {nextCategoryAtBottom ? (
-            <button
-              type="button"
-              className="input-next-sticky-chip"
-              onClick={() => scrollCategoryToStart(nextCategoryAtBottom)}
-              aria-label={`Scroll to next category ${nextCategoryAtBottom}`}
-            >
-              {nextCategoryAtBottom}
-            </button>
+            <div className="input-next-sticky-category-row input-category-header">
+              <div className="input-category-title-group">
+                <button
+                  type="button"
+                  className="btn btn-secondary input-category-icon-button"
+                  aria-expanded={!collapsedByCategory[nextCategoryAtBottom]}
+                  aria-label={`${collapsedByCategory[nextCategoryAtBottom] ? "Show" : "Hide"} ${nextCategoryAtBottom}`}
+                  onClick={() => toggleCategory(nextCategoryAtBottom)}
+                >
+                  <span aria-hidden="true">{collapsedByCategory[nextCategoryAtBottom] ? "▸" : "▾"}</span>
+                </button>
+                <button
+                  type="button"
+                  className="input-sticky-title-button input-category-title"
+                  onClick={() => scrollCategoryToStart(nextCategoryAtBottom)}
+                  aria-label={`Scroll to next category ${nextCategoryAtBottom}`}
+                  title="Jump to category start"
+                >
+                  {nextCategoryAtBottom}
+                </button>
+              </div>
+              <div className="input-category-actions">
+                <button
+                  type="button"
+                  className="btn btn-secondary input-category-icon-button"
+                  onClick={() => onMoveCategoryToOtherColumn(nextCategoryAtBottom)}
+                  aria-label={`Move ${nextCategoryAtBottom} to ${
+                    (props.sectionColumnByCategory[nextCategoryAtBottom] ?? "left") === "left" ? "right" : "left"
+                  } column`}
+                >
+                  <span aria-hidden="true">
+                    {(props.sectionColumnByCategory[nextCategoryAtBottom] ?? "left") === "left" ? "⇢" : "⇠"}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary input-category-icon-button"
+                  onClick={() => onMoveCategory(nextCategoryAtBottom, "up")}
+                  disabled={(sectionIndexByCategory.get(nextCategoryAtBottom) ?? 0) === 0}
+                  aria-label={`Move ${nextCategoryAtBottom} up`}
+                >
+                  <span aria-hidden="true">↑</span>
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary input-category-icon-button"
+                  onClick={() => onMoveCategory(nextCategoryAtBottom, "down")}
+                  disabled={(sectionIndexByCategory.get(nextCategoryAtBottom) ?? 0) === visibleSections.length - 1}
+                  aria-label={`Move ${nextCategoryAtBottom} down`}
+                >
+                  <span aria-hidden="true">↓</span>
+                </button>
+              </div>
+            </div>
           ) : null}
         </div>
       ) : null}
@@ -832,6 +909,7 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
 
 type DynamicInputEditorProps = {
   activeTemplate: WorkflowTemplateRecord;
+  isActive?: boolean;
   onRunPayloadBuilt?: (snapshot: {
     payload: Record<string, unknown>;
     draftValues: DynamicInputDraftValues;
@@ -876,6 +954,7 @@ export function DynamicInputEditor(props: DynamicInputEditorProps) {
     <DynamicInputEditorView
       controls={editor.controls}
       sections={editor.sections}
+      isActive={props.isActive}
       sectionNamesByCategory={editor.sectionNamesByCategory}
       nameValidationErrorsByControlId={editor.nameValidationErrorsByControlId}
       sectionColumnByCategory={editor.sectionColumnByCategory}

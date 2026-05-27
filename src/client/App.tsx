@@ -292,6 +292,7 @@ export function App() {
             {activeTemplate ? (
               <DynamicInputEditor
                 activeTemplate={activeTemplate}
+                isActive={activeTab === "input"}
                 onRunPayloadBuilt={onRunPayloadBuilt}
                 onEditorReady={(api) => setEditorApi(api)}
               />

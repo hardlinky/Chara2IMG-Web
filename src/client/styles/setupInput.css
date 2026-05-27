@@ -453,27 +453,38 @@
     display: grid;
     gap: 0;
     margin: 0;
-    border-top: 1px solid var(--color-border-subtle);
+    width: calc(100% + (var(--space-3) * 2));
+    margin-left: calc(-1 * var(--space-3));
+    margin-right: calc(-1 * var(--space-3));
     background: rgba(18, 23, 28, 0.95);
   }
 
-  .input-next-sticky-chip {
+  .input-next-sticky-input-row {
+    display: flex;
+    box-sizing: border-box;
     width: 100%;
-    border: 0;
-    border-radius: 0;
-    border-top: 1px solid var(--color-border-subtle);
     background: rgba(18, 23, 28, 0.92);
-    color: var(--color-text-primary);
+    border-top: 1px solid var(--color-border-subtle);
     padding: 0.35rem 0.45rem;
-    font-size: var(--font-size-xs);
+  }
+
+  .input-next-sticky-input-button {
+    width: 100%;
     text-align: left;
+    color: var(--color-text-primary);
+    font-size: var(--font-size-xs);
   }
 
-  .input-next-sticky-chip:first-child {
-    border-top: 0;
+  .input-next-sticky-category-row {
+    width: 100%;
+    min-height: 2rem;
+    box-sizing: border-box;
+    background: rgba(18, 23, 28, 0.95);
+    border-top: 1px solid var(--color-border-subtle);
+    padding: var(--space-2) var(--space-2);
   }
 
-  .input-next-sticky-chip:active {
+  .input-next-sticky-bar :is(.input-next-sticky-input-button, .input-category-icon-button):active {
     transform: translateY(1px);
   }
 
