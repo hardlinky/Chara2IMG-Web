@@ -41,6 +41,33 @@ describe("app job submission", () => {
     expect(stored?.provenance.draftValues).toEqual({ prompt: "hello" });
   });
 
+  it("normalizes queued aliases to IN_QUEUE when persisting lifecycle state", async () => {
+    const submitRun = vi.fn(async () => ({
+      id: "job-queued",
+      status: "queued",
+      output: null
+    }));
+
+    await submitRunAndPersistRecentJob({
+      endpointId: "endpoint-1",
+      apiKey: "key",
+      submittedInput: { workflow: { prompt: "hello" } },
+      snapshot: {
+        templateFingerprint: "fp-1",
+        workflowFileName: "workflow-a.json",
+        draftValues: { prompt: "hello" },
+        submittedInput: { workflow: { prompt: "hello" } }
+      },
+      dependencies: {
+        submitRun
+      }
+    });
+
+    const stored = await getRecentJob("job-queued");
+    expect(stored?.lifecycle.status).toBe("IN_QUEUE");
+    expect(stored?.lifecycle.isTerminal).toBe(false);
+  });
+
   it("does not create a recent-job record when submission fails", async () => {
     const submitRun = vi.fn(async () => {
       throw new Error("submit failed");

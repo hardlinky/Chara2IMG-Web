@@ -2,6 +2,7 @@ import {
   RUNPOD_JOB_STATUSES,
   isActiveRunpodStatus,
   isTerminalRunpodStatus,
+  normalizeRunpodStatus,
   toTerminalReason,
   type RecentJobRecord,
   type RecentJobSubmissionInput,
@@ -30,12 +31,13 @@ export function isTerminalJobSnapshot(job: Pick<RecentJobRecord, "lifecycle">): 
 }
 
 export function buildLifecycleSnapshotFromStatus(status: string, now: string = new Date().toISOString()): RecentJobRecord["lifecycle"] {
-  const terminal = isTerminalRunpodStatus(status);
+  const normalizedStatus = normalizeRunpodStatus(status);
+  const terminal = isTerminalRunpodStatus(normalizedStatus);
 
   return {
-    status,
+    status: normalizedStatus,
     isTerminal: terminal,
-    terminalReason: terminal ? toTerminalReason(status) : undefined,
+    terminalReason: terminal ? toTerminalReason(normalizedStatus) : undefined,
     lastCheckedAt: now,
     finishedAt: terminal ? now : undefined,
     warning: null,
@@ -100,9 +102,11 @@ export function formatSubmittedAtRelative(submittedAt: string, now: number = Dat
 }
 
 export function normalizeActiveStatus(status: string): RunpodJobStatus | string {
-  if (RUNPOD_JOB_STATUSES.includes(status as RunpodJobStatus)) {
-    return status;
+  const normalizedStatus = normalizeRunpodStatus(status);
+
+  if (RUNPOD_JOB_STATUSES.includes(normalizedStatus as RunpodJobStatus)) {
+    return normalizedStatus;
   }
 
-  return status;
+  return normalizedStatus;
 }

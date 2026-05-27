@@ -88,16 +88,40 @@ export type RecentJobSubmissionInput = {
   submittedAt?: string;
 };
 
+// Backend poll snapshots can return legacy/vendor aliases; normalize them so
+// client lifecycle/polling logic always uses canonical Runpod statuses.
+const RUNPOD_STATUS_ALIASES: Readonly<Record<string, RunpodJobStatus>> = {
+  QUEUED: "IN_QUEUE",
+  PENDING: "IN_QUEUE",
+  RUNNING: "IN_PROGRESS",
+  PROCESSING: "IN_PROGRESS",
+  CANCELED: "CANCELLED",
+  TIMEOUT: "TIMED_OUT"
+};
+
+export function normalizeRunpodStatus(status: string): RunpodJobStatus | string {
+  const normalized = status.trim().toUpperCase().replace(/\s+/g, "_");
+  const canonical = RUNPOD_STATUS_ALIASES[normalized] ?? normalized;
+
+  if (RUNPOD_JOB_STATUSES.includes(canonical as RunpodJobStatus)) {
+    return canonical as RunpodJobStatus;
+  }
+
+  return canonical;
+}
+
 export function isTerminalRunpodStatus(status: string): boolean {
-  return status === "COMPLETED" || status === "FAILED" || status === "CANCELLED" || status === "TIMED_OUT";
+  const normalized = normalizeRunpodStatus(status);
+  return normalized === "COMPLETED" || normalized === "FAILED" || normalized === "CANCELLED" || normalized === "TIMED_OUT";
 }
 
 export function isActiveRunpodStatus(status: string): boolean {
-  return status === "IN_QUEUE" || status === "IN_PROGRESS";
+  const normalized = normalizeRunpodStatus(status);
+  return normalized === "IN_QUEUE" || normalized === "IN_PROGRESS";
 }
 
 export function toTerminalReason(status: string): JobTerminalReason | undefined {
-  switch (status) {
+  switch (normalizeRunpodStatus(status)) {
     case "COMPLETED":
       return "completed";
     case "FAILED":

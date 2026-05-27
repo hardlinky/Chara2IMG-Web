@@ -1,5 +1,5 @@
 import type { RecentJobRecord, RecentJobSubmissionInput } from "../../shared/contracts/jobs";
-import { isActiveRunpodStatus, isTerminalRunpodStatus, toTerminalReason, type RecentJobProvenance } from "../../shared/contracts/jobs";
+import { isActiveRunpodStatus, isTerminalRunpodStatus, normalizeRunpodStatus, toTerminalReason, type RecentJobProvenance } from "../../shared/contracts/jobs";
 import { runViaProxy, type RunpodRunResponse } from "./api/runpodProxyClient";
 import { upsertRecentJob } from "./recentJobsStorage";
 import type { DynamicInputDraftValues } from "../../shared/contracts/inputs";
@@ -51,11 +51,12 @@ function extractStatus(response: RunpodRunResponse): string {
 }
 
 function buildLifecycleSnapshot(status: string): RecentJobRecord["lifecycle"] {
-  const terminal = isTerminalRunpodStatus(status);
+  const normalizedStatus = normalizeRunpodStatus(status);
+  const terminal = isTerminalRunpodStatus(normalizedStatus);
   return {
-    status,
+    status: normalizedStatus,
     isTerminal: terminal,
-    terminalReason: terminal ? toTerminalReason(status) : undefined,
+    terminalReason: terminal ? toTerminalReason(normalizedStatus) : undefined,
     lastCheckedAt: new Date().toISOString(),
     finishedAt: terminal ? new Date().toISOString() : undefined,
     warning: null,
