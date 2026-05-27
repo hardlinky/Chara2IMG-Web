@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { RECENT_JOBS_PINNED_LIMIT, type RecentJobRecord } from "../../../shared/contracts/jobs";
-import { cancelViaProxy, statusViaProxy } from "../../lib/api/runpodProxyClient";
+import { cancelViaProxy, statusBatchViaProxy, statusViaProxy } from "../../lib/api/runpodProxyClient";
 import { submitRunAndPersistRecentJob } from "../../lib/jobSubmission";
 import { projectRecentJobOutputClusters } from "../../lib/jobOutputProjection";
 import { getRecentJob, hideRecentJob, hideJobOutputImage, hideJobOutputs, listRecentJobs, setRecentJobPinned, updateRecentJobLifecycle } from "../../lib/recentJobsStorage";
@@ -117,11 +117,16 @@ export async function pollRecentJobsOnce(options: UseRecentJobsOptions = {}): Pr
   const currentJobs = await loadRecentJobs();
   const warningJobIds: string[] = [];
 
-  for (const job of currentJobs) {
-    if (!options.apiKey) {
-      continue;
-    }
+  if (!options.apiKey) {
+    return {
+      jobs: await loadRecentJobs(),
+      warningJobIds
+    };
+  }
 
+  const jobsToPoll: RecentJobRecord[] = [];
+
+  for (const job of currentJobs) {
     const timeoutLifecycle = classifyTimeoutLifecycle(job);
     if (timeoutLifecycle) {
       await applyLifecycleUpdate(job.jobId, timeoutLifecycle);
@@ -136,24 +141,44 @@ export async function pollRecentJobsOnce(options: UseRecentJobsOptions = {}): Pr
       continue;
     }
 
-    try {
-      const response = await statusViaProxy({
-        endpointId: options.endpointId ?? job.endpointId,
-        apiKey: options.apiKey ?? "",
-        id: job.jobId
-      });
+    jobsToPoll.push(job);
+  }
 
-      const status = String(response.status ?? job.lifecycle.status);
+  if (jobsToPoll.length === 0) {
+    return {
+      jobs: await loadRecentJobs(),
+      warningJobIds
+    };
+  }
+
+  const batch = await statusBatchViaProxy({
+    endpointId: options.endpointId ?? jobsToPoll[0]!.endpointId,
+    apiKey: options.apiKey,
+    ids: jobsToPoll.map((job) => job.jobId)
+  });
+
+  const resultById = new Map(batch.items.map((item) => [item.id, item]));
+
+  for (const job of jobsToPoll) {
+    const item = resultById.get(job.jobId);
+    if (!item) {
+      warningJobIds.push(job.jobId);
+      continue;
+    }
+
+    if (item.ok && item.data) {
+      const status = String(item.data.status ?? job.lifecycle.status);
       const nextLifecycle = buildLifecycleSnapshotFromStatus(status);
-      await applyLifecycleUpdate(job.jobId, nextLifecycle, response);
-    } catch (error) {
-      const status = error instanceof Error && "status" in error ? Number((error as { status?: unknown }).status) : undefined;
+      await applyLifecycleUpdate(job.jobId, nextLifecycle, item.data);
+      continue;
+    }
 
-      if (status === 404) {
-        await applyLifecycleUpdate(job.jobId, classifyKnownJob404Lifecycle(job));
-        continue;
-      }
+    if (item.statusCode === 404) {
+      await applyLifecycleUpdate(job.jobId, classifyKnownJob404Lifecycle(job));
+      continue;
+    }
 
+    if (!item.ok) {
       warningJobIds.push(job.jobId);
     }
   }

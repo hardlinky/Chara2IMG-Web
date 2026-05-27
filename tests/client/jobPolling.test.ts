@@ -1,6 +1,6 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { statusViaProxy } from "../../src/client/lib/api/runpodProxyClient";
+import { statusBatchViaProxy } from "../../src/client/lib/api/runpodProxyClient";
 import { clearRecentJobs, getRecentJob, upsertRecentJob } from "../../src/client/lib/recentJobsStorage";
 import {
   JOB_OBSERVATION_TIMEOUT_MS,
@@ -12,6 +12,7 @@ import { pollRecentJobsOnce } from "../../src/client/features/jobs/useRecentJobs
 
 vi.mock("../../src/client/lib/api/runpodProxyClient", () => ({
   statusViaProxy: vi.fn(),
+  statusBatchViaProxy: vi.fn(),
   cancelViaProxy: vi.fn(),
   runViaProxy: vi.fn(),
   updateAppViaProxy: vi.fn()
@@ -34,7 +35,7 @@ function createJob(jobId: string, submittedAt: string) {
 describe("job polling", () => {
   beforeEach(async () => {
     await clearRecentJobs();
-    vi.mocked(statusViaProxy).mockReset();
+    vi.mocked(statusBatchViaProxy).mockReset();
   });
 
   it("marks a long-running job as timed out without polling it again", async () => {
@@ -48,7 +49,7 @@ describe("job polling", () => {
 
     const pollResult = await pollRecentJobsOnce({ apiKey: "key", endpointId: "endpoint-1" });
     expect(pollResult.warningJobIds).toEqual([]);
-    expect(vi.mocked(statusViaProxy)).not.toHaveBeenCalled();
+    expect(vi.mocked(statusBatchViaProxy)).not.toHaveBeenCalled();
 
     const stored = await getRecentJob("job-timeout");
     expect(stored?.lifecycle.isTerminal).toBe(true);
@@ -57,7 +58,16 @@ describe("job polling", () => {
 
   it("classifies a 404 status lookup as expired-or-not-found", async () => {
     await upsertRecentJob(createJob("job-404", new Date().toISOString()));
-    vi.mocked(statusViaProxy).mockRejectedValueOnce(Object.assign(new Error("missing"), { status: 404 }));
+    vi.mocked(statusBatchViaProxy).mockResolvedValueOnce({
+      items: [
+        {
+          id: "job-404",
+          ok: false,
+          statusCode: 404,
+          error: "missing"
+        }
+      ]
+    });
 
     await pollRecentJobsOnce({ apiKey: "key", endpointId: "endpoint-1" });
 
@@ -68,9 +78,18 @@ describe("job polling", () => {
 
   it("advances an active job to terminal on a successful status response", async () => {
     await upsertRecentJob(createJob("job-complete", new Date().toISOString()));
-    vi.mocked(statusViaProxy).mockResolvedValueOnce({
-      id: "job-complete",
-      status: "COMPLETED"
+    vi.mocked(statusBatchViaProxy).mockResolvedValueOnce({
+      items: [
+        {
+          id: "job-complete",
+          ok: true,
+          statusCode: 200,
+          data: {
+            id: "job-complete",
+            status: "COMPLETED"
+          }
+        }
+      ]
     });
 
     await pollRecentJobsOnce({ apiKey: "key", endpointId: "endpoint-1" });

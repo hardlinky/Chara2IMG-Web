@@ -19,6 +19,13 @@ export const statusRequestSchema = z
   })
   .strict();
 
+export const statusBatchRequestSchema = z
+  .object({
+    ...commonSchema,
+    ids: z.array(z.string().trim().min(1).max(128)).min(1).max(100)
+  })
+  .strict();
+
 export const cancelRequestSchema = z
   .object({
     ...commonSchema,

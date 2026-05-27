@@ -20,6 +20,12 @@ export type RunpodStatusPayload = {
   id: string;
 };
 
+export type RunpodStatusBatchPayload = {
+  endpointId: string;
+  apiKey: string;
+  ids: string[];
+};
+
 export type RunpodStatusResponse = {
   id?: string;
   status?: string;
@@ -28,6 +34,18 @@ export type RunpodStatusResponse = {
   duration?: number;
   data?: unknown;
   [key: string]: unknown;
+};
+
+export type RunpodStatusBatchItem = {
+  id: string;
+  ok: boolean;
+  statusCode?: number;
+  data?: RunpodStatusResponse;
+  error?: string;
+};
+
+export type RunpodStatusBatchResponse = {
+  items: RunpodStatusBatchItem[];
 };
 
 export type RunpodCancelResponse = {
@@ -122,6 +140,10 @@ export function runViaProxy(payload: RunpodRunPayload): Promise<RunpodRunRespons
 
 export function statusViaProxy(payload: RunpodStatusPayload): Promise<RunpodStatusResponse> {
   return postProxy("/api/runpod/status", payload) as Promise<RunpodStatusResponse>;
+}
+
+export function statusBatchViaProxy(payload: RunpodStatusBatchPayload): Promise<RunpodStatusBatchResponse> {
+  return postProxy("/api/runpod/status-batch", payload) as Promise<RunpodStatusBatchResponse>;
 }
 
 export function cancelViaProxy(payload: RunpodStatusPayload): Promise<RunpodCancelResponse> {

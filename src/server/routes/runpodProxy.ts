@@ -1,6 +1,6 @@
 import type { Hono } from "hono";
 import { requireInvitedSession } from "../middleware/session";
-import { cancelRequestSchema, purgeQueueRequestSchema, retryRequestSchema, runRequestSchema, statusRequestSchema } from "../schemas/runpodProxy";
+import { cancelRequestSchema, purgeQueueRequestSchema, retryRequestSchema, runRequestSchema, statusBatchRequestSchema, statusRequestSchema } from "../schemas/runpodProxy";
 import { forwardRunpodRequest } from "../lib/runpodClient";
 import { redactSecrets } from "../lib/redaction";
 
@@ -66,6 +66,63 @@ export function registerRunpodProxyRoutes(app: Hono): void {
     } catch (error) {
       return c.json(toSafeProxyError(error), 502);
     }
+  });
+
+  app.post("/api/runpod/status-batch", async (c) => {
+    const payload = await c.req.json().catch(() => null);
+    const parsed = statusBatchRequestSchema.safeParse(payload);
+
+    if (!parsed.success) {
+      return c.json({ ok: false, error: "Invalid status-batch request" }, 400);
+    }
+
+    const items = await Promise.all(
+      parsed.data.ids.map(async (id) => {
+        try {
+          const response = await forwardRunpodRequest({
+            endpointId: parsed.data.endpointId,
+            apiKey: parsed.data.apiKey,
+            operation: "status",
+            id
+          });
+
+          const text = await response.text();
+          let data: unknown = null;
+          if (text) {
+            try {
+              data = JSON.parse(text);
+            } catch {
+              data = { raw: text };
+            }
+          }
+
+          if (!response.ok) {
+            return {
+              id,
+              ok: false,
+              statusCode: response.status,
+              error: `Runpod status request failed (${response.status})`,
+              data
+            };
+          }
+
+          return {
+            id,
+            ok: true,
+            statusCode: response.status,
+            data
+          };
+        } catch (error) {
+          return {
+            id,
+            ok: false,
+            error: error instanceof Error ? error.message : String(error)
+          };
+        }
+      })
+    );
+
+    return c.json({ items });
   });
 
   app.post("/api/runpod/cancel", async (c) => {
