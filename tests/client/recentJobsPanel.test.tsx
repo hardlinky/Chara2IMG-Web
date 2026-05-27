@@ -240,6 +240,7 @@ describe("RecentJobsPanel", () => {
     );
 
     expect(inProgressHtml).toContain('aria-label="Refresh job status"');
+    expect(inProgressHtml).toContain("Next poll in");
 
     const inQueueHtml = renderToStaticMarkup(
       <RecentJobsPanel
@@ -276,6 +277,7 @@ describe("RecentJobsPanel", () => {
     );
 
     expect(inQueueHtml).toContain('aria-label="Refresh job status"');
+    expect(inQueueHtml).toContain("Next poll in");
 
     const cancellingHtml = renderToStaticMarkup(
       <RecentJobsPanel
@@ -312,6 +314,7 @@ describe("RecentJobsPanel", () => {
     );
 
     expect(cancellingHtml).toContain('aria-label="Refresh job status"');
+    expect(cancellingHtml).toContain("Next poll in");
 
     const failedHtml = renderToStaticMarkup(
       <RecentJobsPanel
@@ -335,5 +338,6 @@ describe("RecentJobsPanel", () => {
     );
 
     expect(failedHtml).not.toContain("Refresh job status");
+    expect(failedHtml).not.toContain("Next poll in");
   });
 });

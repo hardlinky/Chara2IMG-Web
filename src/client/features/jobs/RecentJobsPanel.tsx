@@ -1,4 +1,6 @@
+import { useEffect, useState } from "react";
 import type { RecentJobRecord } from "../../../shared/contracts/jobs";
+import { JOB_POLL_INTERVAL_MS } from "./jobStatus";
 import type { RecentJobStatusFilter } from "./useRecentJobs";
 import "../../styles/jobsOutput.css";
 
@@ -158,7 +160,28 @@ function formatFailureSnippet(job: RecentJobRecord): string | null {
   return failureMessage.length > 90 ? `${failureMessage.slice(0, 90)}...` : failureMessage;
 }
 
+function formatNextPollCountdown(job: RecentJobRecord, now: number): string {
+  const lastCheckedAtMs = Date.parse(job.lifecycle.lastCheckedAt ?? job.submittedAt);
+  const safeLastCheckedAtMs = Number.isFinite(lastCheckedAtMs) ? lastCheckedAtMs : now;
+  const nextPollAt = safeLastCheckedAtMs + JOB_POLL_INTERVAL_MS;
+  const remainingMs = Math.max(0, nextPollAt - now);
+  const remainingSeconds = Math.ceil(remainingMs / 1000);
+  return `${remainingSeconds}s`;
+}
+
 export function RecentJobsPanel(props: RecentJobsPanelProps) {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, []);
+
   return (
     <section className="jobs-panel" aria-label="recent-jobs-panel">
       <header className="jobs-panel-header">
@@ -198,6 +221,7 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
                 </div>
                 {workerId ? <span>Worker ID: {workerId}</span> : null}
                 <div className="jobs-status-row">
+                  <span className="jobs-status-chip">Status: {job.lifecycle.status}</span>
                   {!job.lifecycle.isTerminal ? (
                     <button
                       className="btn btn-secondary jobs-refresh-btn"
@@ -209,7 +233,7 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
                       ↻
                     </button>
                   ) : null}
-                  <span className="jobs-status-chip">Status: {job.lifecycle.status}</span>
+                  {!job.lifecycle.isTerminal ? <span className="jobs-next-poll">Next poll in {formatNextPollCountdown(job, now)}</span> : null}
                   {props.warningJobIds.includes(job.jobId) ? (
                     <span className="jobs-status-chip jobs-warning-chip">Polling warning</span>
                   ) : null}
