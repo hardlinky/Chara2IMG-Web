@@ -23,6 +23,33 @@ type RecentJobsPanelProps = {
   formatSubmittedAtRelative: (submittedAt: string) => string;
 };
 
+function LoadInputsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false">
+      <path d="M4 7h16M4 12h10M4 17h7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M15 15h5v5m0-5-6 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function ExportWorkflowIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false">
+      <path d="M8 8h8v8M16 8l-8 8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M5 5h6M5 5v6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function ViewOutputsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false">
+      <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" strokeWidth="2" />
+    </svg>
+  );
+}
+
 function formatExecutionTime(job: RecentJobRecord): string | null {
   if (job.lifecycle.executionTimeMs === undefined) {
     return null;
@@ -214,21 +241,41 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
                   <button className="btn btn-primary" type="button" onClick={() => props.onRerun(job.jobId)}>
                     Rerun
                   </button>
-                  <button className="btn btn-secondary" type="button" onClick={() => props.onLoadInputs(job.jobId)}>
-                    Load Inputs
-                  </button>
+                  <div className="jobs-icon-actions" aria-label={`Quick actions for ${job.jobId}`}>
+                    <button
+                      className="jobs-icon-btn"
+                      type="button"
+                      onClick={() => props.onLoadInputs(job.jobId)}
+                      aria-label={`Load inputs from ${job.jobId}`}
+                      title={`Load inputs from ${job.jobId}`}
+                    >
+                      <LoadInputsIcon />
+                    </button>
                   {job.lifecycle.status === "COMPLETED" ? (
                     <>
-                      <button className="btn btn-secondary" type="button" onClick={() => props.onExportWorkflow(job.jobId)}>
-                        Export Workflow
+                      <button
+                        className="jobs-icon-btn"
+                        type="button"
+                        onClick={() => props.onExportWorkflow(job.jobId)}
+                        aria-label={`Export workflow for ${job.jobId}`}
+                        title={`Export workflow for ${job.jobId}`}
+                      >
+                        <ExportWorkflowIcon />
                       </button>
                       {props.onViewOutputs ? (
-                        <button className="btn btn-secondary" type="button" onClick={() => props.onViewOutputs?.(job.jobId)}>
-                          View Outputs
+                        <button
+                          className="jobs-icon-btn"
+                          type="button"
+                          onClick={() => props.onViewOutputs?.(job.jobId)}
+                          aria-label={`View outputs for ${job.jobId}`}
+                          title={`View outputs for ${job.jobId}`}
+                        >
+                          <ViewOutputsIcon />
                         </button>
                       ) : null}
                     </>
                   ) : null}
+                  </div>
                 </div>
               </li>
             );

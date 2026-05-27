@@ -79,8 +79,41 @@
 
 .jobs-actions {
   display: flex;
+  align-items: center;
   flex-wrap: wrap;
   gap: var(--space-2);
+}
+
+.jobs-icon-actions {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem;
+  border: 1px solid rgba(95, 110, 132, 0.45);
+  border-radius: 999px;
+  background: rgba(14, 20, 29, 0.46);
+}
+
+.jobs-icon-btn {
+  width: 1.65rem;
+  height: 1.65rem;
+  padding: 0;
+  border: 1px solid rgba(96, 112, 138, 0.45);
+  border-radius: 999px;
+  background: rgba(24, 32, 45, 0.82);
+  color: var(--color-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+
+.jobs-icon-btn:hover {
+  border-color: rgba(125, 148, 181, 0.6);
+  background: rgba(32, 44, 62, 0.95);
+  color: var(--color-text-primary);
 }
 
 .jobs-refresh-btn {
@@ -187,6 +220,10 @@
   .outputs-job-view-more .btn,
   .outputs-toolbar .btn {
     width: 100%;
+  }
+
+  .jobs-icon-actions {
+    margin-left: 0;
   }
 
   .outputs-job-view-actions {

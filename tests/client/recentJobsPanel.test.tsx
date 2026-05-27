@@ -61,8 +61,8 @@ describe("RecentJobsPanel", () => {
     expect(html).toContain("Execution time: 600s");
     expect(html).toContain("Prev");
     expect(html).toContain("Next");
-    expect(html).toContain("Load Inputs");
-    expect(html).not.toContain("Export");
+    expect(html).toContain("Load inputs from job-123");
+    expect(html).not.toContain("Export workflow for job-123");
     expect(html).not.toContain("Restore");
   });
 
@@ -140,7 +140,7 @@ describe("RecentJobsPanel", () => {
     expect(html).toContain("Worker ID: worker-42");
   });
 
-  it("shows Export only on completed jobs", () => {
+  it("shows export quick action only on completed jobs", () => {
     const html = renderToStaticMarkup(
       <RecentJobsPanel
         jobs={[
@@ -176,7 +176,7 @@ describe("RecentJobsPanel", () => {
       />
     );
 
-    expect(html).toContain("Export");
+    expect(html).toContain("Export workflow for job-completed");
   });
 
   it("renders the exact empty state text when there are no visible jobs", () => {
