@@ -151,6 +151,42 @@
   margin: 0;
 }
 
+.outputs-image-bottom-actions {
+  position: absolute;
+  left: 0.45rem;
+  bottom: 0.45rem;
+  display: flex;
+  gap: 0.3rem;
+  padding: 0.2rem;
+  border: 1px solid rgba(95, 110, 132, 0.55);
+  border-radius: 999px;
+  background: rgba(14, 20, 29, 0.76);
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+
+.outputs-image-action-btn {
+  width: 1.45rem;
+  height: 1.45rem;
+  padding: 0;
+  border: 1px solid rgba(96, 112, 138, 0.5);
+  border-radius: 999px;
+  background: rgba(24, 32, 45, 0.9);
+  color: var(--color-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+
+.outputs-image-action-btn:hover {
+  border-color: rgba(125, 148, 181, 0.6);
+  background: rgba(32, 44, 62, 0.95);
+  color: var(--color-text-primary);
+}
+
 .outputs-image-tile-hidden {
   display: none;
 }
@@ -178,6 +214,11 @@
 
 .outputs-image-tile-wrapper:hover .outputs-image-remove-btn,
 .outputs-image-tile-wrapper:focus-within .outputs-image-remove-btn {
+  opacity: 1;
+}
+
+.outputs-image-tile-wrapper:hover .outputs-image-bottom-actions,
+.outputs-image-tile-wrapper:focus-within .outputs-image-bottom-actions {
   opacity: 1;
 }
 
@@ -218,6 +259,7 @@
 .outputs-image-pin-btn.is-active {
   border-color: rgba(235, 196, 91, 0.7);
   background: rgba(58, 47, 15, 0.92);
+  opacity: 1;
 }
 
 .outputs-image-pin-btn:disabled,

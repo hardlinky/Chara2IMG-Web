@@ -90,4 +90,23 @@ describe("JobOutputsView", () => {
     expect(html).toContain("📍");
     expect(html).toContain("outputs-image-pin-btn");
   });
+
+  it("renders image-level icon actions for download, export workflow, and load inputs", () => {
+    const html = renderToStaticMarkup(
+      <JobOutputsView
+        cluster={cluster}
+        onBack={() => undefined}
+        onRerun={() => undefined}
+        onLoadInputs={() => undefined}
+        onRemoveImage={() => undefined}
+        onRemoveAllOutputs={() => undefined}
+        onExportWorkflow={() => undefined}
+      />
+    );
+
+    expect(html).toContain("outputs-image-bottom-actions");
+    expect(html).toContain("Download job-1 image 1");
+    expect(html).toContain("Export workflow for job-1");
+    expect(html).toContain("Load inputs from job-1");
+  });
 });

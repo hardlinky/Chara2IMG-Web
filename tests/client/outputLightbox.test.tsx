@@ -74,4 +74,20 @@ describe("OutputLightbox", () => {
 
     expect(html).not.toContain("outputs-image-remove-btn");
   });
+
+  it("renders bottom icon action buttons when load/export handlers are provided", () => {
+    const html = renderToStaticMarkup(
+      <OutputLightbox
+        imagePrefix="job-1"
+        images={sampleImages}
+        onExportWorkflow={() => undefined}
+        onLoadInputs={() => undefined}
+      />
+    );
+
+    expect(html).toContain("outputs-image-bottom-actions");
+    expect(html).toContain("Download job-1 image 1");
+    expect(html).toContain("Export workflow for job-1");
+    expect(html).toContain("Load inputs from job-1");
+  });
 });

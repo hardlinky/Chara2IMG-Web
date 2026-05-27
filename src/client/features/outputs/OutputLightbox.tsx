@@ -10,10 +10,21 @@ type OutputLightboxProps = {
   maxVisible?: number;
   onRemoveImage?: (outputIndex: number) => void;
   onTogglePinnedImage?: (outputIndex: number, pinned: boolean) => void;
+  onExportWorkflow?: () => void;
+  onLoadInputs?: () => void;
   canPinMore?: boolean;
 };
 
-export function OutputLightbox({ images, imagePrefix, maxVisible = images.length, onRemoveImage, onTogglePinnedImage, canPinMore = true }: OutputLightboxProps) {
+export function OutputLightbox({
+  images,
+  imagePrefix,
+  maxVisible = images.length,
+  onRemoveImage,
+  onTogglePinnedImage,
+  onExportWorkflow,
+  onLoadInputs,
+  canPinMore = true
+}: OutputLightboxProps) {
   const [imageDimensions, setImageDimensions] = useState<Record<number, { width: number; height: number }>>({});
 
   const handleImageLoad = (index: number, event: SyntheticEvent<HTMLImageElement>) => {
@@ -72,6 +83,8 @@ export function OutputLightbox({ images, imagePrefix, maxVisible = images.length
                     onImageLoad={(event) => handleImageLoad(index, event)}
                     onRemoveImage={onRemoveImage ? () => onRemoveImage(image.outputIndex) : undefined}
                     onTogglePin={onTogglePinnedImage ? () => onTogglePinnedImage(image.outputIndex, !image.isPinned) : undefined}
+                    onExportWorkflow={onExportWorkflow}
+                    onLoadInputs={onLoadInputs}
                     canPinMore={canPinMore}
                     maxVisible={index < maxVisible}
                   />
