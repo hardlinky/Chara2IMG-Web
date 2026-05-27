@@ -163,19 +163,21 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
     <section className="jobs-panel" aria-label="recent-jobs-panel">
       <header className="jobs-panel-header">
         <h2>Recent Jobs</h2>
-        <span className="jobs-pin-counter">Pins: {props.pinnedImageCount ?? 0}</span>
-        <label className="field">
-          Status
-          <select className="select" value={props.statusFilter} onChange={(event) => props.onStatusFilterChange(event.target.value as RecentJobStatusFilter)}>
-            <option value="All">All</option>
-            <option value="IN_QUEUE">In Queue</option>
-            <option value="IN_PROGRESS">In Progress</option>
-            <option value="COMPLETED">Completed</option>
-            <option value="FAILED">Failed</option>
-            <option value="CANCELLED">Cancelled</option>
-            <option value="TIMED_OUT">Timed Out</option>
-          </select>
-        </label>
+        <div className="jobs-toolbar-controls">
+          <span className="jobs-pin-counter">Pins: {props.pinnedImageCount ?? 0}</span>
+          <label className="field">
+            Status
+            <select className="select" value={props.statusFilter} onChange={(event) => props.onStatusFilterChange(event.target.value as RecentJobStatusFilter)}>
+              <option value="All">All</option>
+              <option value="IN_QUEUE">In Queue</option>
+              <option value="IN_PROGRESS">In Progress</option>
+              <option value="COMPLETED">Completed</option>
+              <option value="FAILED">Failed</option>
+              <option value="CANCELLED">Cancelled</option>
+              <option value="TIMED_OUT">Timed Out</option>
+            </select>
+          </label>
+        </div>
       </header>
 
       {props.jobs.length === 0 ? <p>No recent jobs yet</p> : null}
