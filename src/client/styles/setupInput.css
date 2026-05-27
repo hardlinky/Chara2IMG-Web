@@ -417,7 +417,7 @@
 
   .field-label-row {
     position: sticky;
-    top: 2.7rem;
+    top: 2rem;
     z-index: 4;
     display: flex;
     align-items: center;
