@@ -1,4 +1,4 @@
-import type { MouseEventHandler, ReactNode } from "react";
+import type { MouseEventHandler, ReactNode, SyntheticEvent } from "react";
 import type { RecentJobOutputImage } from "../../../shared/contracts/jobs";
 
 type OutputImageCardProps = {
@@ -6,6 +6,7 @@ type OutputImageCardProps = {
   imagePrefix: string;
   imageLabel: string;
   onOpen: MouseEventHandler<HTMLButtonElement>;
+  onImageLoad?: (event: SyntheticEvent<HTMLImageElement>) => void;
   onRemoveImage?: () => void;
   onTogglePin?: () => void;
   canPinMore?: boolean;
@@ -18,6 +19,7 @@ export function OutputImageCard({
   imagePrefix,
   imageLabel,
   onOpen,
+  onImageLoad,
   onRemoveImage,
   onTogglePin,
   canPinMore = true,
@@ -27,7 +29,7 @@ export function OutputImageCard({
   return (
     <div className={`outputs-image-tile-wrapper ${maxVisible ? "" : "outputs-image-tile-hidden"}`.trim()}>
       <button type="button" className="outputs-image-tile" onClick={onOpen} aria-label={`Open ${imagePrefix} image ${imageLabel}`}>
-        <img src={image.dataUrl} alt={`${imagePrefix} ${imageLabel}`} loading="lazy" />
+        <img src={image.dataUrl} alt={`${imagePrefix} ${imageLabel}`} loading="lazy" onLoad={onImageLoad} />
       </button>
       {badge ? <span className="outputs-count-badge">{badge}</span> : null}
       {onTogglePin ? (

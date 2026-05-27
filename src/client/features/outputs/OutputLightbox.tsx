@@ -69,6 +69,7 @@ export function OutputLightbox({ images, imagePrefix, maxVisible = images.length
                     imagePrefix={imagePrefix}
                     imageLabel={`${index + 1}`}
                     onOpen={open}
+                    onImageLoad={(event) => handleImageLoad(index, event)}
                     onRemoveImage={onRemoveImage ? () => onRemoveImage(image.outputIndex) : undefined}
                     onTogglePin={onTogglePinnedImage ? () => onTogglePinnedImage(image.outputIndex, !image.isPinned) : undefined}
                     canPinMore={canPinMore}

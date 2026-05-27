@@ -117,7 +117,7 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
             </button>
           </label>
           <label className="field">
-            Pins
+            Filter
             <select className="select" value={pinFilter} onChange={(event) => setPinFilter(event.target.value as OutputsPinFilter)}>
               <option value="all">All images</option>
               <option value="pinned">Pinned only</option>
