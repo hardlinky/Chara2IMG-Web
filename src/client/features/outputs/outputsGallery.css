@@ -12,6 +12,10 @@
   flex-wrap: wrap;
 }
 
+.outputs-view-toggle-field {
+  min-width: 0;
+}
+
 .outputs-view-toggle-btn {
   white-space: nowrap;
 }
@@ -184,6 +188,9 @@
 @media (max-width: 600px) {
   .outputs-toolbar-controls {
     width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: end;
   }
 
   .outputs-view-toggle-btn {

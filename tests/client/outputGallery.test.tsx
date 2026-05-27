@@ -52,7 +52,8 @@ describe("OutputsTab", () => {
     );
 
     expect(html).toContain("Outputs");
-    expect(html).toContain("View: Images");
+    expect(html).toContain("View");
+    expect(html).toContain("Images");
     expect(html).toContain("Density");
     expect(html).toContain("job-123");
     expect(html).toContain("2 images");

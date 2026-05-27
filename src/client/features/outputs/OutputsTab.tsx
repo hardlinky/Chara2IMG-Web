@@ -69,13 +69,16 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
       <header className="outputs-toolbar">
         <h2>Outputs</h2>
         <div className="outputs-toolbar-controls">
-          <button
-            className="btn btn-secondary outputs-view-toggle-btn"
-            type="button"
-            onClick={() => setGalleryMode((current) => (current === "per-job" ? "all-images" : "per-job"))}
-          >
-            {galleryMode === "per-job" ? "View: Images" : "View: Jobs"}
-          </button>
+          <label className="field outputs-view-toggle-field">
+            View
+            <button
+              className="btn btn-secondary outputs-view-toggle-btn"
+              type="button"
+              onClick={() => setGalleryMode((current) => (current === "per-job" ? "all-images" : "per-job"))}
+            >
+              {galleryMode === "per-job" ? "Images" : "Jobs"}
+            </button>
+          </label>
           <label className="field">
             Density
             <select className="select" value={gallery.density} onChange={(event) => gallery.setDensity(event.target.value as (typeof OUTPUT_DENSITIES)[number])}>
