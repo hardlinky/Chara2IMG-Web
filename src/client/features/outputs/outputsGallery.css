@@ -254,8 +254,15 @@
 }
 
 .outputs-image-pin-btn:hover {
+  border-radius: 999px;
+  background: rgba(58, 47, 15, 0.82);
   color: #ffe6a8;
   transform: translateY(-1px);
+}
+
+.outputs-image-pin-btn:focus-visible {
+  border-radius: 999px;
+  background: rgba(58, 47, 15, 0.82);
 }
 
 .outputs-image-pin-btn.is-active {
