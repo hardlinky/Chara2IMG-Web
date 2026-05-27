@@ -800,16 +800,6 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
 
       {nextCategoryAtBottom || nextControlAtBottom ? (
         <div className="input-next-sticky-bar" aria-label="Next input shortcuts">
-          {nextCategoryAtBottom ? (
-            <button
-              type="button"
-              className="input-next-sticky-chip"
-              onClick={() => scrollCategoryToStart(nextCategoryAtBottom)}
-              aria-label={`Scroll to next category ${nextCategoryAtBottom}`}
-            >
-              Next category: {nextCategoryAtBottom}
-            </button>
-          ) : null}
           {nextControlAtBottom ? (
             <button
               type="button"
@@ -817,7 +807,17 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
               onClick={() => scrollControlToStart(nextControlAtBottom.id)}
               aria-label={`Scroll to next input ${nextControlAtBottom.name}`}
             >
-              Next input: {nextControlAtBottom.name}
+              {nextControlAtBottom.name}
+            </button>
+          ) : null}
+          {nextCategoryAtBottom ? (
+            <button
+              type="button"
+              className="input-next-sticky-chip"
+              onClick={() => scrollCategoryToStart(nextCategoryAtBottom)}
+              aria-label={`Scroll to next category ${nextCategoryAtBottom}`}
+            >
+              {nextCategoryAtBottom}
             </button>
           ) : null}
         </div>
