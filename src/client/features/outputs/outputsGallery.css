@@ -230,11 +230,11 @@
   position: absolute;
   top: 0.4rem;
   left: 0.4rem;
-  min-width: 0;
-  min-height: 0;
+  width: 1.6rem;
+  height: 1.6rem;
   padding: 0;
-  border: 0;
-  border-radius: 0;
+  border: 1px solid transparent;
+  border-radius: 50%;
   background: transparent;
   color: var(--color-text-primary);
   font-size: 1rem;
@@ -254,20 +254,26 @@
 }
 
 .outputs-image-pin-btn:hover {
-  border-radius: 999px;
-  background: rgba(58, 47, 15, 0.82);
+  background: rgba(60, 20, 22, 0.88);
+  border-color: rgba(163, 75, 77, 0.6);
   color: #ffe6a8;
   transform: translateY(-1px);
 }
 
 .outputs-image-pin-btn:focus-visible {
-  border-radius: 999px;
-  background: rgba(58, 47, 15, 0.82);
+  background: rgba(60, 20, 22, 0.88);
+  border-color: rgba(163, 75, 77, 0.6);
 }
 
 .outputs-image-pin-btn.is-active {
   color: #f5dd9e;
   opacity: 1;
+}
+
+.outputs-image-tile-wrapper:hover .outputs-image-pin-btn,
+.outputs-image-tile-wrapper:focus-within .outputs-image-pin-btn {
+  background: rgba(60, 20, 22, 0.88);
+  border-color: rgba(163, 75, 77, 0.6);
 }
 
 .outputs-image-pin-btn:disabled,
