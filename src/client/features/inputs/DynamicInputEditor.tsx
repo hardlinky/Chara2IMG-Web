@@ -439,6 +439,10 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
       }
 
       const viewportBottom = window.innerHeight;
+      const navBar = document.querySelector<HTMLElement>(".bottom-tab-nav");
+      const navBarHeight = navBar?.offsetHeight ?? 0;
+      const stickyBarHeight = rootRef.current?.querySelector<HTMLElement>(".input-next-sticky-bar")?.offsetHeight ?? 0;
+      const visibleBottom = Math.max(0, viewportBottom - navBarHeight - stickyBarHeight);
       let nextCategory: string | null = null;
       let nextCategoryTop = Number.POSITIVE_INFINITY;
 
@@ -449,7 +453,7 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
         }
 
         const top = fieldset.getBoundingClientRect().top;
-        if (top > viewportBottom && top < nextCategoryTop) {
+        if (top > visibleBottom && top < nextCategoryTop) {
           nextCategory = section.category;
           nextCategoryTop = top;
         }
@@ -464,7 +468,7 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
         }
 
         const top = row.getBoundingClientRect().top;
-        if (top > viewportBottom && top < nextControlTop) {
+        if (top > visibleBottom && top < nextControlTop) {
           nextControl = control;
           nextControlTop = top;
         }

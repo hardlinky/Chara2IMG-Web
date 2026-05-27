@@ -452,10 +452,8 @@
     z-index: 9;
     display: grid;
     gap: 0;
-    margin: 0 0 calc(-1 * var(--space-3));
-    width: calc(100% + (var(--space-3) * 2));
-    margin-left: calc(-1 * var(--space-3));
-    margin-right: calc(-1 * var(--space-3));
+    margin: 0;
+    width: 100%;
     background: rgba(18, 23, 28, 0.95);
   }
 
