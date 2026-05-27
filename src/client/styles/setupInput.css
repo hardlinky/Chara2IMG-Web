@@ -448,7 +448,7 @@
 
   .input-next-sticky-bar {
     position: sticky;
-    bottom: calc(4.75rem + env(safe-area-inset-bottom));
+    bottom: calc(3.2rem + env(safe-area-inset-bottom));
     z-index: 9;
     display: grid;
     gap: 0;
