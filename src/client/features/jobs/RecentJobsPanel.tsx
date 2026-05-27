@@ -53,9 +53,16 @@ function ViewOutputsIcon() {
 }
 
 function formatExecutionTime(job: RecentJobRecord, now: number): string | null {
+  function toHmsLabel(totalMs: number): string {
+    const totalSeconds = Math.max(0, Math.round(totalMs / 1000));
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return `${hours}h ${minutes}m ${seconds}s`;
+  }
+
   if (typeof job.lifecycle.executionTimeMs === "number" && Number.isFinite(job.lifecycle.executionTimeMs)) {
-    const seconds = Math.max(0, Math.round(job.lifecycle.executionTimeMs / 1000));
-    return `${seconds}s`;
+    return toHmsLabel(job.lifecycle.executionTimeMs);
   }
 
   const submittedAtMs = Date.parse(job.submittedAt);
@@ -65,13 +72,13 @@ function formatExecutionTime(job: RecentJobRecord, now: number): string | null {
 
   if (!job.lifecycle.isTerminal && job.lifecycle.status === "IN_PROGRESS") {
     const elapsedMs = Math.max(0, now - submittedAtMs);
-    return `${Math.round(elapsedMs / 1000)}s`;
+    return toHmsLabel(elapsedMs);
   }
 
   if (job.lifecycle.isTerminal && job.lifecycle.finishedAt) {
     const finishedAtMs = Date.parse(job.lifecycle.finishedAt);
     if (Number.isFinite(finishedAtMs) && finishedAtMs >= submittedAtMs) {
-      return `${Math.round((finishedAtMs - submittedAtMs) / 1000)}s`;
+      return toHmsLabel(finishedAtMs - submittedAtMs);
     }
   }
 
