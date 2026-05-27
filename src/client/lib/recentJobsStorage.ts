@@ -1,7 +1,6 @@
 import Dexie, { type Table } from "dexie";
 import {
   RECENT_JOBS_HIDDEN_RETENTION_MS,
-  RECENT_JOBS_PINNED_LIMIT,
   RECENT_JOBS_UNPINNED_LIMIT,
   RECENT_JOBS_VISIBLE_LIMIT,
   type RecentJobRecord,
@@ -261,12 +260,6 @@ export async function setRecentJobOutputPinned(
   }
 
   if (pinned) {
-    const jobs = await collectJobs();
-    const pinnedVisibleCount = jobs.filter((job) => job.hiddenAt === null && isJobPinned(job) && job.jobId !== jobId).length;
-    if (!isJobPinned(target) && pinnedVisibleCount >= RECENT_JOBS_PINNED_LIMIT) {
-      return { ok: false, reason: `You can pin up to ${RECENT_JOBS_PINNED_LIMIT} jobs.` };
-    }
-
     currentPinnedIndices.add(outputIndex);
   } else {
     currentPinnedIndices.delete(outputIndex);
@@ -308,16 +301,30 @@ export async function removeRecentJobOutputImage(jobId: string, outputIndex: num
     return;
   }
 
+  const remainingImages = extractRunpodOutputImages(clonedResponse);
+  const noImagesRemain = remainingImages.length === 0;
+  const hiddenAt = noImagesRemain ? new Date().toISOString() : job.hiddenAt;
+
   await db.table<StoredRecentJob, string>("jobs").update(jobId, {
     lastResponse: clonedResponse,
     hiddenOutputIndices: normalizeHiddenOutputIndices(job.hiddenOutputIndices, outputIndex),
     pinnedOutputIndices: normalizePinnedOutputIndices(job.pinnedOutputIndices, outputIndex),
-    pinnedAt: normalizePinnedOutputIndices(job.pinnedOutputIndices, outputIndex)?.length ? job.pinnedAt ?? new Date().toISOString() : null
+    pinnedAt: normalizePinnedOutputIndices(job.pinnedOutputIndices, outputIndex)?.length ? job.pinnedAt ?? new Date().toISOString() : null,
+    outputsHidden: noImagesRemain ? true : job.outputsHidden,
+    hiddenAt
   });
+
+  if (noImagesRemain) {
+    await pruneRecentJobs();
+  }
 }
 
 export async function hideJobOutputs(jobId: string): Promise<void> {
-  await db.table<StoredRecentJob, string>("jobs").update(jobId, { outputsHidden: true });
+  await db.table<StoredRecentJob, string>("jobs").update(jobId, {
+    outputsHidden: true,
+    hiddenAt: new Date().toISOString()
+  });
+  await pruneRecentJobs();
 }
 
 export async function pruneRecentJobs(now: number = Date.now()): Promise<void> {
@@ -328,20 +335,11 @@ export async function pruneRecentJobs(now: number = Date.now()): Promise<void> {
 
   const toDelete = new Set<string>(hiddenExpired.map((job) => job.jobId));
   const visibleJobs = remainingAfterHiddenExpiry.filter((job) => job.hiddenAt === null);
-  const pinnedVisibleJobs = visibleJobs.filter((job) => isJobPinned(job));
   const unpinnedVisibleJobs = visibleJobs.filter((job) => !isJobPinned(job));
 
   const unpinnedExcess = unpinnedVisibleJobs.length - RECENT_JOBS_UNPINNED_LIMIT;
   if (unpinnedExcess > 0) {
     const candidates = unpinnedVisibleJobs.sort(sortNewestFirst).slice(RECENT_JOBS_UNPINNED_LIMIT);
-    for (const job of candidates) {
-      toDelete.add(job.jobId);
-    }
-  }
-
-  const pinnedExcess = pinnedVisibleJobs.length - RECENT_JOBS_PINNED_LIMIT;
-  if (pinnedExcess > 0) {
-    const candidates = pinnedVisibleJobs.sort(sortNewestFirst).slice(RECENT_JOBS_PINNED_LIMIT);
     for (const job of candidates) {
       toDelete.add(job.jobId);
     }

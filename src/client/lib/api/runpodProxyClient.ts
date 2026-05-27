@@ -24,6 +24,7 @@ export type RunpodStatusBatchPayload = {
   endpointId: string;
   apiKey: string;
   ids: string[];
+  knownIds?: string[];
 };
 
 export type RunpodStatusResponse = {

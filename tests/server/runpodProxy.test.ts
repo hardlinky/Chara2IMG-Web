@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeEach, vi, afterEach } from "vitest";
 import { createServerApp } from "../../src/server/index";
+import { clearRunpodJobStateStore } from "../../src/server/lib/runpodJobStateStore";
 
 function extractCookieHeader(setCookieHeader: string | null): string {
   if (!setCookieHeader) {
@@ -11,6 +12,7 @@ function extractCookieHeader(setCookieHeader: string | null): string {
 
 describe("Runpod proxy boundary", () => {
   beforeEach(() => {
+    clearRunpodJobStateStore();
     process.env.INVITE_SECRET = "invite-test";
     process.env.COOKIE_SECRET = "cookie-secret-test";
     process.env.ALLOWED_ORIGIN = "http://localhost:5173";
@@ -197,5 +199,169 @@ describe("Runpod proxy boundary", () => {
     });
 
     expect(response.status).not.toBe(200);
+  });
+
+  it("serves cached terminal status in status-batch without refetching runpod", async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ id: "job-terminal", status: "COMPLETED", output: { images: [{ image: "abc" }] } }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" }
+      })
+    );
+
+    const app = createServerApp();
+
+    const inviteResponse = await app.request("http://localhost/api/access/verify-invite", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Origin: "http://localhost:5173"
+      },
+      body: JSON.stringify({ invite: "invite-test" })
+    });
+
+    const cookie = extractCookieHeader(inviteResponse.headers.get("set-cookie"));
+
+    const firstResponse = await app.request("http://localhost/api/runpod/status-batch", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: cookie,
+        Origin: "http://localhost:5173"
+      },
+      body: JSON.stringify({
+        endpointId: "abc123",
+        apiKey: "rp_test_key",
+        ids: ["job-terminal"]
+      })
+    });
+
+    expect(firstResponse.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    fetchMock.mockClear();
+
+    const secondResponse = await app.request("http://localhost/api/runpod/status-batch", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: cookie,
+        Origin: "http://localhost:5173"
+      },
+      body: JSON.stringify({
+        endpointId: "abc123",
+        apiKey: "rp_test_key",
+        ids: ["job-terminal"]
+      })
+    });
+
+    const secondPayload = (await secondResponse.json()) as {
+      items: Array<{ id: string; ok: boolean; source?: string; data?: { status?: string } }>;
+    };
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(secondPayload.items[0]?.id).toBe("job-terminal");
+    expect(secondPayload.items[0]?.ok).toBe(true);
+    expect(secondPayload.items[0]?.source).toBe("cache");
+    expect(secondPayload.items[0]?.data?.status).toBe("COMPLETED");
+  });
+
+  it("prunes cached backend states not present in knownIds during status-batch", async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ id: "job-a", status: "COMPLETED" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" }
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ id: "job-b", status: "COMPLETED" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" }
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ id: "job-b", status: "IN_PROGRESS" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" }
+        })
+      );
+
+    const app = createServerApp();
+
+    const inviteResponse = await app.request("http://localhost/api/access/verify-invite", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Origin: "http://localhost:5173"
+      },
+      body: JSON.stringify({ invite: "invite-test" })
+    });
+
+    const cookie = extractCookieHeader(inviteResponse.headers.get("set-cookie"));
+
+    const primeResponse = await app.request("http://localhost/api/runpod/status-batch", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: cookie,
+        Origin: "http://localhost:5173"
+      },
+      body: JSON.stringify({
+        endpointId: "abc123",
+        apiKey: "rp_test_key",
+        ids: ["job-a", "job-b"],
+        knownIds: ["job-a", "job-b"]
+      })
+    });
+
+    expect(primeResponse.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    fetchMock.mockClear();
+
+    const pruneResponse = await app.request("http://localhost/api/runpod/status-batch", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: cookie,
+        Origin: "http://localhost:5173"
+      },
+      body: JSON.stringify({
+        endpointId: "abc123",
+        apiKey: "rp_test_key",
+        ids: ["job-a"],
+        knownIds: ["job-a"]
+      })
+    });
+
+    expect(pruneResponse.status).toBe(200);
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    const postPruneResponse = await app.request("http://localhost/api/runpod/status-batch", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: cookie,
+        Origin: "http://localhost:5173"
+      },
+      body: JSON.stringify({
+        endpointId: "abc123",
+        apiKey: "rp_test_key",
+        ids: ["job-b"]
+      })
+    });
+
+    const postPrunePayload = (await postPruneResponse.json()) as {
+      items: Array<{ id: string; ok: boolean; source?: string; data?: { status?: string } }>;
+    };
+
+    expect(postPruneResponse.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(postPrunePayload.items[0]?.id).toBe("job-b");
+    expect(postPrunePayload.items[0]?.source).toBe("runpod");
+    expect(postPrunePayload.items[0]?.data?.status).toBe("IN_PROGRESS");
   });
 });

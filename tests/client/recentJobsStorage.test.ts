@@ -1,6 +1,6 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it } from "vitest";
-import { RECENT_JOBS_HIDDEN_RETENTION_MS, RECENT_JOBS_PINNED_LIMIT } from "../../src/shared/contracts/jobs";
+import { RECENT_JOBS_HIDDEN_RETENTION_MS } from "../../src/shared/contracts/jobs";
 import {
   clearRecentJobs,
   getRecentJob,
@@ -102,6 +102,26 @@ describe("recentJobsStorage", () => {
 
     const job = await getRecentJob("job-all-hidden");
     expect(job?.outputsHidden).toBe(true);
+    expect(job?.hiddenAt).not.toBeNull();
+    expect((await listVisibleRecentJobs()).find((item) => item.jobId === "job-all-hidden")).toBeUndefined();
+  });
+
+  it("hides a job from all lists when its final output image is removed", async () => {
+    await upsertRecentJob({
+      ...createJobWithImages("job-last-image", "2026-05-23T10:00:00.000Z"),
+      lastResponse: {
+        output: {
+          images: [{ image: tinyPngBase64 }]
+        }
+      }
+    });
+
+    await removeRecentJobOutputImage("job-last-image", 0);
+
+    const job = await getRecentJob("job-last-image");
+    expect(job?.outputsHidden).toBe(true);
+    expect(job?.hiddenAt).not.toBeNull();
+    expect((await listVisibleRecentJobs()).find((item) => item.jobId === "job-last-image")).toBeUndefined();
   });
 
   it("keeps only the 10 most recent unpinned jobs", async () => {
@@ -136,20 +156,16 @@ describe("recentJobsStorage", () => {
     expect(afterSecondSubmission.find((job) => job.jobId === "job-1")).toBeUndefined();
   });
 
-  it("enforces the 10 pinned jobs cap", async () => {
-    for (let index = 0; index < RECENT_JOBS_PINNED_LIMIT; index += 1) {
+  it("allows pinning more than 10 jobs while still enforcing unpinned retention", async () => {
+    for (let index = 0; index < 14; index += 1) {
       await upsertRecentJob(createJob(`job-pin-${index}`, `2026-05-23T12:${String(index).padStart(2, "0")}:00.000Z`));
-    }
-
-    for (let index = 0; index < RECENT_JOBS_PINNED_LIMIT; index += 1) {
       const result = await setRecentJobOutputPinned(`job-pin-${index}`, 0, true);
       expect(result).toEqual({ ok: true });
     }
 
-    await upsertRecentJob(createJob("job-pin-extra", "2026-05-23T12:59:00.000Z"));
-
-    const overLimit = await setRecentJobOutputPinned("job-pin-extra", 0, true);
-    expect(overLimit.ok).toBe(false);
+    const jobs = await listRecentJobs();
+    expect(jobs).toHaveLength(14);
+    expect(jobs.filter((job) => Boolean(job.pinnedOutputIndices?.length))).toHaveLength(14);
   });
 
   it("after unpinning all, next submission prunes oldest unpinned jobs down to 10", async () => {

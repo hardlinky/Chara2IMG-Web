@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { RECENT_JOBS_PINNED_LIMIT, type RecentJobRecord } from "../../../shared/contracts/jobs";
+import type { RecentJobRecord } from "../../../shared/contracts/jobs";
 import { cancelViaProxy, statusBatchViaProxy, statusViaProxy } from "../../lib/api/runpodProxyClient";
 import { submitRunAndPersistRecentJob } from "../../lib/jobSubmission";
 import { projectRecentJobOutputClusters } from "../../lib/jobOutputProjection";
@@ -163,7 +163,8 @@ export async function pollRecentJobsOnce(options: UseRecentJobsOptions = {}): Pr
   const batch = await statusBatchViaProxy({
     endpointId: options.endpointId ?? jobsToPoll[0]!.endpointId,
     apiKey: options.apiKey,
-    ids: jobsToPoll.map((job) => job.jobId)
+    ids: jobsToPoll.map((job) => job.jobId),
+    knownIds: currentJobs.map((job) => job.jobId)
   });
 
   const resultById = new Map(batch.items.map((item) => [item.id, item]));
@@ -437,7 +438,11 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
 
   const visibleJobs = useMemo(() => jobs.filter((job) => job.hiddenAt === null).sort(sortNewestFirst), [jobs]);
   const pinnedVisibleCount = useMemo(() => visibleJobs.filter((job) => Boolean(job.pinnedAt) || Boolean(job.pinnedOutputIndices?.length)).length, [visibleJobs]);
-  const canPinMoreJobs = pinnedVisibleCount < RECENT_JOBS_PINNED_LIMIT;
+  const pinnedImageCount = useMemo(
+    () => visibleJobs.reduce((count, job) => count + (job.pinnedOutputIndices?.length ?? 0), 0),
+    [visibleJobs]
+  );
+  const canPinMoreJobs = true;
   const completedOutputClusters = useMemo(() => projectRecentJobOutputClusters(visibleJobs), [visibleJobs]);
   const filteredJobs = useMemo(() => filterJobsByStatus(visibleJobs, statusFilter), [statusFilter, visibleJobs]);
   const pageCount = Math.max(1, Math.ceil(filteredJobs.length / RECENT_JOB_PAGE_SIZE));
@@ -482,6 +487,7 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
     removeJobOutputs,
     togglePinnedImage,
     pinnedVisibleCount,
+    pinnedImageCount,
     canPinMoreJobs,
     formatSubmittedAtRelative,
     hasTimedOut: hasJobObservationTimedOut

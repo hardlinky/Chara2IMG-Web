@@ -22,7 +22,8 @@ export const statusRequestSchema = z
 export const statusBatchRequestSchema = z
   .object({
     ...commonSchema,
-    ids: z.array(z.string().trim().min(1).max(128)).min(1).max(100)
+    ids: z.array(z.string().trim().min(1).max(128)).min(1).max(100),
+    knownIds: z.array(z.string().trim().min(1).max(128)).max(500).optional()
   })
   .strict();
 

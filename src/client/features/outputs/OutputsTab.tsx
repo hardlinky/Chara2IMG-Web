@@ -7,6 +7,7 @@ import "./outputsGallery.css";
 import "../../styles/jobsOutput.css";
 
 type OutputsGalleryMode = "per-job" | "all-images";
+type OutputsPinFilter = "all" | "pinned" | "unpinned";
 
 type OutputsTabProps = {
   clusters: RecentJobOutputCluster[];
@@ -26,16 +27,50 @@ function getGalleryClassName(density: (typeof OUTPUT_DENSITIES)[number]): string
 export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs, onRemoveOutputImage, onExportWorkflow, onToggleOutputPinned, canPinMore = true }: OutputsTabProps) {
   const gallery = useOutputGallery(clusters);
   const [galleryMode, setGalleryMode] = useState<OutputsGalleryMode>("per-job");
+  const [pinFilter, setPinFilter] = useState<OutputsPinFilter>("all");
+  const pinnedImageCount = useMemo(
+    () => clusters.reduce((count, cluster) => count + cluster.outputs.filter((output) => output.isPinned).length, 0),
+    [clusters]
+  );
+
+  const filteredClusters = useMemo(() => {
+    return clusters
+      .map((cluster) => {
+        const filteredOutputs = cluster.outputs.filter((output) => {
+          if (pinFilter === "pinned") {
+            return output.isPinned;
+          }
+
+          if (pinFilter === "unpinned") {
+            return !output.isPinned;
+          }
+
+          return true;
+        });
+
+        if (filteredOutputs.length === 0) {
+          return null;
+        }
+
+        return {
+          ...cluster,
+          outputCount: filteredOutputs.length,
+          representative: filteredOutputs[0]!,
+          outputs: filteredOutputs
+        };
+      })
+      .filter((cluster): cluster is RecentJobOutputCluster => Boolean(cluster));
+  }, [clusters, pinFilter]);
 
   const allOutputImages = useMemo(
     () =>
-      clusters.flatMap((cluster) =>
+      filteredClusters.flatMap((cluster) =>
         cluster.outputs.map((output) => ({
           ...output,
           jobId: cluster.jobId
         }))
       ),
-    [clusters]
+    [filteredClusters]
   );
 
   // Expose openJobOutputs globally for cross-tab hack
@@ -69,6 +104,7 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
     <section className="outputs-panel">
       <header className="outputs-toolbar">
         <h2>Outputs</h2>
+        <span className="outputs-pin-counter">Pins: {pinnedImageCount}</span>
         <div className="outputs-toolbar-controls">
           <label className="field outputs-view-toggle-field">
             View
@@ -79,6 +115,14 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
             >
               {galleryMode === "per-job" ? "Jobs" : "Images"}
             </button>
+          </label>
+          <label className="field">
+            Pins
+            <select className="select" value={pinFilter} onChange={(event) => setPinFilter(event.target.value as OutputsPinFilter)}>
+              <option value="all">All images</option>
+              <option value="pinned">Pinned only</option>
+              <option value="unpinned">Unpinned only</option>
+            </select>
           </label>
           <label className="field">
             Density
@@ -94,10 +138,11 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
       </header>
 
       {clusters.length === 0 ? <p>No completed job outputs yet.</p> : null}
+      {clusters.length > 0 && filteredClusters.length === 0 ? <p>No outputs match the selected pin filter.</p> : null}
 
       {galleryMode === "per-job" ? (
         <div className={getGalleryClassName(gallery.density)}>
-          {clusters.map((cluster) => (
+          {filteredClusters.map((cluster) => (
             <article key={cluster.jobId} className="outputs-cluster-card">
               <OutputImageCard
                 image={cluster.representative}

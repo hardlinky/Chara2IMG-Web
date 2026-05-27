@@ -4,6 +4,7 @@ import "../../styles/jobsOutput.css";
 
 type RecentJobsPanelProps = {
   jobs: RecentJobRecord[];
+  pinnedImageCount?: number;
   warningJobIds: string[];
   cancelingJobIds: string[];
   statusFilter: RecentJobStatusFilter;
@@ -135,6 +136,7 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
     <section className="jobs-panel" aria-label="recent-jobs-panel">
       <header className="jobs-panel-header">
         <h2>Recent Jobs</h2>
+        <span className="jobs-pin-counter">Pins: {props.pinnedImageCount ?? 0}</span>
         <label className="field">
           Status
           <select className="select" value={props.statusFilter} onChange={(event) => props.onStatusFilterChange(event.target.value as RecentJobStatusFilter)}>

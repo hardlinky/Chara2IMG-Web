@@ -3,6 +3,7 @@ import { requireInvitedSession } from "../middleware/session";
 import { cancelRequestSchema, purgeQueueRequestSchema, retryRequestSchema, runRequestSchema, statusBatchRequestSchema, statusRequestSchema } from "../schemas/runpodProxy";
 import { forwardRunpodRequest } from "../lib/runpodClient";
 import { redactSecrets } from "../lib/redaction";
+import { getCachedRunpodJobState, removeUnknownRunpodJobStates, setCachedRunpodJobState } from "../lib/runpodJobStateStore";
 
 function toProxyResponse(response: Response, body: string): Response {
   return new Response(body, {
@@ -40,7 +41,21 @@ export function registerRunpodProxyRoutes(app: Hono): void {
         body: { input: parsed.data.input }
       });
 
-      return toProxyResponse(response, await response.text());
+      const body = await response.text();
+      if (response.ok) {
+        try {
+          const parsedBody = JSON.parse(body) as { id?: unknown; jobId?: unknown };
+          const jobId = typeof parsedBody.id === "string" ? parsedBody.id : typeof parsedBody.jobId === "string" ? parsedBody.jobId : null;
+
+          if (jobId) {
+            setCachedRunpodJobState(parsed.data.endpointId, jobId, parsedBody);
+          }
+        } catch {
+          // Ignore non-JSON run responses for cache tracking.
+        }
+      }
+
+      return toProxyResponse(response, body);
     } catch (error) {
       return c.json(toSafeProxyError(error), 502);
     }
@@ -55,6 +70,11 @@ export function registerRunpodProxyRoutes(app: Hono): void {
     }
 
     try {
+      const cached = getCachedRunpodJobState(parsed.data.endpointId, parsed.data.id);
+      if (cached?.isTerminal) {
+        return c.json(cached.data);
+      }
+
       const response = await forwardRunpodRequest({
         endpointId: parsed.data.endpointId,
         apiKey: parsed.data.apiKey,
@@ -62,7 +82,16 @@ export function registerRunpodProxyRoutes(app: Hono): void {
         id: parsed.data.id
       });
 
-      return toProxyResponse(response, await response.text());
+      const body = await response.text();
+      if (response.ok) {
+        try {
+          setCachedRunpodJobState(parsed.data.endpointId, parsed.data.id, JSON.parse(body));
+        } catch {
+          // Ignore non-JSON status payloads for cache tracking.
+        }
+      }
+
+      return toProxyResponse(response, body);
     } catch (error) {
       return c.json(toSafeProxyError(error), 502);
     }
@@ -76,9 +105,24 @@ export function registerRunpodProxyRoutes(app: Hono): void {
       return c.json({ ok: false, error: "Invalid status-batch request" }, 400);
     }
 
+    if (parsed.data.knownIds) {
+      removeUnknownRunpodJobStates(parsed.data.endpointId, parsed.data.knownIds);
+    }
+
     const items = await Promise.all(
       parsed.data.ids.map(async (id) => {
         try {
+          const cached = getCachedRunpodJobState(parsed.data.endpointId, id);
+          if (cached?.isTerminal) {
+            return {
+              id,
+              ok: true,
+              statusCode: 200,
+              data: cached.data,
+              source: "cache"
+            };
+          }
+
           const response = await forwardRunpodRequest({
             endpointId: parsed.data.endpointId,
             apiKey: parsed.data.apiKey,
@@ -106,11 +150,14 @@ export function registerRunpodProxyRoutes(app: Hono): void {
             };
           }
 
+          setCachedRunpodJobState(parsed.data.endpointId, id, data);
+
           return {
             id,
             ok: true,
             statusCode: response.status,
-            data
+            data,
+            source: "runpod"
           };
         } catch (error) {
           return {
@@ -141,7 +188,16 @@ export function registerRunpodProxyRoutes(app: Hono): void {
         id: parsed.data.id
       });
 
-      return toProxyResponse(response, await response.text());
+      const body = await response.text();
+      if (response.ok) {
+        try {
+          setCachedRunpodJobState(parsed.data.endpointId, parsed.data.id, JSON.parse(body));
+        } catch {
+          // Ignore non-JSON cancel payloads for cache tracking.
+        }
+      }
+
+      return toProxyResponse(response, body);
     } catch (error) {
       return c.json(toSafeProxyError(error), 502);
     }
@@ -163,7 +219,16 @@ export function registerRunpodProxyRoutes(app: Hono): void {
         id: parsed.data.id
       });
 
-      return toProxyResponse(response, await response.text());
+      const body = await response.text();
+      if (response.ok) {
+        try {
+          setCachedRunpodJobState(parsed.data.endpointId, parsed.data.id, JSON.parse(body));
+        } catch {
+          // Ignore non-JSON retry payloads for cache tracking.
+        }
+      }
+
+      return toProxyResponse(response, body);
     } catch (error) {
       return c.json(toSafeProxyError(error), 502);
     }

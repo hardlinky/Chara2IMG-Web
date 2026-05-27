@@ -297,6 +297,7 @@ export function App() {
             ) : null}
             <RecentJobsPanel
               jobs={recentJobs.jobs}
+              pinnedImageCount={recentJobs.pinnedImageCount}
               warningJobIds={recentJobs.warningJobIds}
               cancelingJobIds={recentJobs.cancelingJobIds}
               statusFilter={recentJobs.statusFilter}

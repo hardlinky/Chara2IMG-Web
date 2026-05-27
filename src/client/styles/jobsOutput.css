@@ -14,6 +14,24 @@
   gap: var(--space-2);
 }
 
+.jobs-pin-counter {
+  border: 1px solid rgba(235, 196, 91, 0.45);
+  background: rgba(58, 47, 15, 0.58);
+  color: #f5dd9e;
+  border-radius: 999px;
+  padding: 0.2rem 0.65rem;
+  font-size: var(--font-size-sm);
+}
+
+.outputs-pin-counter {
+  border: 1px solid rgba(235, 196, 91, 0.45);
+  background: rgba(58, 47, 15, 0.58);
+  color: #f5dd9e;
+  border-radius: 999px;
+  padding: 0.2rem 0.65rem;
+  font-size: var(--font-size-sm);
+}
+
 .jobs-list {
   list-style: none;
   margin: 0;
