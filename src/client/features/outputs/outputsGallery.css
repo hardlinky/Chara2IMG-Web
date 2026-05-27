@@ -5,6 +5,17 @@
   gap: 0.75rem;
 }
 
+.outputs-toolbar-controls {
+  display: flex;
+  align-items: end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.outputs-view-toggle-btn {
+  white-space: nowrap;
+}
+
 .outputs-toolbar select {
   margin-left: 0.5rem;
 }
@@ -171,6 +182,14 @@
 }
 
 @media (max-width: 600px) {
+  .outputs-toolbar-controls {
+    width: 100%;
+  }
+
+  .outputs-view-toggle-btn {
+    width: 100%;
+  }
+
   .outputs-gallery,
   .outputs-image-grid,
   .outputs-gallery-compact,
