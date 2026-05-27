@@ -58,7 +58,15 @@ function formatExecutionTime(job: RecentJobRecord, now: number): string | null {
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = totalSeconds % 60;
-    return `${hours}h ${minutes}m ${seconds}s`;
+    const parts: string[] = [];
+    if (hours > 0) {
+      parts.push(`${hours}h`);
+    }
+    if (minutes > 0) {
+      parts.push(`${minutes}m`);
+    }
+    parts.push(`${seconds}s`);
+    return parts.join(" ");
   }
 
   if (typeof job.lifecycle.executionTimeMs === "number" && Number.isFinite(job.lifecycle.executionTimeMs)) {

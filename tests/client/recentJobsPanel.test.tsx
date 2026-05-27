@@ -56,7 +56,7 @@ describe("RecentJobsPanel", () => {
     expect(html).toContain("Recent Jobs");
     expect(html).toContain("job-123");
     expect(html).toContain("Status: FAILED");
-    expect(html).toContain("2h ago (0h 10m 0s)");
+    expect(html).toContain("2h ago (10m 0s)");
     expect(html).toContain("Queue exceeded limits");
     expect(html).not.toContain("Execution time: 0h 10m 0s");
     expect(html).toContain("Prev");
