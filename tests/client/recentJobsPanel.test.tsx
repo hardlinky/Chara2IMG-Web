@@ -241,6 +241,7 @@ describe("RecentJobsPanel", () => {
 
     expect(inProgressHtml).toContain('aria-label="Refresh job status"');
     expect(inProgressHtml).toContain("Next poll in");
+    expect(inProgressHtml).toContain("Execution time:");
 
     const inQueueHtml = renderToStaticMarkup(
       <RecentJobsPanel

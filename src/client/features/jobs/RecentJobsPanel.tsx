@@ -52,13 +52,30 @@ function ViewOutputsIcon() {
   );
 }
 
-function formatExecutionTime(job: RecentJobRecord): string | null {
-  if (job.lifecycle.executionTimeMs === undefined) {
+function formatExecutionTime(job: RecentJobRecord, now: number): string | null {
+  if (typeof job.lifecycle.executionTimeMs === "number" && Number.isFinite(job.lifecycle.executionTimeMs)) {
+    const seconds = Math.max(0, Math.round(job.lifecycle.executionTimeMs / 1000));
+    return `${seconds}s`;
+  }
+
+  const submittedAtMs = Date.parse(job.submittedAt);
+  if (!Number.isFinite(submittedAtMs)) {
     return null;
   }
 
-  const seconds = Math.max(0, Math.round(job.lifecycle.executionTimeMs / 1000));
-  return `${seconds}s`;
+  if (!job.lifecycle.isTerminal && job.lifecycle.status === "IN_PROGRESS") {
+    const elapsedMs = Math.max(0, now - submittedAtMs);
+    return `${Math.round(elapsedMs / 1000)}s`;
+  }
+
+  if (job.lifecycle.isTerminal && job.lifecycle.finishedAt) {
+    const finishedAtMs = Date.parse(job.lifecycle.finishedAt);
+    if (Number.isFinite(finishedAtMs) && finishedAtMs >= submittedAtMs) {
+      return `${Math.round((finishedAtMs - submittedAtMs) / 1000)}s`;
+    }
+  }
+
+  return null;
 }
 
 function extractStringValue(value: unknown): string | null {
@@ -208,7 +225,7 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
       {props.jobs.length > 0 ? (
         <ul className="jobs-list">
           {props.jobs.map((job) => {
-            const executionTime = formatExecutionTime(job);
+            const executionTime = formatExecutionTime(job, now);
             const failureSnippet = formatFailureSnippet(job);
             const workerId = findWorkerId(job.lastResponse);
             return (

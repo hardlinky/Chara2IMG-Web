@@ -30,7 +30,11 @@ export function isTerminalJobSnapshot(job: Pick<RecentJobRecord, "lifecycle">): 
   return job.lifecycle.isTerminal || isTerminalRunpodStatus(job.lifecycle.status);
 }
 
-export function buildLifecycleSnapshotFromStatus(status: string, now: string = new Date().toISOString()): RecentJobRecord["lifecycle"] {
+export function buildLifecycleSnapshotFromStatus(
+  status: string,
+  now: string = new Date().toISOString(),
+  executionTimeMs?: number
+): RecentJobRecord["lifecycle"] {
   const normalizedStatus = normalizeRunpodStatus(status);
   const terminal = isTerminalRunpodStatus(normalizedStatus);
 
@@ -41,7 +45,7 @@ export function buildLifecycleSnapshotFromStatus(status: string, now: string = n
     lastCheckedAt: now,
     finishedAt: terminal ? now : undefined,
     warning: null,
-    executionTimeMs: undefined,
+    executionTimeMs,
     failureReason: null
   };
 }

@@ -200,6 +200,21 @@ describe("useRecentJobs helpers", () => {
     expect(stored?.lifecycle.isTerminal).toBe(false);
   });
 
+  it("stores execution duration when status payload includes duration", async () => {
+    await upsertRecentJob(createJob("job-duration", "IN_PROGRESS"));
+    vi.mocked(statusViaProxy).mockResolvedValueOnce({
+      id: "job-duration",
+      status: "COMPLETED",
+      duration: 2.4
+    });
+
+    const result = await pollSingleJob("job-duration", { apiKey: "key", endpointId: "endpoint-1" });
+    const updated = result.jobs.find((job) => job.jobId === "job-duration");
+
+    expect(updated?.lifecycle.status).toBe("COMPLETED");
+    expect(updated?.lifecycle.executionTimeMs).toBe(2400);
+  });
+
   it("adds a warning when the single job poll request fails with a non-404 error", async () => {
     await upsertRecentJob(createJob("job-warn", "IN_PROGRESS"));
     vi.mocked(statusViaProxy).mockRejectedValueOnce(new Error("Network error"));

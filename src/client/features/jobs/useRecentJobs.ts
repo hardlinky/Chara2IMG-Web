@@ -84,6 +84,48 @@ function extractStatusFromPayload(payload: unknown, fallback: string): string {
   return fallback;
 }
 
+function toDurationMs(value: unknown): number | undefined {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+    return undefined;
+  }
+
+  // Runpod/Comfy payloads commonly return duration-like values in seconds.
+  // Values >= 1000 are treated as ms to avoid multiplying already-ms durations.
+  return value < 1000 ? Math.round(value * 1000) : Math.round(value);
+}
+
+function extractExecutionTimeMsFromPayload(payload: unknown): number | undefined {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return undefined;
+  }
+
+  const record = payload as Record<string, unknown>;
+  const direct =
+    toDurationMs(record.executionTimeMs) ??
+    toDurationMs(record.execution_time_ms) ??
+    toDurationMs(record.executionTime) ??
+    toDurationMs(record.execution_time) ??
+    toDurationMs(record.duration);
+
+  if (direct !== undefined) {
+    return direct;
+  }
+
+  const nestedData = record.data;
+  if (nestedData && typeof nestedData === "object" && !Array.isArray(nestedData)) {
+    const nested = nestedData as Record<string, unknown>;
+    return (
+      toDurationMs(nested.executionTimeMs) ??
+      toDurationMs(nested.execution_time_ms) ??
+      toDurationMs(nested.executionTime) ??
+      toDurationMs(nested.execution_time) ??
+      toDurationMs(nested.duration)
+    );
+  }
+
+  return undefined;
+}
+
 function sortNewestFirst(left: RecentJobRecord, right: RecentJobRecord): number {
   return right.submittedAt.localeCompare(left.submittedAt);
 }
@@ -145,7 +187,7 @@ export async function pollSingleJob(jobId: string, options: UseRecentJobsOptions
           });
 
           const status = extractStatusFromPayload(response, job.lifecycle.status);
-          const nextLifecycle = buildLifecycleSnapshotFromStatus(status);
+          const nextLifecycle = buildLifecycleSnapshotFromStatus(status, undefined, extractExecutionTimeMsFromPayload(response));
           await applyLifecycleUpdate(job.jobId, nextLifecycle, response);
         } catch (error) {
           const status = error instanceof Error && "status" in error ? Number((error as { status?: unknown }).status) : undefined;
@@ -233,7 +275,7 @@ export async function pollRecentJobsOnce(options: UseRecentJobsOptions = {}): Pr
         });
 
         const status = extractStatusFromPayload(response, job.lifecycle.status);
-        const nextLifecycle = buildLifecycleSnapshotFromStatus(status);
+        const nextLifecycle = buildLifecycleSnapshotFromStatus(status, undefined, extractExecutionTimeMsFromPayload(response));
         await applyLifecycleUpdate(job.jobId, nextLifecycle, response);
       } catch (error) {
         if (extractErrorStatusCode(error) === 404) {
@@ -262,7 +304,7 @@ export async function pollRecentJobsOnce(options: UseRecentJobsOptions = {}): Pr
 
     if (item.ok && item.data) {
       const status = extractStatusFromPayload(item.data, job.lifecycle.status);
-      const nextLifecycle = buildLifecycleSnapshotFromStatus(status);
+      const nextLifecycle = buildLifecycleSnapshotFromStatus(status, undefined, extractExecutionTimeMsFromPayload(item.data));
       await applyLifecycleUpdate(job.jobId, nextLifecycle, item.data);
       continue;
     }
