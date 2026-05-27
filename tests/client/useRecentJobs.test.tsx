@@ -10,6 +10,7 @@ import {
   persistStatusFilter,
   pollSingleJob,
   pollRecentJobsOnce,
+  resetStatusBatchPollingSupportForTests,
   removeRecentJobFromVisibleList,
   rerunRecentJobWithDependencies
 } from "../../src/client/features/jobs/useRecentJobs";
@@ -40,6 +41,7 @@ function createJob(jobId: string, status: string) {
 describe("useRecentJobs helpers", () => {
   beforeEach(async () => {
     await clearRecentJobs();
+    resetStatusBatchPollingSupportForTests();
     vi.mocked(cancelViaProxy).mockReset();
     vi.mocked(statusViaProxy).mockReset();
     vi.mocked(statusBatchViaProxy).mockReset();
@@ -233,5 +235,54 @@ describe("useRecentJobs helpers", () => {
     const updated = result.jobs.find((job) => job.jobId === "job-batch");
     expect(updated?.lifecycle.status).toBe("IN_PROGRESS");
     expect(updated?.lifecycle.isTerminal).toBe(false);
+  });
+
+  it("falls back to single-job polling when status-batch returns 404", async () => {
+    await upsertRecentJob(createJob("job-fallback-1", "IN_QUEUE"));
+    await upsertRecentJob(createJob("job-fallback-2", "IN_PROGRESS"));
+
+    vi.mocked(statusBatchViaProxy).mockRejectedValueOnce({
+      status: 404,
+      message: "Not Found"
+    });
+
+    vi.mocked(statusViaProxy)
+      .mockResolvedValueOnce({ id: "job-fallback-1", status: "IN_PROGRESS" })
+      .mockResolvedValueOnce({ id: "job-fallback-2", status: "COMPLETED" });
+
+    const result = await pollRecentJobsOnce({ apiKey: "key", endpointId: "endpoint-1" });
+
+    expect(vi.mocked(statusBatchViaProxy)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(statusViaProxy)).toHaveBeenCalledTimes(2);
+    expect(result.warningJobIds).toHaveLength(0);
+
+    const first = result.jobs.find((job) => job.jobId === "job-fallback-1");
+    const second = result.jobs.find((job) => job.jobId === "job-fallback-2");
+    expect(first?.lifecycle.status).toBe("IN_PROGRESS");
+    expect(second?.lifecycle.status).toBe("COMPLETED");
+    expect(second?.lifecycle.isTerminal).toBe(true);
+  });
+
+  it("stops retrying status-batch after a 404 capability miss", async () => {
+    await upsertRecentJob(createJob("job-capability", "IN_QUEUE"));
+
+    vi.mocked(statusBatchViaProxy).mockRejectedValueOnce({
+      status: 404,
+      message: "Not Found"
+    });
+
+    vi.mocked(statusViaProxy)
+      .mockResolvedValueOnce({ id: "job-capability", status: "IN_PROGRESS" })
+      .mockResolvedValueOnce({ id: "job-capability", status: "COMPLETED" });
+
+    await pollRecentJobsOnce({ apiKey: "key", endpointId: "endpoint-1" });
+    await pollRecentJobsOnce({ apiKey: "key", endpointId: "endpoint-1" });
+
+    expect(vi.mocked(statusBatchViaProxy)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(statusViaProxy)).toHaveBeenCalledTimes(2);
+
+    const stored = await getRecentJob("job-capability");
+    expect(stored?.lifecycle.status).toBe("COMPLETED");
+    expect(stored?.lifecycle.isTerminal).toBe(true);
   });
 });

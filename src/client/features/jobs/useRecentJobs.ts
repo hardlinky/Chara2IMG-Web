@@ -34,11 +34,34 @@ export const RECENT_JOB_STATUS_FILTERS = ["All", "IN_QUEUE", "IN_PROGRESS", "COM
 export type RecentJobStatusFilter = (typeof RECENT_JOB_STATUS_FILTERS)[number];
 
 const RECENT_JOB_STATUS_FILTER_STORAGE_KEY = "chara2imgRecentJobsStatusFilter";
+let supportsStatusBatchPolling: boolean | null = null;
+
+export function resetStatusBatchPollingSupportForTests(): void {
+  supportsStatusBatchPolling = null;
+}
 
 type RecentJobUpdateResult = {
   jobs: RecentJobRecord[];
   warningJobIds: string[];
 };
+
+function extractErrorStatusCode(error: unknown): number | undefined {
+  if (!error || typeof error !== "object") {
+    return undefined;
+  }
+
+  const status = (error as { status?: unknown }).status;
+  if (typeof status === "number") {
+    return status;
+  }
+
+  if (typeof status === "string") {
+    const parsed = Number(status);
+    return Number.isNaN(parsed) ? undefined : parsed;
+  }
+
+  return undefined;
+}
 
 function extractStatusFromPayload(payload: unknown, fallback: string): string {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
@@ -181,12 +204,52 @@ export async function pollRecentJobsOnce(options: UseRecentJobsOptions = {}): Pr
     };
   }
 
-  const batch = await statusBatchViaProxy({
-    endpointId: options.endpointId ?? jobsToPoll[0]!.endpointId,
-    apiKey: options.apiKey,
-    ids: jobsToPoll.map((job) => job.jobId),
-    knownIds: currentJobs.map((job) => job.jobId)
-  });
+  let batch: Awaited<ReturnType<typeof statusBatchViaProxy>> | null = null;
+  if (supportsStatusBatchPolling !== false) {
+    try {
+      batch = await statusBatchViaProxy({
+        endpointId: options.endpointId ?? jobsToPoll[0]!.endpointId,
+        apiKey: options.apiKey,
+        ids: jobsToPoll.map((job) => job.jobId),
+        knownIds: currentJobs.map((job) => job.jobId)
+      });
+      supportsStatusBatchPolling = true;
+    } catch (error) {
+      if (extractErrorStatusCode(error) !== 404) {
+        throw error;
+      }
+
+      supportsStatusBatchPolling = false;
+    }
+  }
+
+  if (!batch) {
+    for (const job of jobsToPoll) {
+      try {
+        const response = await statusViaProxy({
+          endpointId: options.endpointId ?? job.endpointId,
+          apiKey: options.apiKey,
+          id: job.jobId
+        });
+
+        const status = extractStatusFromPayload(response, job.lifecycle.status);
+        const nextLifecycle = buildLifecycleSnapshotFromStatus(status);
+        await applyLifecycleUpdate(job.jobId, nextLifecycle, response);
+      } catch (error) {
+        if (extractErrorStatusCode(error) === 404) {
+          await applyLifecycleUpdate(job.jobId, classifyKnownJob404Lifecycle(job));
+          continue;
+        }
+
+        warningJobIds.push(job.jobId);
+      }
+    }
+
+    return {
+      jobs: await loadRecentJobs(),
+      warningJobIds
+    };
+  }
 
   const resultById = new Map(batch.items.map((item) => [item.id, item]));
 
