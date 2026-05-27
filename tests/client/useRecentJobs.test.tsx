@@ -1,6 +1,6 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi, afterEach } from "vitest";
-import { cancelViaProxy, statusViaProxy } from "../../src/client/lib/api/runpodProxyClient";
+import { cancelViaProxy, statusBatchViaProxy, statusViaProxy } from "../../src/client/lib/api/runpodProxyClient";
 import { clearRecentJobs, getRecentJob, listRecentJobs, upsertRecentJob } from "../../src/client/lib/recentJobsStorage";
 import { buildLifecycleSnapshotFromStatus } from "../../src/client/features/jobs/jobStatus";
 import {
@@ -9,12 +9,14 @@ import {
   getStoredStatusFilter,
   persistStatusFilter,
   pollSingleJob,
+  pollRecentJobsOnce,
   removeRecentJobFromVisibleList,
   rerunRecentJobWithDependencies
 } from "../../src/client/features/jobs/useRecentJobs";
 
 vi.mock("../../src/client/lib/api/runpodProxyClient", () => ({
   statusViaProxy: vi.fn(),
+  statusBatchViaProxy: vi.fn(),
   cancelViaProxy: vi.fn(),
   runViaProxy: vi.fn(),
   updateAppViaProxy: vi.fn()
@@ -40,6 +42,7 @@ describe("useRecentJobs helpers", () => {
     await clearRecentJobs();
     vi.mocked(cancelViaProxy).mockReset();
     vi.mocked(statusViaProxy).mockReset();
+    vi.mocked(statusBatchViaProxy).mockReset();
     let storedFilter: string | null = null;
     vi.stubGlobal("window", {
       localStorage: {
@@ -204,5 +207,31 @@ describe("useRecentJobs helpers", () => {
     expect(result.warningJobIds).toContain("job-warn");
     const stored = await getRecentJob("job-warn");
     expect(stored?.lifecycle.status).toBe("IN_PROGRESS");
+  });
+
+  it("updates queued jobs from nested batch status payloads", async () => {
+    await upsertRecentJob(createJob("job-batch", "IN_QUEUE"));
+
+    vi.mocked(statusBatchViaProxy).mockResolvedValueOnce({
+      items: [
+        {
+          id: "job-batch",
+          ok: true,
+          statusCode: 200,
+          data: {
+            data: {
+              status: "running"
+            }
+          }
+        }
+      ]
+    });
+
+    const result = await pollRecentJobsOnce({ apiKey: "key", endpointId: "endpoint-1" });
+
+    expect(vi.mocked(statusBatchViaProxy)).toHaveBeenCalledTimes(1);
+    const updated = result.jobs.find((job) => job.jobId === "job-batch");
+    expect(updated?.lifecycle.status).toBe("IN_PROGRESS");
+    expect(updated?.lifecycle.isTerminal).toBe(false);
   });
 });

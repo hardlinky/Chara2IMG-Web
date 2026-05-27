@@ -40,6 +40,27 @@ type RecentJobUpdateResult = {
   warningJobIds: string[];
 };
 
+function extractStatusFromPayload(payload: unknown, fallback: string): string {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return fallback;
+  }
+
+  const record = payload as Record<string, unknown>;
+  if (typeof record.status === "string" && record.status.trim()) {
+    return record.status;
+  }
+
+  const nestedData = record.data;
+  if (nestedData && typeof nestedData === "object" && !Array.isArray(nestedData)) {
+    const nestedRecord = nestedData as Record<string, unknown>;
+    if (typeof nestedRecord.status === "string" && nestedRecord.status.trim()) {
+      return nestedRecord.status;
+    }
+  }
+
+  return fallback;
+}
+
 function sortNewestFirst(left: RecentJobRecord, right: RecentJobRecord): number {
   return right.submittedAt.localeCompare(left.submittedAt);
 }
@@ -100,7 +121,7 @@ export async function pollSingleJob(jobId: string, options: UseRecentJobsOptions
             id: job.jobId
           });
 
-          const status = String(response.status ?? job.lifecycle.status);
+          const status = extractStatusFromPayload(response, job.lifecycle.status);
           const nextLifecycle = buildLifecycleSnapshotFromStatus(status);
           await applyLifecycleUpdate(job.jobId, nextLifecycle, response);
         } catch (error) {
@@ -177,7 +198,7 @@ export async function pollRecentJobsOnce(options: UseRecentJobsOptions = {}): Pr
     }
 
     if (item.ok && item.data) {
-      const status = String(item.data.status ?? job.lifecycle.status);
+      const status = extractStatusFromPayload(item.data, job.lifecycle.status);
       const nextLifecycle = buildLifecycleSnapshotFromStatus(status);
       await applyLifecycleUpdate(job.jobId, nextLifecycle, item.data);
       continue;
