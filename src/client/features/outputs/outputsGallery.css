@@ -33,7 +33,7 @@
 
 .outputs-gallery {
   column-gap: 0.85rem;
-  margin-top: 1rem;
+  margin-top: 0;
 }
 
 .outputs-gallery-compact {
