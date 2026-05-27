@@ -177,6 +177,40 @@ function formatFailureSnippet(job: RecentJobRecord): string | null {
   return failureMessage.length > 90 ? `${failureMessage.slice(0, 90)}...` : failureMessage;
 }
 
+function formatHumanDateTime(isoValue: string | undefined | null): string {
+  if (!isoValue) {
+    return "unknown";
+  }
+
+  const date = new Date(isoValue);
+  if (!Number.isFinite(date.getTime())) {
+    return isoValue;
+  }
+
+  return date.toLocaleString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit"
+  });
+}
+
+function formatJobTimestampTooltip(job: RecentJobRecord, executionTime: string | null): string {
+  const parts = [`Submitted: ${formatHumanDateTime(job.submittedAt)}`];
+
+  if (job.lifecycle.finishedAt) {
+    parts.push(`Finished: ${formatHumanDateTime(job.lifecycle.finishedAt)}`);
+  }
+
+  if (executionTime) {
+    parts.push(`Duration: ${executionTime}`);
+  }
+
+  return parts.join(" | ");
+}
+
 function formatNextPollCountdown(job: RecentJobRecord, now: number): string {
   const lastCheckedAtMs = Date.parse(job.lifecycle.lastCheckedAt ?? job.submittedAt);
   const safeLastCheckedAtMs = Number.isFinite(lastCheckedAtMs) ? lastCheckedAtMs : now;
@@ -228,12 +262,17 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
             const executionTime = formatExecutionTime(job, now);
             const failureSnippet = formatFailureSnippet(job);
             const workerId = findWorkerId(job.lastResponse);
+            const completionTimestamp = job.lifecycle.finishedAt ?? job.submittedAt;
+            const completionTimeLabel = props.formatSubmittedAtRelative(completionTimestamp);
+            const showInlineDuration = Boolean(job.lifecycle.isTerminal && executionTime);
+            const completionMeta = showInlineDuration ? `${completionTimeLabel} (${executionTime})` : completionTimeLabel;
+            const timestampTooltip = formatJobTimestampTooltip(job, executionTime);
             return (
               <li key={job.jobId} className="jobs-card">
                 <div className="jobs-card-meta">
                   <strong>{job.jobId}</strong>
-                  <time dateTime={job.submittedAt} title={job.submittedAt}>
-                    {props.formatSubmittedAtRelative(job.submittedAt)}
+                  <time dateTime={completionTimestamp} title={timestampTooltip}>
+                    {completionMeta}
                   </time>
                 </div>
                 {workerId ? <span>Worker ID: {workerId}</span> : null}
@@ -255,7 +294,7 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
                     <span className="jobs-status-chip jobs-warning-chip">Polling warning</span>
                   ) : null}
                 </div>
-                {executionTime ? <span>Execution time: {executionTime}</span> : null}
+                {executionTime && !showInlineDuration ? <span>Execution time: {executionTime}</span> : null}
                 {failureSnippet ? (
                   <p>
                     <strong>Error:</strong> {failureSnippet}
