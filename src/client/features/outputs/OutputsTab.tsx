@@ -1,13 +1,14 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { RecentJobOutputCluster } from "../../../shared/contracts/jobs";
 import { JobOutputsView } from "./JobOutputsView";
 import { OutputImageCard } from "./OutputImageCard";
-import { OUTPUT_DENSITIES, useOutputGallery } from "./useOutputGallery";
+import { OUTPUT_DENSITIES, type OutputDensity, useOutputGallery } from "./useOutputGallery";
 import "./outputsGallery.css";
 import "../../styles/jobsOutput.css";
 
 type OutputsGalleryMode = "per-job" | "all-images";
 type OutputsPinFilter = "all" | "pinned" | "unpinned";
+const MOBILE_OUTPUT_DENSITIES: readonly OutputDensity[] = ["compact", "balanced"];
 
 type OutputsTabProps = {
   clusters: RecentJobOutputCluster[];
@@ -28,6 +29,34 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
   const gallery = useOutputGallery(clusters);
   const [galleryMode, setGalleryMode] = useState<OutputsGalleryMode>("per-job");
   const [pinFilter, setPinFilter] = useState<OutputsPinFilter>("all");
+  const [isMobile, setIsMobile] = useState(() => (typeof window !== "undefined" ? window.matchMedia("(max-width: 600px)").matches : false));
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia("(max-width: 600px)");
+    const onChange = (event: MediaQueryListEvent) => {
+      setIsMobile(event.matches);
+    };
+
+    setIsMobile(mediaQuery.matches);
+    mediaQuery.addEventListener("change", onChange);
+
+    return () => {
+      mediaQuery.removeEventListener("change", onChange);
+    };
+  }, []);
+
+  const availableDensities = useMemo<readonly OutputDensity[]>(() => (isMobile ? MOBILE_OUTPUT_DENSITIES : OUTPUT_DENSITIES), [isMobile]);
+
+  useEffect(() => {
+    if (!availableDensities.includes(gallery.density)) {
+      gallery.setDensity("balanced");
+    }
+  }, [availableDensities, gallery]);
+
   const pinnedImageCount = useMemo(
     () => clusters.reduce((count, cluster) => count + cluster.outputs.filter((output) => output.isPinned).length, 0),
     [clusters]
@@ -126,10 +155,11 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
           </label>
           <label className="field">
             Density
-            <select className="select" value={gallery.density} onChange={(event) => gallery.setDensity(event.target.value as (typeof OUTPUT_DENSITIES)[number])}>
-              {OUTPUT_DENSITIES.map((density) => (
+            <select className="select" value={gallery.density} onChange={(event) => gallery.setDensity(event.target.value as OutputDensity)}>
+              {availableDensities.map((density) => (
                 <option key={density} value={density}>
-                  {density}
+                  {density[0]?.toUpperCase()}
+                  {density.slice(1)}
                 </option>
               ))}
             </select>

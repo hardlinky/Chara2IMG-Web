@@ -314,9 +314,12 @@
 
   .outputs-gallery,
   .outputs-image-grid,
-  .outputs-gallery-compact,
   .outputs-gallery-balanced,
   .outputs-gallery-comfortable {
     columns: 1;
+  }
+
+  .outputs-gallery-compact {
+    columns: 2;
   }
 }
