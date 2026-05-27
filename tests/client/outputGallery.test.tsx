@@ -19,20 +19,23 @@ function createCluster(overrides: Partial<RecentJobOutputCluster>): RecentJobOut
       dataUrl: tinyPngDataUrl,
       mimeType: "image/png",
       sourcePath: "$.output.images[0].image",
-      outputIndex: 0
+      outputIndex: 0,
+      isPinned: false
     },
     outputs: [
       {
         dataUrl: tinyPngDataUrl,
         mimeType: "image/png",
         sourcePath: "$.output.images[0].image",
-        outputIndex: 0
+        outputIndex: 0,
+        isPinned: false
       },
       {
         dataUrl: tinyPngDataUrl,
         mimeType: "image/png",
         sourcePath: "$.output.images[1].image",
-        outputIndex: 1
+        outputIndex: 1,
+        isPinned: true
       }
     ],
     ...overrides

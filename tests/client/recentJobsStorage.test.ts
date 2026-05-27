@@ -5,11 +5,11 @@ import {
   clearRecentJobs,
   getRecentJob,
   hideRecentJob,
-  hideJobOutputImage,
   hideJobOutputs,
   listRecentJobs,
   listVisibleRecentJobs,
-  setRecentJobPinned,
+  removeRecentJobOutputImage,
+  setRecentJobOutputPinned,
   upsertRecentJob,
   pruneRecentJobs
 } from "../../src/client/lib/recentJobsStorage";
@@ -76,7 +76,7 @@ describe("recentJobsStorage", () => {
 
   it("removes a specific output image from lastResponse while preserving valid JSON", async () => {
     await upsertRecentJob(createJobWithImages("job-img", "2026-05-23T10:00:00.000Z"));
-    await hideJobOutputImage("job-img", 0);
+    await removeRecentJobOutputImage("job-img", 0);
 
     const job = await getRecentJob("job-img");
     const images = (job?.lastResponse as { output?: { images?: Array<{ image: string }> } } | null)?.output?.images ?? [];
@@ -89,7 +89,7 @@ describe("recentJobsStorage", () => {
 
   it("no-ops when removing an out-of-range image index", async () => {
     await upsertRecentJob(createJobWithImages("job-oob", "2026-05-23T10:00:00.000Z"));
-    await hideJobOutputImage("job-oob", 9);
+    await removeRecentJobOutputImage("job-oob", 9);
 
     const job = await getRecentJob("job-oob");
     const images = (job?.lastResponse as { output?: { images?: Array<{ image: string }> } } | null)?.output?.images ?? [];
@@ -120,7 +120,7 @@ describe("recentJobsStorage", () => {
       await upsertRecentJob(createJob(`job-${index}`, `2026-05-23T10:${String(index).padStart(2, "0")}:00.000Z`));
     }
 
-    const pinResult = await setRecentJobPinned("job-0", true, "2026-05-23T11:00:00.000Z");
+    const pinResult = await setRecentJobOutputPinned("job-0", 0, true, "2026-05-23T11:00:00.000Z");
     expect(pinResult).toEqual({ ok: true });
 
     await upsertRecentJob(createJob("job-10", "2026-05-23T10:10:00.000Z"));
@@ -142,20 +142,20 @@ describe("recentJobsStorage", () => {
     }
 
     for (let index = 0; index < RECENT_JOBS_PINNED_LIMIT; index += 1) {
-      const result = await setRecentJobPinned(`job-pin-${index}`, true);
+      const result = await setRecentJobOutputPinned(`job-pin-${index}`, 0, true);
       expect(result).toEqual({ ok: true });
     }
 
     await upsertRecentJob(createJob("job-pin-extra", "2026-05-23T12:59:00.000Z"));
 
-    const overLimit = await setRecentJobPinned("job-pin-extra", true);
+    const overLimit = await setRecentJobOutputPinned("job-pin-extra", 0, true);
     expect(overLimit.ok).toBe(false);
   });
 
   it("after unpinning all, next submission prunes oldest unpinned jobs down to 10", async () => {
     for (let index = 0; index < 10; index += 1) {
       await upsertRecentJob(createJob(`job-a-${index}`, `2026-05-23T13:${String(index).padStart(2, "0")}:00.000Z`));
-      const pinResult = await setRecentJobPinned(`job-a-${index}`, true);
+      const pinResult = await setRecentJobOutputPinned(`job-a-${index}`, 0, true);
       expect(pinResult).toEqual({ ok: true });
     }
 
@@ -164,7 +164,7 @@ describe("recentJobsStorage", () => {
     }
 
     for (let index = 0; index < 10; index += 1) {
-      const unpinResult = await setRecentJobPinned(`job-a-${index}`, false);
+      const unpinResult = await setRecentJobOutputPinned(`job-a-${index}`, 0, false);
       expect(unpinResult).toEqual({ ok: true });
     }
 

@@ -12,7 +12,7 @@ type JobOutputsViewProps = {
   onRemoveImage: (outputIndex: number) => void;
   onRemoveAllOutputs: () => void;
   onExportWorkflow?: () => void;
-  onTogglePinned?: () => void;
+  onTogglePinnedImage?: (outputIndex: number, pinned: boolean) => void;
   canPinMore?: boolean;
 };
 
@@ -45,7 +45,7 @@ function toRelativeTimestamp(isoValue: string | null): string {
   return `${deltaDays}d ago`;
 }
 
-export function JobOutputsView({ cluster, onBack, onPreviousJob, onNextJob, onRerun, onLoadInputs, onRemoveImage, onRemoveAllOutputs, onExportWorkflow, onTogglePinned, canPinMore = true }: JobOutputsViewProps) {
+export function JobOutputsView({ cluster, onBack, onPreviousJob, onNextJob, onRerun, onLoadInputs, onRemoveImage, onRemoveAllOutputs, onExportWorkflow, onTogglePinnedImage, canPinMore = true }: JobOutputsViewProps) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const visibleImages = useMemo(() => cluster.outputs.slice(0, visibleCount), [cluster.outputs, visibleCount]);
@@ -67,18 +67,6 @@ export function JobOutputsView({ cluster, onBack, onPreviousJob, onNextJob, onRe
           </div>
           <div className="outputs-job-actions-spacer"></div>
           <div className="outputs-job-actions-group">
-            {onTogglePinned ? (
-              <button
-                className="btn btn-secondary outputs-pin-btn"
-                type="button"
-                onClick={onTogglePinned}
-                disabled={!cluster.isPinned && !canPinMore}
-                title={cluster.isPinned ? "Unpin job" : "Pin job"}
-                aria-label={cluster.isPinned ? "Unpin job" : "Pin job"}
-              >
-                {cluster.isPinned ? "📌" : "📍"}
-              </button>
-            ) : null}
             <button className="btn btn-primary" type="button" onClick={onRerun}>
               Rerun
             </button>
@@ -103,7 +91,7 @@ export function JobOutputsView({ cluster, onBack, onPreviousJob, onNextJob, onRe
         {cluster.jobId} | {toRelativeTimestamp(cluster.finishedAt ?? cluster.submittedAt)} | {cluster.workflowFileName ?? "Workflow unknown"}
       </p>
 
-      <OutputLightbox images={cluster.outputs} imagePrefix={cluster.jobId} maxVisible={visibleCount} onRemoveImage={onRemoveImage} />
+      <OutputLightbox images={cluster.outputs} imagePrefix={cluster.jobId} maxVisible={visibleCount} onRemoveImage={onRemoveImage} onTogglePinnedImage={onTogglePinnedImage} canPinMore={canPinMore} />
 
       {visibleImages.length < cluster.outputs.length ? (
         <div className="outputs-job-view-more">

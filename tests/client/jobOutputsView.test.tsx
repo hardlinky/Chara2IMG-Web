@@ -18,20 +18,23 @@ const cluster: RecentJobOutputCluster = {
     dataUrl: tinyPngDataUrl,
     mimeType: "image/png",
     sourcePath: "$.output.images[0].image",
-    outputIndex: 0
+    outputIndex: 0,
+    isPinned: false
   },
   outputs: [
     {
       dataUrl: tinyPngDataUrl,
       mimeType: "image/png",
       sourcePath: "$.output.images[0].image",
-      outputIndex: 0
+      outputIndex: 0,
+      isPinned: false
     },
     {
       dataUrl: tinyPngDataUrl,
       mimeType: "image/png",
       sourcePath: "$.output.images[1].image",
-      outputIndex: 1
+      outputIndex: 1,
+      isPinned: true
     }
   ]
 };
@@ -80,10 +83,11 @@ describe("JobOutputsView", () => {
         onLoadInputs={() => undefined}
         onRemoveImage={() => undefined}
         onRemoveAllOutputs={() => undefined}
-        onTogglePinned={() => undefined}
+        onTogglePinnedImage={() => undefined}
       />
     );
 
     expect(html).toContain("📍");
+    expect(html).toContain("outputs-image-pin-btn");
   });
 });

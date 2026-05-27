@@ -26,12 +26,14 @@ export function projectJobOutputCluster(job: RecentJobRecord): RecentJobOutputCl
   }
 
   const hiddenSet = new Set<number>(job.hiddenOutputIndices ?? []);
+  const pinnedSet = new Set<number>(job.pinnedOutputIndices ?? []);
   const outputs: RecentJobOutputImage[] = extractedImages
     .map((image, index) => ({
       dataUrl: image.dataUrl,
       mimeType: image.mimeType,
       sourcePath: image.sourcePath,
-      outputIndex: index
+      outputIndex: index,
+      isPinned: pinnedSet.has(index)
     }))
     .filter((image) => !hiddenSet.has(image.outputIndex));
 
@@ -41,7 +43,7 @@ export function projectJobOutputCluster(job: RecentJobRecord): RecentJobOutputCl
 
   return {
     jobId: job.jobId,
-    isPinned: Boolean(job.pinnedAt),
+    isPinned: Boolean(job.pinnedAt) || Boolean(job.pinnedOutputIndices?.length),
     endpointId: job.endpointId,
     submittedAt: job.submittedAt,
     finishedAt: job.lifecycle.finishedAt ?? null,

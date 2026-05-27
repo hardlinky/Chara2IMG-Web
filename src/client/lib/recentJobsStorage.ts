@@ -179,6 +179,7 @@ function normalizeJobRecord(input: RecentJobSubmissionInput): StoredRecentJob {
     submittedAt: input.submittedAt ?? new Date().toISOString(),
     hiddenAt: null,
     pinnedAt: null,
+    pinnedOutputIndices: undefined,
     lifecycle: input.lifecycle,
     provenance: {
       templateFingerprint: input.templateFingerprint,
@@ -225,74 +226,66 @@ export async function hideRecentJob(jobId: string, hiddenAt: string = new Date()
   await pruneRecentJobs();
 }
 
-export async function setRecentJobPinned(
+function normalizePinnedOutputIndices(indices: number[] | undefined, removedIndex: number): number[] | undefined {
+  if (!indices || indices.length === 0) {
+    return undefined;
+  }
+
+  const normalized = [...new Set(indices)]
+    .filter((index) => index !== removedIndex)
+    .map((index) => (index > removedIndex ? index - 1 : index))
+    .sort((left, right) => left - right);
+
+  return normalized.length > 0 ? normalized : undefined;
+}
+
+function isJobPinned(job: StoredRecentJob): boolean {
+  return Boolean(job.pinnedAt) || Boolean(job.pinnedOutputIndices?.length);
+}
+
+export async function setRecentJobOutputPinned(
   jobId: string,
+  outputIndex: number,
   pinned: boolean,
   pinnedAt: string = new Date().toISOString()
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
   const target = await db.table<StoredRecentJob, string>("jobs").get(jobId);
-  if (!target || target.hiddenAt !== null) {
-    return { ok: false, reason: "Job is not available to pin." };
+  if (!target || target.hiddenAt !== null || outputIndex < 0) {
+    return { ok: false, reason: "Job output is not available to pin." };
   }
 
-  const currentlyPinned = Boolean(target.pinnedAt);
+  const currentPinnedIndices = new Set(target.pinnedOutputIndices ?? []);
+  const currentlyPinned = currentPinnedIndices.has(outputIndex);
   if (pinned === currentlyPinned) {
     return { ok: true };
   }
 
   if (pinned) {
     const jobs = await collectJobs();
-    const pinnedVisibleCount = jobs.filter((job) => job.hiddenAt === null && Boolean(job.pinnedAt) && job.jobId !== jobId).length;
-    if (pinnedVisibleCount >= RECENT_JOBS_PINNED_LIMIT) {
+    const pinnedVisibleCount = jobs.filter((job) => job.hiddenAt === null && isJobPinned(job) && job.jobId !== jobId).length;
+    if (!isJobPinned(target) && pinnedVisibleCount >= RECENT_JOBS_PINNED_LIMIT) {
       return { ok: false, reason: `You can pin up to ${RECENT_JOBS_PINNED_LIMIT} jobs.` };
     }
 
-    await db.table<StoredRecentJob, string>("jobs").update(jobId, { pinnedAt });
-    await pruneRecentJobs();
-    return { ok: true };
+    currentPinnedIndices.add(outputIndex);
+  } else {
+    currentPinnedIndices.delete(outputIndex);
   }
 
-  await db.table<StoredRecentJob, string>("jobs").update(jobId, { pinnedAt: null });
+  const nextPinnedOutputIndices = [...currentPinnedIndices].sort((left, right) => left - right);
+  await db.table<StoredRecentJob, string>("jobs").update(jobId, {
+    pinnedOutputIndices: nextPinnedOutputIndices.length > 0 ? nextPinnedOutputIndices : undefined,
+    pinnedAt: nextPinnedOutputIndices.length > 0 ? target.pinnedAt ?? pinnedAt : null
+  });
+
   return { ok: true };
 }
 
-export async function updateRecentJobLifecycle(
-  jobId: string,
-  lifecycle: StoredRecentJob["lifecycle"],
-  lastResponse: StoredRecentJob["lastResponse"] = null,
-  lastError: StoredRecentJob["lastError"] = null
-): Promise<void> {
-  await db.table<StoredRecentJob, string>("jobs").update(jobId, {
-    lifecycle,
-    lastResponse,
-    lastError
-  });
+export async function toggleRecentJobOutputPinned(jobId: string, outputIndex: number, pinned: boolean): Promise<{ ok: true } | { ok: false; reason: string }> {
+  return setRecentJobOutputPinned(jobId, outputIndex, pinned);
 }
 
-export async function pruneRecentJobs(now: number = Date.now()): Promise<void> {
-  const jobs = await collectJobs();
-  const hiddenCutoff = now - RECENT_JOBS_HIDDEN_RETENTION_MS;
-  const hiddenExpired = jobs.filter((job) => job.hiddenAt !== null && Date.parse(job.hiddenAt) < hiddenCutoff);
-  const remainingAfterHiddenExpiry = jobs.filter((job) => !hiddenExpired.includes(job));
-
-  const toDelete = new Set<string>(hiddenExpired.map((job) => job.jobId));
-
-  const visibleUnpinnedOldestFirst = remainingAfterHiddenExpiry
-    .filter((job) => job.hiddenAt === null && !job.pinnedAt)
-    .sort((left, right) => left.submittedAt.localeCompare(right.submittedAt));
-  const unpinnedExcess = visibleUnpinnedOldestFirst.length - RECENT_JOBS_UNPINNED_LIMIT;
-  if (unpinnedExcess > 0) {
-    for (const job of visibleUnpinnedOldestFirst.slice(0, unpinnedExcess)) {
-      toDelete.add(job.jobId);
-    }
-  }
-
-  if (toDelete.size > 0) {
-    await db.table<StoredRecentJob, string>("jobs").bulkDelete([...toDelete]);
-  }
-}
-
-export async function hideJobOutputImage(jobId: string, outputIndex: number): Promise<void> {
+export async function removeRecentJobOutputImage(jobId: string, outputIndex: number): Promise<void> {
   const job = await db.table<StoredRecentJob, string>("jobs").get(jobId);
   if (!job || !job.lastResponse || outputIndex < 0) {
     return;
@@ -317,7 +310,9 @@ export async function hideJobOutputImage(jobId: string, outputIndex: number): Pr
 
   await db.table<StoredRecentJob, string>("jobs").update(jobId, {
     lastResponse: clonedResponse,
-    hiddenOutputIndices: normalizeHiddenOutputIndices(job.hiddenOutputIndices, outputIndex)
+    hiddenOutputIndices: normalizeHiddenOutputIndices(job.hiddenOutputIndices, outputIndex),
+    pinnedOutputIndices: normalizePinnedOutputIndices(job.pinnedOutputIndices, outputIndex),
+    pinnedAt: normalizePinnedOutputIndices(job.pinnedOutputIndices, outputIndex)?.length ? job.pinnedAt ?? new Date().toISOString() : null
   });
 }
 
@@ -325,6 +320,51 @@ export async function hideJobOutputs(jobId: string): Promise<void> {
   await db.table<StoredRecentJob, string>("jobs").update(jobId, { outputsHidden: true });
 }
 
+export async function pruneRecentJobs(now: number = Date.now()): Promise<void> {
+  const jobs = await collectJobs();
+  const hiddenCutoff = now - RECENT_JOBS_HIDDEN_RETENTION_MS;
+  const hiddenExpired = jobs.filter((job) => job.hiddenAt !== null && Date.parse(job.hiddenAt) < hiddenCutoff);
+  const remainingAfterHiddenExpiry = jobs.filter((job) => !hiddenExpired.includes(job));
+
+  const toDelete = new Set<string>(hiddenExpired.map((job) => job.jobId));
+  const visibleJobs = remainingAfterHiddenExpiry.filter((job) => job.hiddenAt === null);
+  const pinnedVisibleJobs = visibleJobs.filter((job) => isJobPinned(job));
+  const unpinnedVisibleJobs = visibleJobs.filter((job) => !isJobPinned(job));
+
+  const unpinnedExcess = unpinnedVisibleJobs.length - RECENT_JOBS_UNPINNED_LIMIT;
+  if (unpinnedExcess > 0) {
+    const candidates = unpinnedVisibleJobs.sort(sortNewestFirst).slice(RECENT_JOBS_UNPINNED_LIMIT);
+    for (const job of candidates) {
+      toDelete.add(job.jobId);
+    }
+  }
+
+  const pinnedExcess = pinnedVisibleJobs.length - RECENT_JOBS_PINNED_LIMIT;
+  if (pinnedExcess > 0) {
+    const candidates = pinnedVisibleJobs.sort(sortNewestFirst).slice(RECENT_JOBS_PINNED_LIMIT);
+    for (const job of candidates) {
+      toDelete.add(job.jobId);
+    }
+  }
+
+  if (toDelete.size > 0) {
+    await db.table<StoredRecentJob, string>("jobs").bulkDelete([...toDelete]);
+  }
+}
+
 export async function clearRecentJobs(): Promise<void> {
   await db.table<StoredRecentJob, string>("jobs").clear();
+}
+
+export async function updateRecentJobLifecycle(
+  jobId: string,
+  lifecycle: StoredRecentJob["lifecycle"],
+  lastResponse: StoredRecentJob["lastResponse"] = null,
+  lastError: StoredRecentJob["lastError"] = null
+): Promise<void> {
+  await db.table<StoredRecentJob, string>("jobs").update(jobId, {
+    lifecycle,
+    lastResponse,
+    lastError
+  });
 }

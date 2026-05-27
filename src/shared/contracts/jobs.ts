@@ -45,6 +45,7 @@ export type RecentJobOutputImage = {
   mimeType: JobOutputImageMimeType;
   sourcePath: string;
   outputIndex: number;
+  isPinned: boolean;
 };
 
 export type RecentJobOutputCluster = {
@@ -65,6 +66,7 @@ export type RecentJobRecord = {
   submittedAt: string;
   hiddenAt: string | null;
   pinnedAt?: string | null;
+  pinnedOutputIndices?: number[];
   lifecycle: JobLifecycleSnapshot;
   provenance: RecentJobProvenance;
   lastResponse: Record<string, unknown> | null;

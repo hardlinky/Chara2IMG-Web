@@ -2,15 +2,18 @@ import { type SyntheticEvent, useState } from "react";
 import { Gallery, Item } from "react-photoswipe-gallery";
 import "photoswipe/dist/photoswipe.css";
 import type { RecentJobOutputImage } from "../../../shared/contracts/jobs";
+import { OutputImageCard } from "./OutputImageCard";
 
 type OutputLightboxProps = {
   images: RecentJobOutputImage[];
   imagePrefix: string;
   maxVisible?: number;
   onRemoveImage?: (outputIndex: number) => void;
+  onTogglePinnedImage?: (outputIndex: number, pinned: boolean) => void;
+  canPinMore?: boolean;
 };
 
-export function OutputLightbox({ images, imagePrefix, maxVisible = images.length, onRemoveImage }: OutputLightboxProps) {
+export function OutputLightbox({ images, imagePrefix, maxVisible = images.length, onRemoveImage, onTogglePinnedImage, canPinMore = true }: OutputLightboxProps) {
   const [imageDimensions, setImageDimensions] = useState<Record<number, { width: number; height: number }>>({});
 
   const handleImageLoad = (index: number, event: SyntheticEvent<HTMLImageElement>) => {
@@ -60,28 +63,17 @@ export function OutputLightbox({ images, imagePrefix, maxVisible = images.length
               caption={`${imagePrefix} #${index + 1}`}
             >
               {({ ref, open }) => (
-                <div
-                  className={`outputs-image-tile-wrapper ${index >= maxVisible ? "outputs-image-tile-hidden" : ""}`}
-                >
-                  <button
-                    type="button"
-                    className="outputs-image-tile"
-                    onClick={open}
-                    ref={ref as never}
-                    aria-label={`Open ${imagePrefix} image ${index + 1}`}
-                  >
-                    <img src={image.dataUrl} alt={`${imagePrefix} ${index + 1}`} loading="lazy" onLoad={(event) => handleImageLoad(index, event)} />
-                  </button>
-                  {onRemoveImage ? (
-                    <button
-                      type="button"
-                      className="outputs-image-remove-btn"
-                      aria-label={`Remove ${imagePrefix} image ${index + 1}`}
-                      onClick={() => onRemoveImage(image.outputIndex)}
-                    >
-                      ✕
-                    </button>
-                  ) : null}
+                <div ref={ref as never}>
+                  <OutputImageCard
+                    image={image}
+                    imagePrefix={imagePrefix}
+                    imageLabel={`${index + 1}`}
+                    onOpen={open}
+                    onRemoveImage={onRemoveImage ? () => onRemoveImage(image.outputIndex) : undefined}
+                    onTogglePin={onTogglePinnedImage ? () => onTogglePinnedImage(image.outputIndex, !image.isPinned) : undefined}
+                    canPinMore={canPinMore}
+                    maxVisible={index < maxVisible}
+                  />
                 </div>
               )}
             </Item>

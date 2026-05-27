@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import type { RecentJobOutputCluster } from "../../../shared/contracts/jobs";
 import { JobOutputsView } from "./JobOutputsView";
+import { OutputImageCard } from "./OutputImageCard";
 import { OUTPUT_DENSITIES, useOutputGallery } from "./useOutputGallery";
 import "./outputsGallery.css";
 import "../../styles/jobsOutput.css";
@@ -14,7 +15,7 @@ type OutputsTabProps = {
   onRemoveJobOutputs: (jobId: string) => void;
   onRemoveOutputImage: (jobId: string, outputIndex: number) => void;
   onExportWorkflow?: (jobId: string) => void;
-  onTogglePinned?: (jobId: string, pinned: boolean) => void;
+  onToggleOutputPinned?: (jobId: string, outputIndex: number, pinned: boolean) => void;
   canPinMore?: boolean;
 };
 
@@ -22,7 +23,7 @@ function getGalleryClassName(density: (typeof OUTPUT_DENSITIES)[number]): string
   return `outputs-gallery outputs-gallery-${density}`;
 }
 
-export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs, onRemoveOutputImage, onExportWorkflow, onTogglePinned, canPinMore = true }: OutputsTabProps) {
+export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs, onRemoveOutputImage, onExportWorkflow, onToggleOutputPinned, canPinMore = true }: OutputsTabProps) {
   const gallery = useOutputGallery(clusters);
   const [galleryMode, setGalleryMode] = useState<OutputsGalleryMode>("per-job");
 
@@ -58,7 +59,7 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
           gallery.goBackToGallery();
         }}
         onExportWorkflow={onExportWorkflow ? () => onExportWorkflow(gallery.selectedCluster!.jobId) : undefined}
-        onTogglePinned={onTogglePinned ? () => onTogglePinned(gallery.selectedCluster!.jobId, !gallery.selectedCluster!.isPinned) : undefined}
+        onTogglePinnedImage={onToggleOutputPinned ? (outputIndex, pinned) => onToggleOutputPinned(gallery.selectedCluster!.jobId, outputIndex, pinned) : undefined}
         canPinMore={canPinMore}
       />
     );
@@ -98,14 +99,16 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
         <div className={getGalleryClassName(gallery.density)}>
           {clusters.map((cluster) => (
             <article key={cluster.jobId} className="outputs-cluster-card">
-              <button
-                type="button"
-                className="outputs-cluster-preview interactive"
-                onClick={() => gallery.openJobOutputs(cluster.jobId)}
-              >
-                <img src={cluster.representative.dataUrl} alt={`Representative output for ${cluster.jobId}`} loading="lazy" />
-                <span className="outputs-count-badge">{cluster.outputCount} images</span>
-              </button>
+              <OutputImageCard
+                image={cluster.representative}
+                imagePrefix={cluster.jobId}
+                imageLabel="1"
+                onOpen={() => gallery.openJobOutputs(cluster.jobId)}
+                onRemoveImage={onRemoveOutputImage ? () => onRemoveOutputImage(cluster.jobId, cluster.representative.outputIndex) : undefined}
+                onTogglePin={onToggleOutputPinned ? () => onToggleOutputPinned(cluster.jobId, cluster.representative.outputIndex, !cluster.representative.isPinned) : undefined}
+                canPinMore={canPinMore}
+                badge={`${cluster.outputCount} images`}
+              />
               <div className="outputs-cluster-meta">
                 <span>{cluster.jobId}</span>
               </div>
@@ -116,13 +119,15 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
         <div className={getGalleryClassName(gallery.density)}>
           {allOutputImages.map((outputImage) => (
             <article key={`${outputImage.jobId}-${outputImage.outputIndex}`} className="outputs-cluster-card">
-              <button
-                type="button"
-                className="outputs-cluster-preview interactive"
-                onClick={() => gallery.openJobOutputs(outputImage.jobId)}
-              >
-                <img src={outputImage.dataUrl} alt={`Output ${outputImage.outputIndex + 1} for ${outputImage.jobId}`} loading="lazy" />
-              </button>
+              <OutputImageCard
+                image={outputImage}
+                imagePrefix={outputImage.jobId}
+                imageLabel={`${outputImage.outputIndex + 1}`}
+                onOpen={() => gallery.openJobOutputs(outputImage.jobId)}
+                onRemoveImage={onRemoveOutputImage ? () => onRemoveOutputImage(outputImage.jobId, outputImage.outputIndex) : undefined}
+                onTogglePin={onToggleOutputPinned ? () => onToggleOutputPinned(outputImage.jobId, outputImage.outputIndex, !outputImage.isPinned) : undefined}
+                canPinMore={canPinMore}
+              />
               <div className="outputs-cluster-meta">
                 <span>{outputImage.jobId}</span>
                 <span>{`#${outputImage.outputIndex + 1}`}</span>

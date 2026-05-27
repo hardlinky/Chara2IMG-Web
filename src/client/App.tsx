@@ -330,12 +330,12 @@ export function App() {
             onRemoveJobOutputs={(jobId) => void recentJobs.removeJobOutputs(jobId)}
             onRemoveOutputImage={(jobId, outputIndex) => void recentJobs.removeOutputImage(jobId, outputIndex)}
             onExportWorkflow={(jobId) => void onExportWorkflow(jobId)}
-            onTogglePinned={async (jobId, pinned) => {
-              const result = await recentJobs.togglePinnedJob(jobId, pinned);
+            onToggleOutputPinned={async (jobId, outputIndex, pinned) => {
+              const result = await recentJobs.togglePinnedImage(jobId, outputIndex, pinned);
               if (!result.ok) {
                 setJobActionMessage(result.reason);
               } else {
-                setJobActionMessage(pinned ? `Pinned ${jobId}.` : `Unpinned ${jobId}.`);
+                setJobActionMessage(pinned ? `Pinned ${jobId} image #${outputIndex + 1}.` : `Unpinned ${jobId} image #${outputIndex + 1}.`);
               }
             }}
             canPinMore={recentJobs.canPinMoreJobs}

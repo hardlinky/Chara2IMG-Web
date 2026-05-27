@@ -132,9 +132,10 @@ describe("jobOutputProjection", () => {
   });
 
   it("includes pinned state in projected cluster", () => {
-    const pinned = createJob({ pinnedAt: "2026-05-24T10:04:00.000Z" });
+    const pinned = createJob({ pinnedAt: null, pinnedOutputIndices: [1] });
     const cluster = projectJobOutputCluster(pinned);
 
     expect(cluster?.isPinned).toBe(true);
+    expect(cluster?.outputs[1]?.isPinned).toBe(true);
   });
 });
