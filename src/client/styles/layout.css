@@ -91,18 +91,22 @@
 
   .app-scroll-top-fab {
     position: fixed;
-    right: max(var(--space-3), env(safe-area-inset-right));
+    left: max(var(--space-3), env(safe-area-inset-left));
+    right: auto;
     bottom: calc(4.75rem + var(--space-2) + env(safe-area-inset-bottom));
     z-index: 21;
-    width: 2.25rem;
+    width: auto;
     height: 2.25rem;
-    min-width: 2.25rem;
-    border-radius: 999px;
-    padding: 0;
+    min-width: 3.25rem;
+    border-radius: var(--radius-sm);
+    padding: 0 var(--space-2);
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    opacity: 0.86;
+    opacity: 0.95;
+    font-size: var(--font-size-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
     box-shadow: var(--shadow-sm);
   }
 

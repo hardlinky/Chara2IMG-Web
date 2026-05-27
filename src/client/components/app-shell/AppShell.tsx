@@ -65,7 +65,7 @@ export function AppShell({ tabs, activeTab, onTabChange, headerRowOne, headerRow
           aria-label="Scroll to top"
           title="Scroll to top"
         >
-          ↑
+          Top
         </button>
       ) : null}
 

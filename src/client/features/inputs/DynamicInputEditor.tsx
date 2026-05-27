@@ -829,17 +829,17 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
       {nextCategoryAtBottom || nextControlAtBottom ? (
         <div className="input-next-sticky-bar" aria-label="Next input shortcuts">
           {nextControlAtBottom ? (
-            <div className="input-next-sticky-input-row">
+            <span className="field-label-row">
               <button
                 type="button"
-                className="input-sticky-title-button input-next-sticky-input-button"
+                className="input-sticky-title-button field-label-title"
                 onClick={() => scrollControlToStart(nextControlAtBottom.id)}
                 aria-label={`Scroll to next input ${nextControlAtBottom.name}`}
                 title="Jump to input start"
               >
                 {nextControlAtBottom.name}
               </button>
-            </div>
+            </span>
           ) : null}
           {nextCategoryAtBottom ? (
             <div className="input-next-sticky-category-row input-category-header">
