@@ -514,10 +514,10 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
       }
 
       const textareas = container.querySelectorAll<HTMLTextAreaElement>("textarea.textarea");
-      for (const textarea of textareas) {
+      textareas.forEach((textarea) => {
         textarea.style.height = "auto";
         textarea.style.height = `${Math.max(textarea.scrollHeight, 96)}px`;
-      }
+      });
     });
 
     return () => {
