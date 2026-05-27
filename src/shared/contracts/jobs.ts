@@ -88,6 +88,8 @@ export type RecentJobSubmissionInput = {
   submittedAt?: string;
 };
 
+// Backend poll snapshots can return legacy/vendor aliases; normalize them so
+// client lifecycle/polling logic always uses canonical Runpod statuses.
 const RUNPOD_STATUS_ALIASES: Readonly<Record<string, RunpodJobStatus>> = {
   QUEUED: "IN_QUEUE",
   PENDING: "IN_QUEUE",

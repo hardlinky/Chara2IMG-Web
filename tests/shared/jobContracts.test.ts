@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isActiveRunpodStatus, isTerminalRunpodStatus, toTerminalReason } from "../../src/shared/contracts/jobs";
+import { isActiveRunpodStatus, isTerminalRunpodStatus, normalizeRunpodStatus, toTerminalReason } from "../../src/shared/contracts/jobs";
 
 describe("job contracts", () => {
   it("classifies terminal and active Runpod statuses", () => {
@@ -14,5 +14,14 @@ describe("job contracts", () => {
     expect(toTerminalReason("FAILED")).toBe("failed");
     expect(toTerminalReason("CANCELLED")).toBe("cancelled");
     expect(toTerminalReason("TIMED_OUT")).toBe("timed-out");
+  });
+
+  it("normalizes known status aliases", () => {
+    expect(normalizeRunpodStatus("queued")).toBe("IN_QUEUE");
+    expect(normalizeRunpodStatus("PENDING")).toBe("IN_QUEUE");
+    expect(normalizeRunpodStatus("running")).toBe("IN_PROGRESS");
+    expect(normalizeRunpodStatus("processing")).toBe("IN_PROGRESS");
+    expect(normalizeRunpodStatus("canceled")).toBe("CANCELLED");
+    expect(normalizeRunpodStatus("timeout")).toBe("TIMED_OUT");
   });
 });
