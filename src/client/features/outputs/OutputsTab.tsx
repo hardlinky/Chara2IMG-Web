@@ -74,7 +74,7 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
             type="button"
             onClick={() => setGalleryMode((current) => (current === "per-job" ? "all-images" : "per-job"))}
           >
-            {galleryMode === "per-job" ? "View: One image / job" : "View: All images"}
+            {galleryMode === "per-job" ? "View: Images" : "View: Jobs"}
           </button>
           <label className="field">
             Density
