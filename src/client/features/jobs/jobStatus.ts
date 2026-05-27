@@ -9,14 +9,16 @@ import {
 } from "../../../shared/contracts/jobs";
 
 export const JOB_POLL_INTERVAL_MS = 5000;
-export const JOB_OBSERVATION_TIMEOUT_MS = 30 * 60 * 1000;
+export const JOB_OBSERVATION_TIMEOUT_MS = Number.POSITIVE_INFINITY;
 
 export function getJobAgeMs(submittedAt: string, now: number = Date.now()): number {
   return Math.max(0, now - Date.parse(submittedAt));
 }
 
 export function hasJobObservationTimedOut(job: Pick<RecentJobRecord, "submittedAt" | "lifecycle">, now: number = Date.now()): boolean {
-  return !job.lifecycle.isTerminal && getJobAgeMs(job.submittedAt, now) >= JOB_OBSERVATION_TIMEOUT_MS;
+  void job;
+  void now;
+  return false;
 }
 
 export function isCancellableJobStatus(status: string): boolean {
@@ -62,21 +64,9 @@ export function buildTerminalLifecycleSnapshot(args: {
 }
 
 export function classifyTimeoutLifecycle(job: RecentJobRecord, now: number = Date.now()): RecentJobRecord["lifecycle"] | null {
-  if (!hasJobObservationTimedOut(job, now)) {
-    return null;
-  }
-
-  const finishedAt = new Date(now).toISOString();
-  return {
-    status: "TIMED_OUT",
-    isTerminal: true,
-    terminalReason: "timed-out",
-    lastCheckedAt: finishedAt,
-    finishedAt,
-    warning: null,
-    executionTimeMs: undefined,
-    failureReason: "Client observation timeout"
-  };
+  void job;
+  void now;
+  return null;
 }
 
 export function classifyKnownJob404Lifecycle(job: RecentJobRecord, now: number = Date.now()): RecentJobRecord["lifecycle"] {
