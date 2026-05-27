@@ -89,7 +89,7 @@
     z-index: 20;
   }
 
-  .app-scroll-top-fab {
+  .app-scroll-top-fab.btn.btn-secondary {
     position: fixed;
     right: max(var(--space-3), env(safe-area-inset-right));
     left: auto;
@@ -109,6 +109,12 @@
     font-size: 1rem;
     font-weight: 700;
     box-shadow: var(--shadow-sm);
+  }
+
+  .app-scroll-top-fab.btn.btn-secondary:hover,
+  .app-scroll-top-fab.btn.btn-secondary:focus-visible {
+    background: rgba(17, 21, 24, 0.82);
+    border-color: var(--color-border-strong);
   }
 
   .tab-rail {
