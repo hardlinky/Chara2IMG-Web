@@ -31,7 +31,46 @@ describe("Runpod proxy boundary", () => {
   });
 
   afterEach(() => {
+    delete process.env.RUNPOD_API_KEY;
     vi.unstubAllGlobals();
+  });
+
+  it("uses RUNPOD_API_KEY from environment when configured", async () => {
+    process.env.RUNPOD_API_KEY = "rp_env_key";
+    const app = createServerApp();
+
+    const inviteResponse = await app.request("http://localhost/api/access/verify-invite", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Origin: "http://localhost:5173"
+      },
+      body: JSON.stringify({ invite: "invite-test" })
+    });
+
+    const cookie = extractCookieHeader(inviteResponse.headers.get("set-cookie"));
+
+    const proxyResponse = await app.request("http://localhost/api/runpod/run", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: cookie,
+        Origin: "http://localhost:5173"
+      },
+      body: JSON.stringify({
+        endpointId: "abc123",
+        apiKey: "rp_user_key_should_not_be_used",
+        input: {
+          prompt: "hello"
+        }
+      })
+    });
+
+    expect(proxyResponse.status).toBe(200);
+
+    const fetchMock = vi.mocked(fetch);
+    const [, init] = fetchMock.mock.calls[0] ?? [];
+    expect((init?.headers as Record<string, string>).Authorization).toBe("Bearer rp_env_key");
   });
 
   it("forwards allowlisted run request with authorization header", async () => {

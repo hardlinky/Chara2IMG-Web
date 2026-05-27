@@ -1,21 +1,21 @@
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "./components/app-shell/AppShell";
 import type { AppTabDefinition } from "./components/app-shell/TopTabRail";
 import { InviteGate } from "./features/access/InviteGate";
 import { RunpodKeySettings } from "./features/access/RunpodKeySettings";
 import { DynamicInputEditor } from "./features/inputs/DynamicInputEditor";
+import { formatSubmittedAtRelative } from "./features/jobs/jobStatus";
+import { RecentJobsPanel } from "./features/jobs/RecentJobsPanel";
+import { useRecentJobs } from "./features/jobs/useRecentJobs";
+import { OutputsTab } from "./features/outputs/OutputsTab";
 import { ActiveWorkflowTemplate } from "./features/workflows/ActiveWorkflowTemplate";
 import { WorkflowImport } from "./features/workflows/WorkflowImport";
 import { useActiveWorkflowTemplate } from "./features/workflows/useActiveWorkflowTemplate";
-import { OutputsTab } from "./features/outputs/OutputsTab";
+import { fetchSystemConfig, updateAppViaProxy } from "./lib/api/runpodProxyClient";
+import { getStoredEndpointId, saveEndpointId } from "./lib/endpointStorage";
+import { APP_VERSION_LABEL } from "./lib/appVersion";
 import { submitRunAndPersistRecentJob } from "./lib/jobSubmission";
 import { getRunpodKey } from "./lib/runpodKeyStorage";
-import { getStoredEndpointId, saveEndpointId } from "./lib/endpointStorage";
-import { fetchSystemConfig, updateAppViaProxy } from "./lib/api/runpodProxyClient";
-import { formatSubmittedAtRelative } from "./features/jobs/jobStatus";
-import { useRecentJobs } from "./features/jobs/useRecentJobs";
-import { RecentJobsPanel } from "./features/jobs/RecentJobsPanel";
-import { APP_VERSION_LABEL } from "./lib/appVersion";
 import { sanitizeWorkflowForExport } from "./lib/workflowExport";
 import { isActiveRunpodStatus } from "../shared/contracts/jobs";
 import type { DynamicInputDraftValues } from "../shared/contracts/inputs";
@@ -55,32 +55,14 @@ const BASE_APP_TABS: AppTabDefinition[] = [
   { id: "output", label: "Output" }
 ];
 
+const SERVER_MANAGED_RUNPOD_KEY = "__SERVER_MANAGED_RUNPOD_KEY__";
+
 export function App() {
   const [activeTab, setActiveTab] = useState<"setup" | "input" | "jobs" | "output">("setup");
   const [invited, setInvited] = useState(false);
   const [runpodKey, setRunpodKey] = useState(getRunpodKey());
+  const [hasServerRunpodApiKey, setHasServerRunpodApiKey] = useState(false);
   const [runEndpointId, setRunEndpointId] = useState(() => getStoredEndpointId() ?? "");
-
-  useEffect(() => {
-    if (!invited || runEndpointId) {
-      return;
-    }
-
-    void fetchSystemConfig()
-      .then((config) => {
-        if (config.endpointId) {
-          setRunEndpointId(config.endpointId);
-        }
-      })
-      .catch(() => {
-        // Keep setup usable even when config bootstrap is temporarily unavailable.
-      });
-  }, [invited, runEndpointId]);
-
-  function updateEndpointId(value: string): void {
-    setRunEndpointId(value);
-    saveEndpointId(value);
-  }
   const [runError, setRunError] = useState("");
   const [jobActionError, setJobActionError] = useState("");
   const [isUpdatingApp, setIsUpdatingApp] = useState(false);
@@ -91,13 +73,41 @@ export function App() {
       externalDraftValues: DynamicInputDraftValues
     ) => Promise<{ ok: true; draftValues: DynamicInputDraftValues } | { ok: false; reason: string }>;
   } | null>(null);
-  const { activeTemplate, isLoading, error, persistTemplate, clearTemplate } =
-    useActiveWorkflowTemplate();
-  const recentJobs = useRecentJobs({ endpointId: runEndpointId, apiKey: runpodKey ?? undefined });
+
+  const { activeTemplate, isLoading, error, persistTemplate, clearTemplate } = useActiveWorkflowTemplate();
+
+  const effectiveRunpodKey = hasServerRunpodApiKey ? SERVER_MANAGED_RUNPOD_KEY : runpodKey;
+
+  useEffect(() => {
+    if (!invited) {
+      return;
+    }
+
+    void fetchSystemConfig()
+      .then((config) => {
+        if (!runEndpointId && config.endpointId) {
+          setRunEndpointId(config.endpointId);
+        }
+
+        setHasServerRunpodApiKey(config.hasRunpodApiKey);
+      })
+      .catch(() => {
+        // Keep setup usable even when config bootstrap is temporarily unavailable.
+      });
+  }, [invited, runEndpointId]);
+
+  function updateEndpointId(value: string): void {
+    setRunEndpointId(value);
+    saveEndpointId(value);
+  }
+
+  const recentJobs = useRecentJobs({ endpointId: runEndpointId, apiKey: effectiveRunpodKey || undefined });
+
   const runningJobsCount = useMemo(
     () => recentJobs.visibleJobs.filter((job) => isActiveRunpodStatus(job.lifecycle.status)).length,
     [recentJobs.visibleJobs]
   );
+
   const appTabs = useMemo<AppTabDefinition[]>(
     () => BASE_APP_TABS.map((tab) => (tab.id === "jobs" && runningJobsCount > 0 ? { ...tab, badge: runningJobsCount } : tab)),
     [runningJobsCount]
@@ -108,8 +118,8 @@ export function App() {
     draftValues: DynamicInputDraftValues;
     templateFingerprint: string;
   }): Promise<void> {
-    if (!runpodKey || !runEndpointId) {
-      setRunError("Set Runpod key and endpoint ID before running.");
+    if (!effectiveRunpodKey || !runEndpointId) {
+      setRunError("Set endpoint ID and Runpod key before running.");
       return;
     }
 
@@ -122,7 +132,7 @@ export function App() {
       setRunError("");
       await submitRunAndPersistRecentJob({
         endpointId: runEndpointId,
-        apiKey: runpodKey,
+        apiKey: effectiveRunpodKey,
         submittedInput: toRunpodWorkflowInput(snapshot.payload),
         snapshot: {
           templateFingerprint: snapshot.templateFingerprint,
@@ -159,6 +169,7 @@ export function App() {
       setJobActionError(result.reason);
       return;
     }
+
     setJobActionError("");
   }
 
@@ -238,7 +249,7 @@ export function App() {
       }
       headerRowTwo={
         <>
-          <span>{`Runpod key: ${runpodKey ? "Configured" : "Missing"}`}</span>
+          <span>{`Runpod key: ${runpodKey || hasServerRunpodApiKey ? "Configured" : "Missing"}`}</span>
           <span>{`Endpoint: ${runEndpointId || "Not set"}`}</span>
           <span>{`Template: ${activeTemplate ? "Loaded" : "Not loaded"}`}</span>
           {updateStatus ? <span>{updateStatus}</span> : null}
@@ -247,7 +258,14 @@ export function App() {
       panels={{
         setup: (
           <div className="section-stack">
-            <RunpodKeySettings onKeyChanged={setRunpodKey} />
+            {hasServerRunpodApiKey ? (
+              <section className="setup-card">
+                <h2>Runpod API Key</h2>
+                <p>Managed by pod environment variable `RUNPOD_API_KEY`.</p>
+              </section>
+            ) : (
+              <RunpodKeySettings onKeyChanged={setRunpodKey} />
+            )}
             <section className="card field">
               <label htmlFor="run-endpoint-id">Run Endpoint ID</label>
               <input

@@ -5,6 +5,15 @@ import { forwardRunpodRequest } from "../lib/runpodClient";
 import { redactSecrets } from "../lib/redaction";
 import { getCachedRunpodJobState, removeUnknownRunpodJobStates, setCachedRunpodJobState } from "../lib/runpodJobStateStore";
 
+function resolveRunpodApiKey(requestApiKey: string): string {
+  const serverApiKey = process.env.RUNPOD_API_KEY?.trim();
+  if (serverApiKey) {
+    return serverApiKey;
+  }
+
+  return requestApiKey;
+}
+
 function toProxyResponse(response: Response, body: string): Response {
   return new Response(body, {
     status: response.status,
@@ -36,7 +45,7 @@ export function registerRunpodProxyRoutes(app: Hono): void {
     try {
       const response = await forwardRunpodRequest({
         endpointId: parsed.data.endpointId,
-        apiKey: parsed.data.apiKey,
+        apiKey: resolveRunpodApiKey(parsed.data.apiKey),
         operation: "run",
         body: { input: parsed.data.input }
       });
@@ -77,7 +86,7 @@ export function registerRunpodProxyRoutes(app: Hono): void {
 
       const response = await forwardRunpodRequest({
         endpointId: parsed.data.endpointId,
-        apiKey: parsed.data.apiKey,
+        apiKey: resolveRunpodApiKey(parsed.data.apiKey),
         operation: "status",
         id: parsed.data.id
       });
@@ -125,7 +134,7 @@ export function registerRunpodProxyRoutes(app: Hono): void {
 
           const response = await forwardRunpodRequest({
             endpointId: parsed.data.endpointId,
-            apiKey: parsed.data.apiKey,
+            apiKey: resolveRunpodApiKey(parsed.data.apiKey),
             operation: "status",
             id
           });
@@ -183,7 +192,7 @@ export function registerRunpodProxyRoutes(app: Hono): void {
     try {
       const response = await forwardRunpodRequest({
         endpointId: parsed.data.endpointId,
-        apiKey: parsed.data.apiKey,
+        apiKey: resolveRunpodApiKey(parsed.data.apiKey),
         operation: "cancel",
         id: parsed.data.id
       });
@@ -214,7 +223,7 @@ export function registerRunpodProxyRoutes(app: Hono): void {
     try {
       const response = await forwardRunpodRequest({
         endpointId: parsed.data.endpointId,
-        apiKey: parsed.data.apiKey,
+        apiKey: resolveRunpodApiKey(parsed.data.apiKey),
         operation: "retry",
         id: parsed.data.id
       });
@@ -245,7 +254,7 @@ export function registerRunpodProxyRoutes(app: Hono): void {
     try {
       const response = await forwardRunpodRequest({
         endpointId: parsed.data.endpointId,
-        apiKey: parsed.data.apiKey,
+        apiKey: resolveRunpodApiKey(parsed.data.apiKey),
         operation: "purge-queue",
         body: {}
       });

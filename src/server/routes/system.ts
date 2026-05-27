@@ -43,11 +43,18 @@ function getDefaultEndpointId(): string | null {
   return process.env.RUNPOD_ENDPOINT_ID?.trim() || null;
 }
 
+function hasDefaultRunpodApiKey(): boolean {
+  return Boolean(process.env.RUNPOD_API_KEY?.trim());
+}
+
 export function registerSystemRoutes(app: Hono): void {
   app.use("/api/system/*", requireInvitedSession);
 
   app.get("/api/system/config", (c) => {
-    return c.json({ endpointId: getDefaultEndpointId() });
+    return c.json({
+      endpointId: getDefaultEndpointId(),
+      hasRunpodApiKey: hasDefaultRunpodApiKey()
+    });
   });
 
   app.post("/api/system/update", async (c) => {

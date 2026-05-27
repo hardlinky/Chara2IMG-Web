@@ -70,12 +70,13 @@ export type SelfUpdateResult = {
 
 export type SystemConfig = {
   endpointId: string | null;
+  hasRunpodApiKey: boolean;
 };
 
 export async function fetchSystemConfig(): Promise<SystemConfig> {
   const response = await fetch("/api/system/config");
   if (!response.ok) {
-    return { endpointId: null };
+    return { endpointId: null, hasRunpodApiKey: false };
   }
 
   return (await response.json()) as SystemConfig;
