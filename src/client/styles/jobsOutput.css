@@ -254,6 +254,10 @@
     margin-left: 0;
   }
 
+  .jobs-panel-header .jobs-pin-counter {
+    margin-left: 0;
+  }
+
   .jobs-panel-header .jobs-toolbar-controls .field {
     min-width: 0;
   }
