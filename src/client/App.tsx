@@ -135,7 +135,7 @@ export function App() {
   const [isUpdatingApp, setIsUpdatingApp] = useState(false);
   const [updateStatus, setUpdateStatus] = useState("");
   const [storageStatus, setStorageStatus] = useState(
-    "Storage: browser unavailable | server you unavailable | server all unavailable | server cap unavailable"
+    "Storage: cache unavailable | archive you unavailable | archive all unavailable | archive cap unavailable"
   );
   const [editorApi, setEditorApi] = useState<{
     applyExternalDraftValues: (
@@ -226,7 +226,7 @@ export function App() {
       const serverErrorLabel = hasServerStats ? "" : describeStorageStatsError(serverStatsResult);
 
       setStorageStatus(
-        `Storage: browser ${browserUsedLabel} | server you ${serverUserUsedLabel} | server all ${serverAllUsedLabel} | server cap ${serverCapacityLabel}${serverErrorLabel}`
+        `Storage: cache ${browserUsedLabel} | archive you ${serverUserUsedLabel} | archive all ${serverAllUsedLabel} | archive cap ${serverCapacityLabel}${serverErrorLabel}`
       );
     });
 
