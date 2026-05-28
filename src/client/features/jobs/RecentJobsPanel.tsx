@@ -6,6 +6,7 @@ import "../../styles/jobsOutput.css";
 
 type RecentJobsPanelProps = {
   jobs: RecentJobRecord[];
+  filteredJobCount?: number;
   pinnedImageCount?: number;
   warningJobIds: string[];
   cancelingJobIds: string[];
@@ -237,6 +238,7 @@ function formatNextPollCountdown(job: RecentJobRecord, now: number): string {
 
 export function RecentJobsPanel(props: RecentJobsPanelProps) {
   const [now, setNow] = useState(() => Date.now());
+  const filteredJobCount = props.filteredJobCount ?? props.jobs.length;
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -253,6 +255,7 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
       <header className="jobs-panel-header">
         <h2>Recent Jobs</h2>
         <span className="jobs-pin-counter">Pins: {props.pinnedImageCount ?? 0}</span>
+        <span className="jobs-filtered-counter">Filtered jobs: {filteredJobCount}</span>
         <div className="jobs-toolbar-controls">
           <label className="field">
             Status

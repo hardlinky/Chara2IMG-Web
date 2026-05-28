@@ -39,6 +39,15 @@
   font-size: var(--font-size-sm);
 }
 
+.jobs-filtered-counter {
+  border: 1px solid rgba(117, 160, 238, 0.45);
+  background: rgba(26, 45, 77, 0.52);
+  color: #cfe0ff;
+  border-radius: 999px;
+  padding: 0.2rem 0.65rem;
+  font-size: var(--font-size-sm);
+}
+
 .outputs-pin-counter {
   border: 1px solid rgba(235, 196, 91, 0.45);
   background: rgba(58, 47, 15, 0.58);
