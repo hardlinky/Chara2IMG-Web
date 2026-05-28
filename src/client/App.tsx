@@ -17,7 +17,6 @@ import { APP_VERSION_LABEL } from "./lib/appVersion";
 import { submitRunAndPersistRecentJob } from "./lib/jobSubmission";
 import { getRunpodKey } from "./lib/runpodKeyStorage";
 import { sanitizeWorkflowForExport } from "./lib/workflowExport";
-import { isActiveRunpodStatus } from "../shared/contracts/jobs";
 import type { DynamicInputDraftValues } from "../shared/contracts/inputs";
 import type { SystemStorageStats } from "./lib/api/runpodProxyClient";
 
@@ -174,14 +173,23 @@ export function App() {
     includeOutputClusters: activeTab === "output"
   });
 
-  const runningJobsCount = useMemo(
-    () => recentJobs.visibleJobs.filter((job) => isActiveRunpodStatus(job.lifecycle.status)).length,
-    [recentJobs.visibleJobs]
-  );
+  const pinnedJobsCount = recentJobs.pinnedVisibleCount;
+  const pinnedImagesCount = recentJobs.pinnedImageCount;
 
   const appTabs = useMemo<AppTabDefinition[]>(
-    () => BASE_APP_TABS.map((tab) => (tab.id === "jobs" && runningJobsCount > 0 ? { ...tab, badge: runningJobsCount } : tab)),
-    [runningJobsCount]
+    () =>
+      BASE_APP_TABS.map((tab) => {
+        if (tab.id === "jobs" && pinnedJobsCount > 0) {
+          return { ...tab, badge: pinnedJobsCount };
+        }
+
+        if (tab.id === "output" && pinnedImagesCount > 0) {
+          return { ...tab, badge: pinnedImagesCount };
+        }
+
+        return tab;
+      }),
+    [pinnedJobsCount, pinnedImagesCount]
   );
 
   useEffect(() => {
