@@ -83,6 +83,18 @@ function isSystemStorageStats(value: unknown): value is SystemStorageStats {
   );
 }
 
+function describeStorageStatsError(error: unknown): string {
+  if (error instanceof ProxyRequestError) {
+    if (error.status === 200 && typeof error.data === "string" && /<!doctype html>/i.test(error.data)) {
+      return " [backend restart required]";
+    }
+
+    return ` [server stats ${error.status}]`;
+  }
+
+  return " [server stats error]";
+}
+
 const BASE_APP_TABS: AppTabDefinition[] = [
   { id: "setup", label: "Setup" },
   { id: "input", label: "Input" },
@@ -203,11 +215,7 @@ export function App() {
       const serverUserUsedLabel = hasServerStats ? formatBytes(serverStatsResult.userUsedBytes) : "unavailable";
       const serverAllUsedLabel = hasServerStats ? formatBytes(serverStatsResult.allUsersUsedBytes) : "unavailable";
       const serverCapacityLabel = hasServerStats ? formatBytes(serverStatsResult.totalCapacityBytes) : "unavailable";
-      const serverErrorLabel = hasServerStats
-        ? ""
-        : serverStatsResult instanceof ProxyRequestError
-          ? ` [server stats ${serverStatsResult.status}]`
-          : " [server stats error]";
+      const serverErrorLabel = hasServerStats ? "" : describeStorageStatsError(serverStatsResult);
 
       setStorageStatus(
         `Storage: browser ${browserUsedLabel} | server you ${serverUserUsedLabel} | server all ${serverAllUsedLabel} | server cap ${serverCapacityLabel}${serverErrorLabel}`
