@@ -7,8 +7,8 @@ import { projectRecentJobOutputClusters } from "../../lib/jobOutputProjection";
 import { extractRunpodOutputImages } from "../../lib/runpodOutputImage";
 import {
   startRecentJobsImageCompactionMigration,
+  deleteRecentJob,
   getRecentJob,
-  hideRecentJob,
   hideJobOutputs,
   listRecentJobs,
   removeRecentJobOutputImage as removeRecentJobOutputImageFromStorage,
@@ -419,7 +419,7 @@ export async function removeRecentJobOutputs(jobId: string): Promise<void> {
 }
 
 export async function removeRecentJobFromVisibleList(jobId: string): Promise<void> {
-  await hideRecentJob(jobId);
+  await deleteRecentJob(jobId);
 }
 
 export async function loadRecentJobOutputCluster(jobId: string) {

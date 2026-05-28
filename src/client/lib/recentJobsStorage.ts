@@ -447,6 +447,11 @@ export async function hideRecentJob(jobId: string, hiddenAt: string = new Date()
   await pruneRecentJobs();
 }
 
+export async function deleteRecentJob(jobId: string): Promise<void> {
+  await db.table<StoredRecentJob, string>("jobs").delete(jobId);
+  await db.table<StoredRecentJobArchive, string>("jobArchives").delete(jobId);
+}
+
 function normalizePinnedOutputIndices(indices: number[] | undefined, removedIndex: number): number[] | undefined {
   if (!indices || indices.length === 0) {
     return undefined;
@@ -556,7 +561,11 @@ export async function removeRecentJobOutputImage(jobId: string, outputIndex: num
 
   const remainingImages = extractRunpodOutputImages(clonedResponse);
   const noImagesRemain = remainingImages.length === 0;
-  const hiddenAt = noImagesRemain ? new Date().toISOString() : job.hiddenAt;
+
+  if (noImagesRemain) {
+    await deleteRecentJob(jobId);
+    return;
+  }
 
   const compacted = compactResponsePayload(clonedResponse);
 
@@ -566,28 +575,15 @@ export async function removeRecentJobOutputImage(jobId: string, outputIndex: num
     hiddenOutputIndices: normalizeHiddenOutputIndices(job.hiddenOutputIndices, outputIndex),
     pinnedOutputIndices: normalizePinnedOutputIndices(job.pinnedOutputIndices, outputIndex),
     pinnedAt: normalizePinnedOutputIndices(job.pinnedOutputIndices, outputIndex)?.length ? job.pinnedAt ?? new Date().toISOString() : null,
-    outputsHidden: noImagesRemain ? true : job.outputsHidden,
-    hiddenAt
+    outputsHidden: job.outputsHidden,
+    hiddenAt: job.hiddenAt
   });
 
-  if (noImagesRemain) {
-    await upsertJobArchive(jobId, null);
-  } else {
-    await upsertJobArchive(jobId, compacted.fullResponse);
-  }
-
-  if (noImagesRemain) {
-    await pruneRecentJobs();
-  }
+  await upsertJobArchive(jobId, compacted.fullResponse);
 }
 
 export async function hideJobOutputs(jobId: string): Promise<void> {
-  await db.table<StoredRecentJob, string>("jobs").update(jobId, {
-    outputsHidden: true,
-    hiddenAt: new Date().toISOString()
-  });
-  await upsertJobArchive(jobId, null);
-  await pruneRecentJobs();
+  await deleteRecentJob(jobId);
 }
 
 export async function pruneRecentJobs(now: number = Date.now()): Promise<void> {

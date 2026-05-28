@@ -96,17 +96,16 @@ describe("recentJobsStorage", () => {
     expect(images).toHaveLength(2);
   });
 
-  it("marks all outputs as hidden with hideJobOutputs", async () => {
+  it("deletes the job when removing all outputs", async () => {
     await upsertRecentJob(createJob("job-all-hidden", "2026-05-23T10:00:00.000Z"));
     await hideJobOutputs("job-all-hidden");
 
     const job = await getRecentJob("job-all-hidden");
-    expect(job?.outputsHidden).toBe(true);
-    expect(job?.hiddenAt).not.toBeNull();
+    expect(job).toBeNull();
     expect((await listVisibleRecentJobs()).find((item) => item.jobId === "job-all-hidden")).toBeUndefined();
   });
 
-  it("hides a job from all lists when its final output image is removed", async () => {
+  it("deletes a job when its final output image is removed", async () => {
     await upsertRecentJob({
       ...createJobWithImages("job-last-image", "2026-05-23T10:00:00.000Z"),
       lastResponse: {
@@ -119,8 +118,7 @@ describe("recentJobsStorage", () => {
     await removeRecentJobOutputImage("job-last-image", 0);
 
     const job = await getRecentJob("job-last-image");
-    expect(job?.outputsHidden).toBe(true);
-    expect(job?.hiddenAt).not.toBeNull();
+    expect(job).toBeNull();
     expect((await listVisibleRecentJobs()).find((item) => item.jobId === "job-last-image")).toBeUndefined();
   });
 

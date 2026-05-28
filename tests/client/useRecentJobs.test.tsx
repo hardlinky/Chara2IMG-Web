@@ -88,13 +88,13 @@ describe("useRecentJobs helpers", () => {
     expect(vi.mocked(cancelViaProxy)).not.toHaveBeenCalled();
   });
 
-  it("soft-hides jobs without restoring them", async () => {
+  it("deletes jobs when removed from the visible list", async () => {
     await upsertRecentJob(createJob("job-hide", "IN_PROGRESS"));
 
     await removeRecentJobFromVisibleList("job-hide");
 
     const stored = await getRecentJob("job-hide");
-    expect(stored?.hiddenAt).not.toBeNull();
+    expect(stored).toBeNull();
   });
 
   it("reruns a prior job as a new submission using the saved payload input", async () => {
