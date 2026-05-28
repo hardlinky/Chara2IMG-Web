@@ -1,6 +1,6 @@
 import { KeyboardEvent } from "react";
 
-export type AppTabId = "setup" | "input" | "jobs" | "output";
+export type AppTabId = "setup" | "input" | "jobs" | "output" | "admin";
 
 export type AppTabDefinition = {
   id: AppTabId;

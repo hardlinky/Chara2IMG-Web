@@ -7,11 +7,12 @@ const tabs: AppTabDefinition[] = [
   { id: "setup", label: "Setup" },
   { id: "input", label: "Input" },
   { id: "jobs", label: "Jobs" },
-  { id: "output", label: "Output" }
+  { id: "output", label: "Output" },
+  { id: "admin", label: "Admin" }
 ];
 
 describe("app shell navigation", () => {
-  it("renders four tab destinations with aria tab wiring", () => {
+  it("renders tab destinations with aria tab wiring", () => {
     const html = renderToStaticMarkup(
       <AppShell
         tabs={tabs}
@@ -22,7 +23,8 @@ describe("app shell navigation", () => {
           setup: <p>Setup panel</p>,
           input: <p>Input panel</p>,
           jobs: <p>Jobs panel</p>,
-          output: <p>Output panel</p>
+          output: <p>Output panel</p>,
+          admin: <p>Admin panel</p>
         }}
       />
     );
@@ -32,6 +34,7 @@ describe("app shell navigation", () => {
     expect(html).toContain('id="tab-input"');
     expect(html).toContain('id="tab-jobs"');
     expect(html).toContain('id="tab-output"');
+    expect(html).toContain('id="tab-admin"');
     expect(html).toContain('aria-controls="panel-setup"');
     expect(html).toContain('aria-labelledby="tab-setup"');
     expect(html).toContain('aria-selected="true"');
@@ -50,7 +53,8 @@ describe("app shell navigation", () => {
           setup: <p>Setup panel</p>,
           input: <p>Input panel</p>,
           jobs: <p>Jobs panel</p>,
-          output: <p>Output panel</p>
+          output: <p>Output panel</p>,
+          admin: <p>Admin panel</p>
         }}
       />
     );
@@ -59,10 +63,12 @@ describe("app shell navigation", () => {
     expect(html).toContain('id="mobile-tab-input"');
     expect(html).toContain('id="mobile-tab-jobs"');
     expect(html).toContain('id="mobile-tab-output"');
+    expect(html).toContain('id="mobile-tab-admin"');
     expect(html).toContain('data-tab-id="setup"');
     expect(html).toContain('data-tab-id="input"');
     expect(html).toContain('data-tab-id="jobs"');
     expect(html).toContain('data-tab-id="output"');
+    expect(html).toContain('data-tab-id="admin"');
   });
 
   it("renders the jobs tab badge when a badge count is set", () => {
@@ -78,7 +84,8 @@ describe("app shell navigation", () => {
           setup: <p>Setup panel</p>,
           input: <p>Input panel</p>,
           jobs: <p>Jobs panel</p>,
-          output: <p>Output panel</p>
+          output: <p>Output panel</p>,
+          admin: <p>Admin panel</p>
         }}
       />
     );

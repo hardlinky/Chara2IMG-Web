@@ -3,10 +3,12 @@ import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { fileURLToPath } from "node:url";
 import { registerAccessRoutes } from "./routes/access";
+import { registerAdminRoutes } from "./routes/admin";
 import { registerPinnedImageRoutes } from "./routes/pinnedImages";
 import { registerRunpodProxyRoutes } from "./routes/runpodProxy";
 import { registerSystemRoutes } from "./routes/system";
 import { applySecurityMiddleware } from "./middleware/security";
+import { logAdminPasskey } from "./security/adminPasskey";
 
 const CLIENT_DIST_ROOT = "./dist/client";
 
@@ -17,6 +19,7 @@ export function createServerApp(): Hono {
 
   applySecurityMiddleware(app);
   registerAccessRoutes(app);
+  registerAdminRoutes(app);
   registerPinnedImageRoutes(app);
   registerRunpodProxyRoutes(app);
   registerSystemRoutes(app);
@@ -51,6 +54,7 @@ const isMainModule = process.argv[1] ? fileURLToPath(import.meta.url) === proces
 
 if (isMainModule) {
   const app = createServerApp();
+  logAdminPasskey();
 
   serve({
     fetch: app.fetch,

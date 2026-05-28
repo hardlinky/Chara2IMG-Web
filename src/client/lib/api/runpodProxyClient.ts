@@ -73,6 +73,11 @@ export type SystemConfig = {
   hasRunpodApiKey: boolean;
 };
 
+export type AdminSessionResponse = {
+  ok: boolean;
+  admin: boolean;
+};
+
 export type SystemStorageStats = {
   ok: true;
   userUsedBytes: number;
@@ -115,6 +120,38 @@ export async function fetchSystemConfig(): Promise<SystemConfig> {
   }
 
   return (await response.json()) as SystemConfig;
+}
+
+export async function fetchAdminSession(): Promise<AdminSessionResponse> {
+  const response = await fetch("/api/admin/session", {
+    method: "GET",
+    credentials: "include"
+  });
+
+  if (!response.ok) {
+    return { ok: false, admin: false };
+  }
+
+  const payload = (await response.json()) as AdminSessionResponse;
+  return payload;
+}
+
+export async function verifyAdminKeyViaProxy(key: string): Promise<AdminSessionResponse> {
+  const response = await fetch("/api/admin/verify-key", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    credentials: "include",
+    body: JSON.stringify({ key })
+  });
+
+  if (!response.ok) {
+    return { ok: false, admin: false };
+  }
+
+  const payload = (await response.json()) as AdminSessionResponse;
+  return payload;
 }
 
 function getOrCreateStorageClientId(): string {

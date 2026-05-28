@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "./components/app-shell/AppShell";
 import type { AppTabDefinition } from "./components/app-shell/TopTabRail";
+import { AdminGate } from "./features/access/AdminGate";
+import { AdminTab } from "./features/access/AdminTab";
 import { InviteGate } from "./features/access/InviteGate";
 import { RunpodKeySettings } from "./features/access/RunpodKeySettings";
 import { DynamicInputEditor } from "./features/inputs/DynamicInputEditor";
@@ -98,21 +100,22 @@ const BASE_APP_TABS: AppTabDefinition[] = [
   { id: "setup", label: "Setup" },
   { id: "input", label: "Input" },
   { id: "jobs", label: "Jobs" },
-  { id: "output", label: "Output" }
+  { id: "output", label: "Output" },
+  { id: "admin", label: "Admin" }
 ];
 
 const SERVER_MANAGED_RUNPOD_KEY = "__SERVER_MANAGED_RUNPOD_KEY__";
 
-function getStoredActiveTab(): "setup" | "input" | "jobs" | "output" {
+function getStoredActiveTab(): "setup" | "input" | "jobs" | "output" | "admin" {
   if (typeof window === "undefined") {
     return "setup";
   }
 
   const stored = window.localStorage.getItem(APP_ACTIVE_TAB_STORAGE_KEY);
-  return stored === "setup" || stored === "input" || stored === "jobs" || stored === "output" ? stored : "setup";
+  return stored === "setup" || stored === "input" || stored === "jobs" || stored === "output" || stored === "admin" ? stored : "setup";
 }
 
-function persistActiveTab(tabId: "setup" | "input" | "jobs" | "output"): void {
+function persistActiveTab(tabId: "setup" | "input" | "jobs" | "output" | "admin"): void {
   if (typeof window === "undefined") {
     return;
   }
@@ -121,8 +124,9 @@ function persistActiveTab(tabId: "setup" | "input" | "jobs" | "output"): void {
 }
 
 export function App() {
-  const [activeTab, setActiveTab] = useState<"setup" | "input" | "jobs" | "output">(() => getStoredActiveTab());
+  const [activeTab, setActiveTab] = useState<"setup" | "input" | "jobs" | "output" | "admin">(() => getStoredActiveTab());
   const [invited, setInvited] = useState(false);
+  const [adminGranted, setAdminGranted] = useState(false);
   const [runpodKey, setRunpodKey] = useState(getRunpodKey());
   const [hasServerRunpodApiKey, setHasServerRunpodApiKey] = useState(false);
   const [runEndpointId, setRunEndpointId] = useState(() => getStoredEndpointId() ?? "");
@@ -484,6 +488,11 @@ export function App() {
             }}
             canPinMore={recentJobs.canPinMoreJobs}
           />
+        ),
+        admin: (
+          <div className="section-stack">
+            {adminGranted ? <AdminTab enabled={true} /> : <AdminGate onGranted={setAdminGranted} />}
+          </div>
         )
       }}
     />

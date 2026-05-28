@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import type { Hono } from "hono";
-import { requireInvitedSession } from "../middleware/session";
+import { requireAdminSession, requireInvitedSession } from "../middleware/session";
 import {
   buildPinnedImageConsumerKey,
   findPinnedImageByHash,
@@ -225,7 +225,7 @@ export function registerPinnedImageRoutes(app: Hono): void {
     });
   });
 
-  app.use("/api/pinned-images/clients", requireInvitedSession);
+  app.use("/api/pinned-images/clients", requireAdminSession);
   app.get("/api/pinned-images/clients", async (c) => {
     const clients = await listPinnedImageClientUsage();
     return c.json({
@@ -234,7 +234,7 @@ export function registerPinnedImageRoutes(app: Hono): void {
     });
   });
 
-  app.use("/api/pinned-images/prune", requireInvitedSession);
+  app.use("/api/pinned-images/prune", requireAdminSession);
   app.post("/api/pinned-images/prune", async (c) => {
     const payload = await c.req.json().catch(() => null);
     const parsed = prunePinnedImagesRequestSchema.safeParse(payload);

@@ -43,6 +43,29 @@ type ReconcilePinnedImagesResponse = {
   deletedFiles: number;
 };
 
+export type PinnedImageClientUsage = {
+  clientId: string;
+  entries: number;
+  bytes: number;
+};
+
+type PinnedImageClientsResponse = {
+  ok: true;
+  clients: PinnedImageClientUsage[];
+};
+
+type PrunePinnedImagesPayload = {
+  keepClientIds: string[];
+};
+
+type PrunePinnedImagesResponse = {
+  ok: true;
+  removedEntries: number;
+  removedClients: string[];
+  deletedFiles: number;
+  keptEntries: number;
+};
+
 type PinnedImageStorageStatsResponse = {
   ok: true;
   userUsedBytes: number;
@@ -141,6 +164,38 @@ export async function reconcilePinnedImagesViaProxy(payload: ReconcilePinnedImag
   const data = (await response.json().catch(() => null)) as ReconcilePinnedImagesResponse | { error?: string } | null;
   if (!response.ok || !data || !("ok" in data)) {
     throw new ProxyRequestError(response.status, `Pinned image reconcile failed (${response.status})`, data);
+  }
+
+  return data;
+}
+
+export async function fetchPinnedImageClientsViaProxy(): Promise<PinnedImageClientUsage[]> {
+  const response = await fetch("/api/pinned-images/clients", {
+    method: "GET",
+    credentials: "include"
+  });
+
+  const data = (await response.json().catch(() => null)) as PinnedImageClientsResponse | { error?: string } | null;
+  if (!response.ok || !data || !("ok" in data)) {
+    throw new ProxyRequestError(response.status, `Pinned image clients request failed (${response.status})`, data);
+  }
+
+  return data.clients;
+}
+
+export async function prunePinnedImagesViaProxy(payload: PrunePinnedImagesPayload): Promise<PrunePinnedImagesResponse> {
+  const response = await fetch("/api/pinned-images/prune", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    credentials: "include",
+    body: JSON.stringify(payload)
+  });
+
+  const data = (await response.json().catch(() => null)) as PrunePinnedImagesResponse | { error?: string } | null;
+  if (!response.ok || !data || !("ok" in data)) {
+    throw new ProxyRequestError(response.status, `Pinned image prune request failed (${response.status})`, data);
   }
 
   return data;
