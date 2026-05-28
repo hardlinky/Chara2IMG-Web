@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, readdir, stat, statfs, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Hono } from "hono";
@@ -8,7 +9,14 @@ import { backupPinnedImageRequestSchema } from "../schemas/pinnedImages";
 
 const CURRENT_DIR = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = resolve(CURRENT_DIR, "../../..");
-const PINNED_IMAGES_DIR = resolve(PROJECT_ROOT, ".data", "pinned-images");
+const PINNED_IMAGES_DIR = (() => {
+  const configured = process.env.PINNED_IMAGES_STORAGE_DIR?.trim();
+  if (configured) {
+    return resolve(PROJECT_ROOT, configured);
+  }
+
+  return resolve(tmpdir(), "chara2img", "pinned-images");
+})();
 const DEFAULT_PINNED_IMAGES_CAPACITY_BYTES = 10 * 1024 * 1024 * 1024;
 
 function getConfiguredPinnedImagesCapacityBytes(): number {
@@ -60,8 +68,24 @@ function getRequestClientId(request: Request): string {
 }
 
 async function collectPinnedStorageUsageBytes(clientId: string): Promise<{ userUsedBytes: number; allUsersUsedBytes: number }> {
-  await mkdir(PINNED_IMAGES_DIR, { recursive: true });
-  const fileNames = await readdir(PINNED_IMAGES_DIR);
+  try {
+    await mkdir(PINNED_IMAGES_DIR, { recursive: true });
+  } catch {
+    return {
+      userUsedBytes: 0,
+      allUsersUsedBytes: 0
+    };
+  }
+
+  let fileNames: string[] = [];
+  try {
+    fileNames = await readdir(PINNED_IMAGES_DIR);
+  } catch {
+    return {
+      userUsedBytes: 0,
+      allUsersUsedBytes: 0
+    };
+  }
 
   let userUsedBytes = 0;
   let allUsersUsedBytes = 0;
@@ -126,8 +150,6 @@ function decodeDataUrl(dataUrl: string): { mimeType: string; bytes: Uint8Array }
 }
 
 export function registerPinnedImageRoutes(app: Hono): void {
-  app.use("/api/pinned-images/*", requireInvitedSession);
-
   app.get("/api/pinned-images/stats", async (c) => {
     const clientId = getRequestClientId(c.req.raw);
     const usage = await collectPinnedStorageUsageBytes(clientId);
@@ -141,6 +163,7 @@ export function registerPinnedImageRoutes(app: Hono): void {
     });
   });
 
+  app.use("/api/pinned-images/backup", requireInvitedSession);
   app.post("/api/pinned-images/backup", async (c) => {
     const clientId = getRequestClientId(c.req.raw);
     const payload = await c.req.json().catch(() => null);
@@ -175,6 +198,7 @@ export function registerPinnedImageRoutes(app: Hono): void {
     });
   });
 
+  app.use("/api/pinned-images/:fileName", requireInvitedSession);
   app.get("/api/pinned-images/:fileName", async (c) => {
     const rawFileName = c.req.param("fileName");
     const fileName = decodeURIComponent(rawFileName);
