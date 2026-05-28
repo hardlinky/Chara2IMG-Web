@@ -50,6 +50,24 @@ function sanitizeFileNamePart(value: string): string {
   return sanitized || "workflow";
 }
 
+function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes < 0) {
+    return "0 B";
+  }
+
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let value = bytes;
+  let unitIndex = 0;
+
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+
+  const decimals = unitIndex === 0 ? 0 : value >= 10 ? 1 : 2;
+  return `${value.toFixed(decimals)} ${units[unitIndex]}`;
+}
+
 const BASE_APP_TABS: AppTabDefinition[] = [
   { id: "setup", label: "Setup" },
   { id: "input", label: "Input" },
@@ -86,6 +104,7 @@ export function App() {
   const [jobActionError, setJobActionError] = useState("");
   const [isUpdatingApp, setIsUpdatingApp] = useState(false);
   const [updateStatus, setUpdateStatus] = useState("");
+  const [storageStatus, setStorageStatus] = useState("Storage: unavailable");
   const [editorApi, setEditorApi] = useState<{
     applyExternalDraftValues: (
       sourceTemplateFingerprint: string,
@@ -139,6 +158,50 @@ export function App() {
   useEffect(() => {
     persistActiveTab(activeTab);
   }, [activeTab]);
+
+  useEffect(() => {
+    if (!invited) {
+      return;
+    }
+
+    if (typeof navigator === "undefined" || !navigator.storage?.estimate) {
+      setStorageStatus("Storage: unavailable");
+      return;
+    }
+
+    let cancelled = false;
+    setStorageStatus("Storage: checking...");
+
+    void navigator.storage
+      .estimate()
+      .then((estimate) => {
+        if (cancelled) {
+          return;
+        }
+
+        const usage = typeof estimate.usage === "number" ? estimate.usage : 0;
+        const quota = typeof estimate.quota === "number" ? estimate.quota : 0;
+
+        if (quota > 0) {
+          const ratio = Math.min(100, Math.max(0, (usage / quota) * 100));
+          setStorageStatus(`Storage: ${formatBytes(usage)} / ${formatBytes(quota)} (${ratio.toFixed(1)}%)`);
+          return;
+        }
+
+        setStorageStatus(`Storage: ${formatBytes(usage)}`);
+      })
+      .catch(() => {
+        if (cancelled) {
+          return;
+        }
+
+        setStorageStatus("Storage: unavailable");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [invited, recentJobs.pinnedImageCount, recentJobs.visibleJobs.length]);
 
   async function onRunPayloadBuilt(snapshot: {
     payload: Record<string, unknown>;
@@ -279,6 +342,7 @@ export function App() {
           <span>{`Runpod key: ${runpodKey || hasServerRunpodApiKey ? "Configured" : "Missing"}`}</span>
           <span>{`Endpoint: ${runEndpointId || "Not set"}`}</span>
           <span>{`Template: ${activeTemplate ? "Loaded" : "Not loaded"}`}</span>
+          <span>{storageStatus}</span>
           {updateStatus ? <span>{updateStatus}</span> : null}
         </>
       }
