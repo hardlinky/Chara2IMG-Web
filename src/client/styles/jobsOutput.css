@@ -259,9 +259,12 @@
 }
 
 .outputs-image-tile-wrapper {
-  position: relative;
   display: flex;
   flex-direction: column;
+}
+
+.outputs-image-media {
+  position: relative;
 }
 
 .outputs-image-tile img {
@@ -300,7 +303,7 @@
 
 .outputs-image-bottom-actions {
   position: absolute;
-  top: max(150px, 85%);
+  bottom: var(--space-2);
   left: var(--space-2);
   display: flex;
   gap: var(--space-1);

@@ -102,9 +102,81 @@ export function OutputImageCard({
 
   return (
     <div className={`outputs-image-tile-wrapper ${maxVisible ? "" : "outputs-image-tile-hidden"}`.trim()}>
-      <button type="button" className="outputs-image-tile" onClick={onOpen} aria-label={`Open ${imagePrefix} image ${imageLabel}`}>
-        <img src={image.dataUrl} alt={`${imagePrefix} ${imageLabel}`} loading="lazy" onLoad={onImageLoad} />
-      </button>
+      <div className="outputs-image-media">
+        <button type="button" className="outputs-image-tile" onClick={onOpen} aria-label={`Open ${imagePrefix} image ${imageLabel}`}>
+          <img src={image.dataUrl} alt={`${imagePrefix} ${imageLabel}`} loading="lazy" onLoad={onImageLoad} />
+        </button>
+        {badge ? <span className="outputs-count-badge">{badge}</span> : null}
+        {onTogglePin ? (
+          <button
+            type="button"
+            className={`outputs-image-pin-btn ${image.isPinned ? "is-active" : ""}`.trim()}
+            aria-label={image.isPinned ? `Unpin ${imagePrefix} image ${imageLabel}` : `Pin ${imagePrefix} image ${imageLabel}`}
+            title={image.isPinned ? `Unpin ${imagePrefix} image ${imageLabel}` : `Pin ${imagePrefix} image ${imageLabel}`}
+            disabled={!image.isPinned && !canPinMore}
+            onClick={onTogglePin}
+          >
+            {image.isPinned ? "📌" : "📍"}
+          </button>
+        ) : null}
+        {showBottomActions ? (
+          <div className="outputs-image-bottom-actions" aria-label={`Actions for ${imagePrefix} image ${imageLabel}`}>
+            <button
+              type="button"
+              className="outputs-image-action-btn"
+              aria-label={`Download ${imagePrefix} image ${imageLabel}`}
+              title={`Download ${imagePrefix} image ${imageLabel}`}
+              onClick={() => triggerDownload(image, imagePrefix, imageLabel)}
+            >
+              <DownloadIcon />
+            </button>
+            {onViewJobOutputs ? (
+              <button
+                type="button"
+                className="outputs-image-action-btn"
+                aria-label={`View job outputs for ${imagePrefix}`}
+                title={`View job outputs for ${imagePrefix}`}
+                onClick={onViewJobOutputs}
+              >
+                <ViewJobOutputsIcon />
+              </button>
+            ) : null}
+            {onExportWorkflow ? (
+              <button
+                type="button"
+                className="outputs-image-action-btn"
+                aria-label={`Export workflow for ${imagePrefix}`}
+                title={`Export workflow for ${imagePrefix}`}
+                onClick={onExportWorkflow}
+              >
+                <ExportIcon />
+              </button>
+            ) : null}
+            {onLoadInputs ? (
+              <button
+                type="button"
+                className="outputs-image-action-btn"
+                aria-label={`Load inputs from ${imagePrefix}`}
+                title={`Load inputs from ${imagePrefix}`}
+                onClick={onLoadInputs}
+              >
+                <LoadInputsIcon />
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+        {onRemoveImage ? (
+          <button
+            type="button"
+            className="outputs-image-remove-btn"
+            aria-label={`Remove ${imagePrefix} image ${imageLabel}`}
+            title={`Remove ${imagePrefix} image ${imageLabel}`}
+            onClick={onRemoveImage}
+          >
+            ✕
+          </button>
+        ) : null}
+      </div>
       <div className="outputs-image-caption-row">
         <span className="outputs-image-caption-label">{`${imagePrefix} #${imageLabel}`}</span>
         <span className="outputs-image-source-chip" title={isArchived ? "Loaded from server backup" : "Loaded from browser cache"}>
@@ -112,76 +184,6 @@ export function OutputImageCard({
           <span>{storageSourceLabel}</span>
         </span>
       </div>
-      {badge ? <span className="outputs-count-badge">{badge}</span> : null}
-      {onTogglePin ? (
-        <button
-          type="button"
-          className={`outputs-image-pin-btn ${image.isPinned ? "is-active" : ""}`.trim()}
-          aria-label={image.isPinned ? `Unpin ${imagePrefix} image ${imageLabel}` : `Pin ${imagePrefix} image ${imageLabel}`}
-          title={image.isPinned ? `Unpin ${imagePrefix} image ${imageLabel}` : `Pin ${imagePrefix} image ${imageLabel}`}
-          disabled={!image.isPinned && !canPinMore}
-          onClick={onTogglePin}
-        >
-          {image.isPinned ? "📌" : "📍"}
-        </button>
-      ) : null}
-      {showBottomActions ? (
-        <div className="outputs-image-bottom-actions" aria-label={`Actions for ${imagePrefix} image ${imageLabel}`}>
-          <button
-            type="button"
-            className="outputs-image-action-btn"
-            aria-label={`Download ${imagePrefix} image ${imageLabel}`}
-            title={`Download ${imagePrefix} image ${imageLabel}`}
-            onClick={() => triggerDownload(image, imagePrefix, imageLabel)}
-          >
-            <DownloadIcon />
-          </button>
-          {onViewJobOutputs ? (
-            <button
-              type="button"
-              className="outputs-image-action-btn"
-              aria-label={`View job outputs for ${imagePrefix}`}
-              title={`View job outputs for ${imagePrefix}`}
-              onClick={onViewJobOutputs}
-            >
-              <ViewJobOutputsIcon />
-            </button>
-          ) : null}
-          {onExportWorkflow ? (
-            <button
-              type="button"
-              className="outputs-image-action-btn"
-              aria-label={`Export workflow for ${imagePrefix}`}
-              title={`Export workflow for ${imagePrefix}`}
-              onClick={onExportWorkflow}
-            >
-              <ExportIcon />
-            </button>
-          ) : null}
-          {onLoadInputs ? (
-            <button
-              type="button"
-              className="outputs-image-action-btn"
-              aria-label={`Load inputs from ${imagePrefix}`}
-              title={`Load inputs from ${imagePrefix}`}
-              onClick={onLoadInputs}
-            >
-              <LoadInputsIcon />
-            </button>
-          ) : null}
-        </div>
-      ) : null}
-      {onRemoveImage ? (
-        <button
-          type="button"
-          className="outputs-image-remove-btn"
-          aria-label={`Remove ${imagePrefix} image ${imageLabel}`}
-          title={`Remove ${imagePrefix} image ${imageLabel}`}
-          onClick={onRemoveImage}
-        >
-          ✕
-        </button>
-      ) : null}
     </div>
   );
 }
