@@ -192,6 +192,48 @@ function removeImageAtPath(response: Record<string, unknown>, tokens: JsonPathTo
   return true;
 }
 
+function setValueAtPath(response: Record<string, unknown>, tokens: JsonPathToken[], value: unknown): boolean {
+  if (tokens.length === 0) {
+    return false;
+  }
+
+  let current: unknown = response;
+  for (let index = 0; index < tokens.length - 1; index += 1) {
+    const token = tokens[index];
+
+    if (typeof token === "number") {
+      if (!Array.isArray(current) || token < 0 || token >= current.length) {
+        return false;
+      }
+      current = current[token];
+      continue;
+    }
+
+    if (!current || typeof current !== "object" || !(token in (current as Record<string, unknown>))) {
+      return false;
+    }
+
+    current = (current as Record<string, unknown>)[token];
+  }
+
+  const lastToken = tokens[tokens.length - 1];
+  if (typeof lastToken === "number") {
+    if (!Array.isArray(current) || lastToken < 0 || lastToken >= current.length) {
+      return false;
+    }
+
+    current[lastToken] = value;
+    return true;
+  }
+
+  if (!current || typeof current !== "object") {
+    return false;
+  }
+
+  (current as Record<string, unknown>)[lastToken] = value;
+  return true;
+}
+
 function normalizeHiddenOutputIndices(indices: number[] | undefined, removedIndex: number): number[] | undefined {
   if (!indices || indices.length === 0) {
     return undefined;
@@ -426,11 +468,37 @@ export async function setRecentJobOutputPinned(
   jobId: string,
   outputIndex: number,
   pinned: boolean,
-  pinnedAt: string = new Date().toISOString()
+  pinnedAt: string = new Date().toISOString(),
+  replacementDataUrl?: string
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
   const target = await db.table<StoredRecentJob, string>("jobs").get(jobId);
   if (!target || target.hiddenAt !== null || outputIndex < 0) {
     return { ok: false, reason: "Job output is not available to pin." };
+  }
+
+  if (pinned && replacementDataUrl) {
+    const sourceResponse = await loadHydratedLastResponse(jobId, target.lastResponse);
+    if (sourceResponse) {
+      const extractedImages = extractRunpodOutputImages(sourceResponse);
+      const replacementTarget = extractedImages[outputIndex];
+
+      if (replacementTarget) {
+        const tokens = parseSourcePath(replacementTarget.sourcePath);
+        if (tokens) {
+          const clonedResponse = cloneResponseBody(sourceResponse);
+          const replaced = setValueAtPath(clonedResponse, tokens, replacementDataUrl);
+
+          if (replaced) {
+            const compacted = compactResponsePayload(clonedResponse);
+            await db.table<StoredRecentJob, string>("jobs").update(jobId, {
+              lastResponse: compacted.compactedResponse,
+              outputImageCount: compacted.totalImageCount
+            });
+            await upsertJobArchive(jobId, compacted.fullResponse);
+          }
+        }
+      }
+    }
   }
 
   const currentPinnedIndices = new Set(target.pinnedOutputIndices ?? []);

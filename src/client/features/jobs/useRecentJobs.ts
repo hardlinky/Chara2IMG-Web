@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { RecentJobRecord } from "../../../shared/contracts/jobs";
+import { backupPinnedImageViaProxy } from "../../lib/api/pinnedImageClient";
 import { cancelViaProxy, statusBatchViaProxy, statusViaProxy } from "../../lib/api/runpodProxyClient";
 import { submitRunAndPersistRecentJob } from "../../lib/jobSubmission";
 import { projectRecentJobOutputClusters } from "../../lib/jobOutputProjection";
+import { extractRunpodOutputImages } from "../../lib/runpodOutputImage";
 import {
   startRecentJobsImageCompactionMigration,
   getRecentJob,
@@ -11,7 +13,6 @@ import {
   listRecentJobs,
   removeRecentJobOutputImage as removeRecentJobOutputImageFromStorage,
   setRecentJobOutputPinned,
-  toggleRecentJobOutputPinned,
   updateRecentJobLifecycle
 } from "../../lib/recentJobsStorage";
 import {
@@ -430,8 +431,13 @@ export async function setRecentJobOutputPinnedState(jobId: string, outputIndex: 
   return setRecentJobOutputPinned(jobId, outputIndex, pinned);
 }
 
-export async function toggleRecentJobOutputPinnedState(jobId: string, outputIndex: number, pinned: boolean): Promise<{ ok: true } | { ok: false; reason: string }> {
-  return toggleRecentJobOutputPinned(jobId, outputIndex, pinned);
+export async function toggleRecentJobOutputPinnedState(
+  jobId: string,
+  outputIndex: number,
+  pinned: boolean,
+  replacementDataUrl?: string
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  return setRecentJobOutputPinned(jobId, outputIndex, pinned, new Date().toISOString(), replacementDataUrl);
 }
 
 export function useRecentJobs(options: UseRecentJobsOptions = {}) {
@@ -526,7 +532,34 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
   }, [refreshRecentJobs]);
 
   const togglePinnedImage = useCallback(async (jobId: string, outputIndex: number, pinned: boolean) => {
-    const result = await toggleRecentJobOutputPinnedState(jobId, outputIndex, pinned);
+    let replacementDataUrl: string | undefined;
+
+    if (pinned) {
+      const job = await getRecentJob(jobId);
+      const response = job?.lastResponse;
+      if (!response) {
+        return { ok: false as const, reason: "Job output is not available to pin." };
+      }
+
+      const extractedImages = extractRunpodOutputImages(response);
+      const targetImage = extractedImages[outputIndex];
+      if (!targetImage) {
+        return { ok: false as const, reason: "Job output is not available to pin." };
+      }
+
+      if (targetImage.dataUrl.startsWith("data:")) {
+        const backup = await backupPinnedImageViaProxy({
+          jobId,
+          outputIndex,
+          dataUrl: targetImage.dataUrl,
+          mimeType: targetImage.mimeType
+        });
+
+        replacementDataUrl = backup.imageUrl;
+      }
+    }
+
+    const result = await toggleRecentJobOutputPinnedState(jobId, outputIndex, pinned, replacementDataUrl);
     await refreshRecentJobs();
     if (!result.ok) {
       setError(result.reason);
