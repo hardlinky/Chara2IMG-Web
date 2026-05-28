@@ -40,17 +40,19 @@ type OutputsTabProps = {
   onExportWorkflow?: (jobId: string) => void;
   onToggleOutputPinned?: (jobId: string, outputIndex: number, pinned: boolean) => void;
   canPinMore?: boolean;
+  onLoadOutputCluster?: (jobId: string) => Promise<RecentJobOutputCluster | null>;
 };
 
 function getGalleryClassName(density: (typeof OUTPUT_DENSITIES)[number]): string {
   return `outputs-gallery outputs-gallery-${density}`;
 }
 
-export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs, onRemoveOutputImage, onExportWorkflow, onToggleOutputPinned, canPinMore = true }: OutputsTabProps) {
+export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs, onRemoveOutputImage, onExportWorkflow, onToggleOutputPinned, canPinMore = true, onLoadOutputCluster }: OutputsTabProps) {
   const gallery = useOutputGallery(clusters);
   const [galleryMode, setGalleryMode] = useState<OutputsGalleryMode>(() => getStoredOutputsViewMode());
   const [pinFilter, setPinFilter] = useState<OutputsPinFilter>(() => getStoredOutputsPinFilter());
   const [allImagesVisibleCount, setAllImagesVisibleCount] = useState(ALL_IMAGES_PAGE_SIZE);
+  const [hydratedJobClusters, setHydratedJobClusters] = useState<Record<string, RecentJobOutputCluster>>({});
   const [isMobile, setIsMobile] = useState(() => (typeof window !== "undefined" ? window.matchMedia("(max-width: 600px)").matches : false));
 
   useEffect(() => {
@@ -128,9 +130,31 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
     [allImagesVisibleCount, allOutputImages]
   );
 
+  const selectedJobId = gallery.view.mode === "job" ? gallery.view.jobId : null;
+  const selectedJobCluster = selectedJobId
+    ? hydratedJobClusters[selectedJobId] ?? gallery.selectedCluster
+    : gallery.selectedCluster;
+
   useEffect(() => {
     setAllImagesVisibleCount(ALL_IMAGES_PAGE_SIZE);
   }, [galleryMode, pinFilter]);
+
+  useEffect(() => {
+    if (!onLoadOutputCluster || !selectedJobId || hydratedJobClusters[selectedJobId]) {
+      return;
+    }
+
+    void onLoadOutputCluster(selectedJobId).then((cluster) => {
+      if (!cluster) {
+        return;
+      }
+
+      setHydratedJobClusters((current) => ({
+        ...current,
+        [selectedJobId]: cluster
+      }));
+    });
+  }, [hydratedJobClusters, onLoadOutputCluster, selectedJobId]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -154,22 +178,22 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
     window.__openJobOutputs = gallery.openJobOutputs;
   }
 
-  if (gallery.view.mode === "job" && gallery.selectedCluster) {
+  if (gallery.view.mode === "job" && selectedJobCluster) {
     return (
       <JobOutputsView
-        cluster={gallery.selectedCluster}
+        cluster={selectedJobCluster}
         onBack={gallery.goBackToGallery}
         onPreviousJob={gallery.selectedClusterIndex > 0 ? gallery.goToPreviousJob : undefined}
         onNextJob={gallery.selectedClusterIndex >= 0 && gallery.selectedClusterIndex + 1 < clusters.length ? gallery.goToNextJob : undefined}
-        onRerun={() => onRerun(gallery.selectedCluster!.jobId)}
-        onLoadInputs={() => onLoadInputs(gallery.selectedCluster!.jobId)}
-        onRemoveImage={(outputIndex) => onRemoveOutputImage(gallery.selectedCluster!.jobId, outputIndex)}
+        onRerun={() => onRerun(selectedJobCluster.jobId)}
+        onLoadInputs={() => onLoadInputs(selectedJobCluster.jobId)}
+        onRemoveImage={(outputIndex) => onRemoveOutputImage(selectedJobCluster.jobId, outputIndex)}
         onRemoveAllOutputs={() => {
-          onRemoveJobOutputs(gallery.selectedCluster!.jobId);
+          onRemoveJobOutputs(selectedJobCluster.jobId);
           gallery.goBackToGallery();
         }}
-        onExportWorkflow={onExportWorkflow ? () => onExportWorkflow(gallery.selectedCluster!.jobId) : undefined}
-        onTogglePinnedImage={onToggleOutputPinned ? (outputIndex, pinned) => onToggleOutputPinned(gallery.selectedCluster!.jobId, outputIndex, pinned) : undefined}
+        onExportWorkflow={onExportWorkflow ? () => onExportWorkflow(selectedJobCluster.jobId) : undefined}
+        onTogglePinnedImage={onToggleOutputPinned ? (outputIndex, pinned) => onToggleOutputPinned(selectedJobCluster.jobId, outputIndex, pinned) : undefined}
         canPinMore={canPinMore}
       />
     );

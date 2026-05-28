@@ -1,6 +1,10 @@
 import type { RecentJobOutputCluster, RecentJobOutputImage, RecentJobRecord } from "../../shared/contracts/jobs";
 import { extractRunpodOutputImages } from "./runpodOutputImage";
 
+type ProjectionOptions = {
+  maxOutputsPerJob?: number;
+};
+
 function isCompletedJob(job: RecentJobRecord): boolean {
   return job.lifecycle.status === "COMPLETED" && job.lifecycle.isTerminal;
 }
@@ -11,7 +15,7 @@ function getClusterSortTimestamp(job: RecentJobRecord): number {
   return Number.isNaN(parsed) ? 0 : parsed;
 }
 
-export function projectJobOutputCluster(job: RecentJobRecord): RecentJobOutputCluster | null {
+export function projectJobOutputCluster(job: RecentJobRecord, options: ProjectionOptions = {}): RecentJobOutputCluster | null {
   if (!isCompletedJob(job) || !job.lastResponse) {
     return null;
   }
@@ -27,7 +31,7 @@ export function projectJobOutputCluster(job: RecentJobRecord): RecentJobOutputCl
 
   const hiddenSet = new Set<number>(job.hiddenOutputIndices ?? []);
   const pinnedSet = new Set<number>(job.pinnedOutputIndices ?? []);
-  const outputs: RecentJobOutputImage[] = extractedImages
+  const allVisibleOutputs: RecentJobOutputImage[] = extractedImages
     .map((image, index) => ({
       dataUrl: image.dataUrl,
       mimeType: image.mimeType,
@@ -37,9 +41,12 @@ export function projectJobOutputCluster(job: RecentJobRecord): RecentJobOutputCl
     }))
     .filter((image) => !hiddenSet.has(image.outputIndex));
 
-  if (outputs.length === 0) {
+  if (allVisibleOutputs.length === 0) {
     return null;
   }
+
+  const maxOutputsPerJob = options.maxOutputsPerJob ?? Number.POSITIVE_INFINITY;
+  const outputs = allVisibleOutputs.slice(0, Math.max(1, maxOutputsPerJob));
 
   return {
     jobId: job.jobId,
@@ -48,15 +55,15 @@ export function projectJobOutputCluster(job: RecentJobRecord): RecentJobOutputCl
     submittedAt: job.submittedAt,
     finishedAt: job.lifecycle.finishedAt ?? null,
     workflowFileName: job.provenance.workflowFileName,
-    outputCount: outputs.length,
-    representative: outputs[0],
+    outputCount: allVisibleOutputs.length,
+    representative: allVisibleOutputs[0],
     outputs
   };
 }
 
-export function projectRecentJobOutputClusters(jobs: RecentJobRecord[]): RecentJobOutputCluster[] {
+export function projectRecentJobOutputClusters(jobs: RecentJobRecord[], options: ProjectionOptions = {}): RecentJobOutputCluster[] {
   const clusters = jobs
-    .map(projectJobOutputCluster)
+    .map((job) => projectJobOutputCluster(job, options))
     .filter((cluster): cluster is RecentJobOutputCluster => Boolean(cluster));
 
   return clusters.sort((left, right) => {

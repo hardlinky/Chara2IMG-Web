@@ -371,6 +371,7 @@ export function App() {
         output: (
           <OutputsTab
             clusters={recentJobs.completedOutputClusters}
+            onLoadOutputCluster={(jobId) => recentJobs.loadOutputCluster(jobId)}
             onRerun={(jobId) => void recentJobs.rerunJob(jobId)}
             onLoadInputs={(jobId) => void onLoadInputs(jobId)}
             onRemoveJobOutputs={(jobId) => void recentJobs.removeJobOutputs(jobId)}

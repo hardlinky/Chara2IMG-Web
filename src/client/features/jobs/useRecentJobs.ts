@@ -30,6 +30,7 @@ type UseRecentJobsOptions = {
 };
 
 export const RECENT_JOB_PAGE_SIZE = 10;
+const OUTPUTS_IN_MEMORY_PER_JOB_LIMIT = 8;
 export const RECENT_JOB_STATUS_FILTERS = ["All", "IN_QUEUE", "IN_PROGRESS", "COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT"] as const;
 
 export type RecentJobStatusFilter = (typeof RECENT_JOB_STATUS_FILTERS)[number];
@@ -415,6 +416,15 @@ export async function removeRecentJobFromVisibleList(jobId: string): Promise<voi
   await hideRecentJob(jobId);
 }
 
+export async function loadRecentJobOutputCluster(jobId: string) {
+  const job = await getRecentJob(jobId);
+  if (!job) {
+    return null;
+  }
+
+  return projectRecentJobOutputClusters([job])[0] ?? null;
+}
+
 export async function setRecentJobOutputPinnedState(jobId: string, outputIndex: number, pinned: boolean): Promise<{ ok: true } | { ok: false; reason: string }> {
   return setRecentJobOutputPinned(jobId, outputIndex, pinned);
 }
@@ -541,6 +551,10 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
     return getRecentJob(jobId);
   }, []);
 
+  const loadOutputCluster = useCallback(async (jobId: string) => {
+    return loadRecentJobOutputCluster(jobId);
+  }, []);
+
   const rerunJob = useCallback(
     async (jobId: string) => {
       const job = await rerunRecentJob(jobId, { endpointId, apiKey });
@@ -576,7 +590,9 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
       return [];
     }
 
-    return projectRecentJobOutputClusters(visibleJobs);
+    return projectRecentJobOutputClusters(visibleJobs, {
+      maxOutputsPerJob: OUTPUTS_IN_MEMORY_PER_JOB_LIMIT
+    });
   }, [includeOutputClusters, visibleJobs]);
   const filteredJobs = useMemo(() => filterJobsByStatus(visibleJobs, statusFilter), [statusFilter, visibleJobs]);
   const pageCount = Math.max(1, Math.ceil(filteredJobs.length / RECENT_JOB_PAGE_SIZE));
@@ -615,6 +631,7 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
     pollJob,
     cancelJob,
     rerunJob,
+    loadOutputCluster,
     loadJobInputs,
     removeVisibleJob,
     removeOutputImage,
