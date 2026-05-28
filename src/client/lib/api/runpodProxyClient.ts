@@ -81,6 +81,33 @@ export type SystemStorageStats = {
   source?: string;
 };
 
+function toSystemStorageStats(data: unknown): SystemStorageStats | null {
+  if (!data || typeof data !== "object") {
+    return null;
+  }
+
+  const record = data as Record<string, unknown>;
+  if (record.ok !== true) {
+    return null;
+  }
+
+  const userUsedBytes = Number(record.userUsedBytes);
+  const allUsersUsedBytes = Number(record.allUsersUsedBytes);
+  const totalCapacityBytes = Number(record.totalCapacityBytes);
+
+  if (![userUsedBytes, allUsersUsedBytes, totalCapacityBytes].every((value) => Number.isFinite(value) && value >= 0)) {
+    return null;
+  }
+
+  return {
+    ok: true,
+    userUsedBytes,
+    allUsersUsedBytes,
+    totalCapacityBytes,
+    source: typeof record.source === "string" ? record.source : undefined
+  };
+}
+
 export async function fetchSystemConfig(): Promise<SystemConfig> {
   const response = await fetch("/api/system/config");
   if (!response.ok) {
@@ -108,17 +135,43 @@ function getOrCreateStorageClientId(): string {
 
 export async function fetchSystemStorageStats(): Promise<SystemStorageStats> {
   const clientId = encodeURIComponent(getOrCreateStorageClientId());
-  const response = await fetch(`/api/system/storage?clientId=${clientId}`, {
-    method: "GET",
-    credentials: "include"
-  });
+  const fetchStatsFromPath = async (path: string): Promise<SystemStorageStats> => {
+    const response = await fetch(path, {
+      method: "GET",
+      credentials: "include"
+    });
 
-  const data = (await response.json().catch(() => null)) as SystemStorageStats | { error?: string } | null;
-  if (!response.ok || !data || !("ok" in data) || data.ok !== true) {
-    throw new ProxyRequestError(response.status, `System storage stats request failed (${response.status})`, data);
+    const text = await response.text();
+    let data: unknown = null;
+    if (text) {
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = text;
+      }
+    }
+
+    if (!response.ok) {
+      throw new ProxyRequestError(response.status, `System storage stats request failed (${response.status})`, data);
+    }
+
+    const parsed = toSystemStorageStats(data);
+    if (!parsed) {
+      throw new ProxyRequestError(response.status, `System storage stats response invalid (${response.status})`, data);
+    }
+
+    return parsed;
+  };
+
+  try {
+    return await fetchStatsFromPath(`/api/system/storage?clientId=${clientId}`);
+  } catch (primaryError) {
+    try {
+      return await fetchStatsFromPath(`/api/pinned-images/stats?clientId=${clientId}`);
+    } catch {
+      throw primaryError;
+    }
   }
-
-  return data;
 }
 
 export class ProxyRequestError extends Error {
