@@ -23,6 +23,7 @@ type ManifestEntry = {
   contentHash: string;
   sizeBytes: number;
   refCount: number;
+  consumers: string[];
   updatedAt: string;
 };
 
@@ -73,6 +74,7 @@ async function readManifest(): Promise<PinnedImagesManifest> {
             typeof entry.contentHash === "string" &&
             Number.isFinite(Number(entry.sizeBytes)) &&
             Number.isFinite(Number(entry.refCount ?? 1)) &&
+            (!("consumers" in entry) || Array.isArray((entry as { consumers?: unknown }).consumers)) &&
             typeof entry.updatedAt === "string"
           );
         })
@@ -82,6 +84,9 @@ async function readManifest(): Promise<PinnedImagesManifest> {
           contentHash: entry.contentHash,
           sizeBytes: normalizeFiniteBytes(entry.sizeBytes),
           refCount: Math.max(1, normalizeFiniteBytes(entry.refCount ?? 1)),
+          consumers: Array.isArray(entry.consumers)
+            ? [...new Set(entry.consumers.filter((consumer): consumer is string => typeof consumer === "string" && consumer.trim().length > 0))]
+            : [],
           updatedAt: entry.updatedAt
         }))
     };
@@ -129,10 +134,19 @@ export async function getEffectivePinnedImagesCapacityBytes(): Promise<number> {
   return Math.max(1, Math.min(configured, diskCapacity));
 }
 
-export async function registerPinnedImageBackup(fileName: string, clientId: string, sizeBytes: number, contentHash: string): Promise<void> {
+function normalizeConsumerKey(value: string): string {
+  return value.trim();
+}
+
+export function buildPinnedImageConsumerKey(clientId: string, jobId: string, outputIndex: number): string {
+  return `${sanitizeClientId(clientId)}:${jobId}:${Math.max(0, Math.floor(outputIndex))}`;
+}
+
+export async function registerPinnedImageBackup(fileName: string, clientId: string, sizeBytes: number, contentHash: string, consumerKey: string): Promise<void> {
   const manifest = await readManifest();
   const normalizedClientId = sanitizeClientId(clientId);
   const normalizedSize = normalizeFiniteBytes(sizeBytes);
+  const normalizedConsumer = normalizeConsumerKey(consumerKey);
   const now = new Date().toISOString();
 
   const existingIndex = manifest.entries.findIndex((entry) => entry.fileName === fileName);
@@ -142,11 +156,25 @@ export async function registerPinnedImageBackup(fileName: string, clientId: stri
     contentHash,
     sizeBytes: normalizedSize,
     refCount: 1,
+    consumers: [normalizedConsumer],
     updatedAt: now
   };
 
   if (existingIndex >= 0) {
-    manifest.entries[existingIndex] = nextEntry;
+    const existing = manifest.entries[existingIndex]!;
+    const nextConsumers = existing.consumers.includes(normalizedConsumer)
+      ? existing.consumers
+      : [...existing.consumers, normalizedConsumer];
+
+    manifest.entries[existingIndex] = {
+      ...existing,
+      clientId: normalizedClientId,
+      contentHash,
+      sizeBytes: normalizedSize,
+      refCount: nextConsumers.length > 0 ? nextConsumers.length : Math.max(1, existing.refCount),
+      consumers: nextConsumers,
+      updatedAt: now
+    };
   } else {
     manifest.entries.push(nextEntry);
   }
@@ -162,28 +190,23 @@ export async function findPinnedImageByHash(clientId: string, contentHash: strin
   );
 }
 
-export async function incrementPinnedImageReference(fileName: string): Promise<void> {
-  const manifest = await readManifest();
-  const existing = manifest.entries.find((entry) => entry.fileName === fileName);
-  if (!existing) {
-    return;
-  }
-
-  existing.refCount = Math.max(1, normalizeFiniteBytes(existing.refCount)) + 1;
-  existing.updatedAt = new Date().toISOString();
-  await writeManifest(manifest);
-}
-
-export async function releasePinnedImageReference(fileName: string, clientId: string): Promise<{ shouldDeleteFile: boolean }> {
+export async function releasePinnedImageReference(fileName: string, clientId: string, consumerKey: string): Promise<{ shouldDeleteFile: boolean }> {
   const manifest = await readManifest();
   const normalizedClientId = sanitizeClientId(clientId);
+  const normalizedConsumer = normalizeConsumerKey(consumerKey);
   const index = manifest.entries.findIndex((entry) => entry.fileName === fileName && sanitizeClientId(entry.clientId) === normalizedClientId);
   if (index < 0) {
     return { shouldDeleteFile: false };
   }
 
   const target = manifest.entries[index]!;
-  const nextRefCount = Math.max(1, normalizeFiniteBytes(target.refCount)) - 1;
+  const currentConsumers = target.consumers;
+  const hadConsumer = currentConsumers.includes(normalizedConsumer);
+  const nextConsumers = hadConsumer ? currentConsumers.filter((consumer) => consumer !== normalizedConsumer) : currentConsumers;
+
+  const currentRefCount = Math.max(1, normalizeFiniteBytes(target.refCount));
+  const nextRefCount = nextConsumers.length > 0 ? nextConsumers.length : hadConsumer ? 0 : Math.max(0, currentRefCount - 1);
+
   if (nextRefCount <= 0) {
     manifest.entries.splice(index, 1);
     await writeManifest(manifest);
@@ -191,6 +214,7 @@ export async function releasePinnedImageReference(fileName: string, clientId: st
   }
 
   target.refCount = nextRefCount;
+  target.consumers = nextConsumers;
   target.updatedAt = new Date().toISOString();
   await writeManifest(manifest);
   return { shouldDeleteFile: false };

@@ -18,6 +18,8 @@ type BackupPinnedImageResponse = {
 
 type ReleasePinnedImagePayload = {
   clientId?: string;
+  jobId: string;
+  outputIndex: number;
   imageUrl: string;
 };
 

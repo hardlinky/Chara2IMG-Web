@@ -4,9 +4,9 @@ import { join, resolve } from "node:path";
 import type { Hono } from "hono";
 import { requireInvitedSession } from "../middleware/session";
 import {
+  buildPinnedImageConsumerKey,
   findPinnedImageByHash,
   getEffectivePinnedImagesCapacityBytes,
-  incrementPinnedImageReference,
   PINNED_IMAGES_DIR,
   releasePinnedImageReference,
   getTrackedPinnedStorageUsageBytes,
@@ -102,6 +102,7 @@ export function registerPinnedImageRoutes(app: Hono): void {
     }
 
     const clientId = getRequestClientId(c.req.raw, parsed.data.clientId ?? null);
+    const consumerKey = buildPinnedImageConsumerKey(clientId, parsed.data.jobId, parsed.data.outputIndex);
 
     const decoded = decodeDataUrl(parsed.data.dataUrl);
     if (!decoded || decoded.mimeType !== parsed.data.mimeType) {
@@ -111,7 +112,7 @@ export function registerPinnedImageRoutes(app: Hono): void {
     const contentHash = computeContentHash(decoded.bytes);
     const existing = await findPinnedImageByHash(clientId, contentHash);
     if (existing) {
-      await incrementPinnedImageReference(existing.fileName);
+      await registerPinnedImageBackup(existing.fileName, clientId, existing.sizeBytes, existing.contentHash, consumerKey);
       return c.json({
         ok: true,
         imageUrl: `/api/pinned-images/${encodeURIComponent(existing.fileName)}`,
@@ -131,7 +132,7 @@ export function registerPinnedImageRoutes(app: Hono): void {
 
     await mkdir(PINNED_IMAGES_DIR, { recursive: true });
     await writeFile(filePath, decoded.bytes);
-    await registerPinnedImageBackup(fileName, clientId, decoded.bytes.byteLength, contentHash);
+    await registerPinnedImageBackup(fileName, clientId, decoded.bytes.byteLength, contentHash, consumerKey);
 
     return c.json({
       ok: true,
@@ -150,6 +151,7 @@ export function registerPinnedImageRoutes(app: Hono): void {
     }
 
     const clientId = getRequestClientId(c.req.raw, parsed.data.clientId ?? null);
+    const consumerKey = buildPinnedImageConsumerKey(clientId, parsed.data.jobId, parsed.data.outputIndex);
     const fileName = parsePinnedImageFileNameFromUrl(parsed.data.imageUrl);
     if (!fileName) {
       return c.json({ ok: false, error: "Invalid pinned image url" }, 400);
@@ -160,7 +162,7 @@ export function registerPinnedImageRoutes(app: Hono): void {
       return c.json({ ok: false, error: "Invalid pinned image id" }, 400);
     }
 
-    const releaseResult = await releasePinnedImageReference(fileName, clientId);
+    const releaseResult = await releasePinnedImageReference(fileName, clientId, consumerKey);
     if (releaseResult.shouldDeleteFile) {
       await unlink(filePath).catch(() => {
         // Ignore missing files during cleanup.

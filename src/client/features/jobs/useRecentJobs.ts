@@ -524,16 +524,18 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
 
   const removeVisibleJob = useCallback(async (jobId: string) => {
     const job = await getRecentJob(jobId);
-    const archivedImageUrls = job?.lastResponse
+    const archivedImageReleases = job?.lastResponse
       ? extractRunpodOutputImages(job.lastResponse)
-        .map((image) => image.dataUrl)
-        .filter((imageUrl) => isArchivedImageUrl(imageUrl))
+        .map((image, outputIndex) => ({ imageUrl: image.dataUrl, outputIndex }))
+        .filter((entry) => isArchivedImageUrl(entry.imageUrl))
       : [];
 
     await removeRecentJobFromVisibleList(jobId);
 
-    if (archivedImageUrls.length > 0) {
-      await Promise.allSettled(archivedImageUrls.map((imageUrl) => releasePinnedImageViaProxy({ imageUrl })));
+    if (archivedImageReleases.length > 0) {
+      await Promise.allSettled(
+        archivedImageReleases.map((entry) => releasePinnedImageViaProxy({ imageUrl: entry.imageUrl, jobId, outputIndex: entry.outputIndex }))
+      );
     }
 
     await refreshRecentJobs();
@@ -546,7 +548,7 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
     await removeRecentJobOutputImage(jobId, outputIndex);
 
     if (targetImage && isArchivedImageUrl(targetImage.dataUrl)) {
-      await releasePinnedImageViaProxy({ imageUrl: targetImage.dataUrl }).catch(() => {
+      await releasePinnedImageViaProxy({ imageUrl: targetImage.dataUrl, jobId, outputIndex }).catch(() => {
         setError(`Failed to release archived image backup for ${jobId}.`);
       });
     }
@@ -556,16 +558,18 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
 
   const removeJobOutputs = useCallback(async (jobId: string) => {
     const job = await getRecentJob(jobId);
-    const archivedImageUrls = job?.lastResponse
+    const archivedImageReleases = job?.lastResponse
       ? extractRunpodOutputImages(job.lastResponse)
-        .map((image) => image.dataUrl)
-        .filter((imageUrl) => isArchivedImageUrl(imageUrl))
+        .map((image, outputIndex) => ({ imageUrl: image.dataUrl, outputIndex }))
+        .filter((entry) => isArchivedImageUrl(entry.imageUrl))
       : [];
 
     await removeRecentJobOutputs(jobId);
 
-    if (archivedImageUrls.length > 0) {
-      await Promise.allSettled(archivedImageUrls.map((imageUrl) => releasePinnedImageViaProxy({ imageUrl })));
+    if (archivedImageReleases.length > 0) {
+      await Promise.allSettled(
+        archivedImageReleases.map((entry) => releasePinnedImageViaProxy({ imageUrl: entry.imageUrl, jobId, outputIndex: entry.outputIndex }))
+      );
     }
 
     await refreshRecentJobs();

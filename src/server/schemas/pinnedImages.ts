@@ -10,5 +10,7 @@ export const backupPinnedImageRequestSchema = z.object({
 
 export const releasePinnedImageRequestSchema = z.object({
   clientId: z.string().min(1).max(128).optional(),
+  jobId: z.string().min(1),
+  outputIndex: z.number().int().nonnegative(),
   imageUrl: z.string().min(1)
 });
