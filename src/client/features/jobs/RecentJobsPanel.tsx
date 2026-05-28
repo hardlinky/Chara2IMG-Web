@@ -7,7 +7,7 @@ import "../../styles/jobsOutput.css";
 type RecentJobsPanelProps = {
   jobs: RecentJobRecord[];
   filteredJobCount?: number;
-  pinnedImageCount?: number;
+  pinnedJobCount?: number;
   warningJobIds: string[];
   cancelingJobIds: string[];
   statusFilter: RecentJobStatusFilter;
@@ -254,7 +254,7 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
     <section className="jobs-panel" aria-label="recent-jobs-panel">
       <header className="jobs-panel-header">
         <h2>Recent Jobs</h2>
-        <span className="jobs-pin-counter">Pins: {props.pinnedImageCount ?? 0}</span>
+        <span className="jobs-pin-counter">Pinned jobs: {props.pinnedJobCount ?? 0}</span>
         <span className="jobs-filtered-counter">Filtered jobs: {filteredJobCount}</span>
         <div className="jobs-toolbar-controls">
           <label className="field">

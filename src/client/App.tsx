@@ -439,7 +439,7 @@ export function App() {
             <RecentJobsPanel
               jobs={recentJobs.jobs}
               filteredJobCount={recentJobs.filteredJobs.length}
-              pinnedImageCount={recentJobs.pinnedImageCount}
+              pinnedJobCount={recentJobs.pinnedVisibleCount}
               warningJobIds={recentJobs.warningJobIds}
               cancelingJobIds={recentJobs.cancelingJobIds}
               statusFilter={recentJobs.statusFilter}
