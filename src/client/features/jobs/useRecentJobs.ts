@@ -607,6 +607,59 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
   }, [refreshRecentJobs]);
 
   useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      let migratedAny = false;
+
+      for (const job of jobs) {
+        if (!job.pinnedOutputIndices || job.pinnedOutputIndices.length === 0) {
+          continue;
+        }
+
+        const hydrated = await getRecentJob(job.jobId);
+        const response = hydrated?.lastResponse;
+        if (!response) {
+          continue;
+        }
+
+        const extractedImages = extractRunpodOutputImages(response);
+
+        for (const outputIndex of job.pinnedOutputIndices) {
+          const targetImage = extractedImages[outputIndex];
+          if (!targetImage || !targetImage.dataUrl.startsWith("data:")) {
+            continue;
+          }
+
+          try {
+            const backup = await backupPinnedImageViaProxy({
+              jobId: job.jobId,
+              outputIndex,
+              dataUrl: targetImage.dataUrl,
+              mimeType: targetImage.mimeType
+            });
+
+            await setRecentJobOutputPinned(job.jobId, outputIndex, true, job.pinnedAt ?? new Date().toISOString(), backup.imageUrl);
+            migratedAny = true;
+          } catch {
+            if (!cancelled) {
+              setError(`Failed to migrate pinned image backup for ${job.jobId}.`);
+            }
+          }
+        }
+      }
+
+      if (migratedAny && !cancelled) {
+        await refreshRecentJobs();
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [jobs, refreshRecentJobs]);
+
+  useEffect(() => {
     const interval = window.setInterval(() => {
       void pollNow();
     }, JOB_POLL_INTERVAL_MS);
