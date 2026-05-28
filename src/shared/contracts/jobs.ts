@@ -70,6 +70,7 @@ export type RecentJobRecord = {
   lifecycle: JobLifecycleSnapshot;
   provenance: RecentJobProvenance;
   lastResponse: Record<string, unknown> | null;
+  outputImageCount?: number;
   lastError: string | null;
   hiddenOutputIndices?: number[];
   outputsHidden?: boolean;

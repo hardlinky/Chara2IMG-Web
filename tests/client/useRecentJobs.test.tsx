@@ -261,9 +261,13 @@ describe("useRecentJobs helpers", () => {
       message: "Not Found"
     });
 
-    vi.mocked(statusViaProxy)
-      .mockResolvedValueOnce({ id: "job-fallback-1", status: "IN_PROGRESS" })
-      .mockResolvedValueOnce({ id: "job-fallback-2", status: "COMPLETED" });
+    vi.mocked(statusViaProxy).mockImplementation(async (payload) => {
+      if (payload.id === "job-fallback-1") {
+        return { id: "job-fallback-1", status: "IN_PROGRESS" };
+      }
+
+      return { id: "job-fallback-2", status: "COMPLETED" };
+    });
 
     const result = await pollRecentJobsOnce({ apiKey: "key", endpointId: "endpoint-1" });
 

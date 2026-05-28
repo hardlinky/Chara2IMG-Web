@@ -4,6 +4,7 @@ import { cancelViaProxy, statusBatchViaProxy, statusViaProxy } from "../../lib/a
 import { submitRunAndPersistRecentJob } from "../../lib/jobSubmission";
 import { projectRecentJobOutputClusters } from "../../lib/jobOutputProjection";
 import {
+  startRecentJobsImageCompactionMigration,
   getRecentJob,
   hideRecentJob,
   hideJobOutputs,
@@ -563,6 +564,10 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
     },
     [apiKey, endpointId, refreshRecentJobs]
   );
+
+  useEffect(() => {
+    void startRecentJobsImageCompactionMigration();
+  }, []);
 
   useEffect(() => {
     void refreshRecentJobs();

@@ -55,7 +55,7 @@ export function projectJobOutputCluster(job: RecentJobRecord, options: Projectio
     submittedAt: job.submittedAt,
     finishedAt: job.lifecycle.finishedAt ?? null,
     workflowFileName: job.provenance.workflowFileName,
-    outputCount: allVisibleOutputs.length,
+    outputCount: job.outputImageCount ?? allVisibleOutputs.length,
     representative: allVisibleOutputs[0],
     outputs
   };

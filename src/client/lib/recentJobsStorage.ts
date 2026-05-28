@@ -9,19 +9,53 @@ import {
 import { extractRunpodOutputImages } from "./runpodOutputImage";
 
 type StoredRecentJob = RecentJobRecord;
+type StoredRecentJobArchive = {
+  jobId: string;
+  lastResponse: Record<string, unknown>;
+};
+const ACTIVE_JOB_IMAGE_LIMIT = 8;
 
 class RecentJobsDatabase extends Dexie {
   jobs!: Table<StoredRecentJob, string>;
+  jobArchives!: Table<StoredRecentJobArchive, string>;
 
   constructor() {
     super("chara2imgRecentJobs");
     this.version(1).stores({
       jobs: "jobId, submittedAt, hiddenAt, endpointId"
     });
+    this.version(2).stores({
+      jobs: "jobId, submittedAt, hiddenAt, endpointId",
+      jobArchives: "jobId"
+    }).upgrade(async (tx) => {
+      const jobsTable = tx.table<StoredRecentJob, string>("jobs");
+      const archivesTable = tx.table<StoredRecentJobArchive, string>("jobArchives");
+      const jobs = await jobsTable.toArray();
+
+      for (const job of jobs) {
+        const compacted = compactResponsePayload(job.lastResponse);
+        if (!compacted.compactedResponse) {
+          continue;
+        }
+
+        if (compacted.fullResponse) {
+          await archivesTable.put({
+            jobId: job.jobId,
+            lastResponse: compacted.fullResponse
+          });
+        }
+
+        await jobsTable.update(job.jobId, {
+          lastResponse: compacted.compactedResponse,
+          outputImageCount: compacted.totalImageCount
+        });
+      }
+    });
   }
 }
 
 const db = new RecentJobsDatabase();
+let runningImageCompactionMigration: Promise<void> | null = null;
 
 type JsonPathToken = string | number;
 
@@ -172,6 +206,7 @@ function normalizeHiddenOutputIndices(indices: number[] | undefined, removedInde
 }
 
 function normalizeJobRecord(input: RecentJobSubmissionInput): StoredRecentJob {
+  const compacted = compactResponsePayload(input.lastResponse);
   return {
     jobId: input.jobId,
     endpointId: input.endpointId,
@@ -186,9 +221,145 @@ function normalizeJobRecord(input: RecentJobSubmissionInput): StoredRecentJob {
       draftValues: input.draftValues,
       submittedInput: input.submittedInput
     },
-    lastResponse: input.lastResponse,
+    lastResponse: compacted.compactedResponse,
+    outputImageCount: compacted.totalImageCount,
     lastError: input.lastError ?? null
   };
+}
+
+function compactResponsePayload(
+  response: Record<string, unknown> | null,
+  maxImages: number = ACTIVE_JOB_IMAGE_LIMIT
+): {
+  compactedResponse: Record<string, unknown> | null;
+  fullResponse: Record<string, unknown> | null;
+  totalImageCount?: number;
+} {
+  if (!response) {
+    return {
+      compactedResponse: null,
+      fullResponse: null
+    };
+  }
+
+  const images = extractRunpodOutputImages(response);
+  if (images.length === 0) {
+    return {
+      compactedResponse: response,
+      fullResponse: null,
+      totalImageCount: 0
+    };
+  }
+
+  const totalImageCount = images.length;
+  const fullResponse = cloneResponseBody(response);
+  if (images.length <= maxImages) {
+    return {
+      compactedResponse: fullResponse,
+      fullResponse,
+      totalImageCount
+    };
+  }
+
+  const compactedResponse = cloneResponseBody(response);
+  const trailingImages = images.slice(maxImages).reverse();
+  for (const image of trailingImages) {
+    const tokens = parseSourcePath(image.sourcePath);
+    if (!tokens) {
+      continue;
+    }
+    removeImageAtPath(compactedResponse, tokens);
+  }
+
+  return {
+    compactedResponse,
+    fullResponse,
+    totalImageCount
+  };
+}
+
+async function upsertJobArchive(jobId: string, response: Record<string, unknown> | null): Promise<void> {
+  if (!response) {
+    await db.table<StoredRecentJobArchive, string>("jobArchives").delete(jobId);
+    return;
+  }
+
+  await db.table<StoredRecentJobArchive, string>("jobArchives").put({
+    jobId,
+    lastResponse: response
+  });
+}
+
+async function loadHydratedLastResponse(jobId: string, fallback: Record<string, unknown> | null): Promise<Record<string, unknown> | null> {
+  const archived = await db.table<StoredRecentJobArchive, string>("jobArchives").get(jobId);
+  return archived?.lastResponse ?? fallback;
+}
+
+function shouldCompactJobRecord(job: StoredRecentJob): boolean {
+  if (!job.lastResponse) {
+    return false;
+  }
+
+  const images = extractRunpodOutputImages(job.lastResponse);
+  if (images.length > ACTIVE_JOB_IMAGE_LIMIT) {
+    return true;
+  }
+
+  if (job.outputImageCount === undefined) {
+    return true;
+  }
+
+  return false;
+}
+
+export function startRecentJobsImageCompactionMigration(batchSize: number = 5): Promise<void> {
+  if (runningImageCompactionMigration) {
+    return runningImageCompactionMigration;
+  }
+
+  runningImageCompactionMigration = (async () => {
+    let offset = 0;
+
+    while (true) {
+      const batch = await db
+        .table<StoredRecentJob, string>("jobs")
+        .orderBy("submittedAt")
+        .offset(offset)
+        .limit(batchSize)
+        .toArray();
+
+      if (batch.length === 0) {
+        break;
+      }
+
+      for (const job of batch) {
+        if (!shouldCompactJobRecord(job)) {
+          continue;
+        }
+
+        const hydrated = await loadHydratedLastResponse(job.jobId, job.lastResponse);
+        const compacted = compactResponsePayload(hydrated);
+
+        await db.table<StoredRecentJob, string>("jobs").update(job.jobId, {
+          lastResponse: compacted.compactedResponse,
+          outputImageCount: compacted.totalImageCount
+        });
+
+        if (compacted.fullResponse) {
+          await upsertJobArchive(job.jobId, compacted.fullResponse);
+        }
+      }
+
+      offset += batch.length;
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve, 0);
+      });
+    }
+  })().finally(() => {
+    runningImageCompactionMigration = null;
+  });
+
+  return runningImageCompactionMigration;
 }
 
 function sortNewestFirst(left: StoredRecentJob, right: StoredRecentJob): number {
@@ -202,12 +373,21 @@ async function collectJobs(): Promise<StoredRecentJob[]> {
 export async function upsertRecentJob(input: RecentJobSubmissionInput): Promise<RecentJobRecord> {
   const record = normalizeJobRecord(input);
   await db.table<StoredRecentJob, string>("jobs").put(record);
+  await upsertJobArchive(record.jobId, input.lastResponse);
   await pruneRecentJobs();
   return record;
 }
 
 export async function getRecentJob(jobId: string): Promise<RecentJobRecord | null> {
-  return (await db.table<StoredRecentJob, string>("jobs").get(jobId)) ?? null;
+  const job = await db.table<StoredRecentJob, string>("jobs").get(jobId);
+  if (!job) {
+    return null;
+  }
+
+  return {
+    ...job,
+    lastResponse: await loadHydratedLastResponse(jobId, job.lastResponse)
+  };
 }
 
 export async function listRecentJobs(): Promise<RecentJobRecord[]> {
@@ -280,11 +460,16 @@ export async function toggleRecentJobOutputPinned(jobId: string, outputIndex: nu
 
 export async function removeRecentJobOutputImage(jobId: string, outputIndex: number): Promise<void> {
   const job = await db.table<StoredRecentJob, string>("jobs").get(jobId);
-  if (!job || !job.lastResponse || outputIndex < 0) {
+  if (!job || outputIndex < 0) {
     return;
   }
 
-  const extractedImages = extractRunpodOutputImages(job.lastResponse);
+  const sourceResponse = await loadHydratedLastResponse(jobId, job.lastResponse);
+  if (!sourceResponse) {
+    return;
+  }
+
+  const extractedImages = extractRunpodOutputImages(sourceResponse);
   const targetImage = extractedImages[outputIndex];
   if (!targetImage) {
     return;
@@ -295,7 +480,7 @@ export async function removeRecentJobOutputImage(jobId: string, outputIndex: num
     return;
   }
 
-  const clonedResponse = cloneResponseBody(job.lastResponse);
+  const clonedResponse = cloneResponseBody(sourceResponse);
   const removed = removeImageAtPath(clonedResponse, tokens);
   if (!removed) {
     return;
@@ -305,14 +490,23 @@ export async function removeRecentJobOutputImage(jobId: string, outputIndex: num
   const noImagesRemain = remainingImages.length === 0;
   const hiddenAt = noImagesRemain ? new Date().toISOString() : job.hiddenAt;
 
+  const compacted = compactResponsePayload(clonedResponse);
+
   await db.table<StoredRecentJob, string>("jobs").update(jobId, {
-    lastResponse: clonedResponse,
+    lastResponse: compacted.compactedResponse,
+    outputImageCount: compacted.totalImageCount,
     hiddenOutputIndices: normalizeHiddenOutputIndices(job.hiddenOutputIndices, outputIndex),
     pinnedOutputIndices: normalizePinnedOutputIndices(job.pinnedOutputIndices, outputIndex),
     pinnedAt: normalizePinnedOutputIndices(job.pinnedOutputIndices, outputIndex)?.length ? job.pinnedAt ?? new Date().toISOString() : null,
     outputsHidden: noImagesRemain ? true : job.outputsHidden,
     hiddenAt
   });
+
+  if (noImagesRemain) {
+    await upsertJobArchive(jobId, null);
+  } else {
+    await upsertJobArchive(jobId, compacted.fullResponse);
+  }
 
   if (noImagesRemain) {
     await pruneRecentJobs();
@@ -324,6 +518,7 @@ export async function hideJobOutputs(jobId: string): Promise<void> {
     outputsHidden: true,
     hiddenAt: new Date().toISOString()
   });
+  await upsertJobArchive(jobId, null);
   await pruneRecentJobs();
 }
 
@@ -347,11 +542,13 @@ export async function pruneRecentJobs(now: number = Date.now()): Promise<void> {
 
   if (toDelete.size > 0) {
     await db.table<StoredRecentJob, string>("jobs").bulkDelete([...toDelete]);
+    await db.table<StoredRecentJobArchive, string>("jobArchives").bulkDelete([...toDelete]);
   }
 }
 
 export async function clearRecentJobs(): Promise<void> {
   await db.table<StoredRecentJob, string>("jobs").clear();
+  await db.table<StoredRecentJobArchive, string>("jobArchives").clear();
 }
 
 export async function updateRecentJobLifecycle(
@@ -360,9 +557,16 @@ export async function updateRecentJobLifecycle(
   lastResponse: StoredRecentJob["lastResponse"] = null,
   lastError: StoredRecentJob["lastError"] = null
 ): Promise<void> {
+  const compacted = compactResponsePayload(lastResponse);
+
   await db.table<StoredRecentJob, string>("jobs").update(jobId, {
     lifecycle,
-    lastResponse,
+    lastResponse: compacted.compactedResponse,
+    outputImageCount: compacted.totalImageCount,
     lastError
   });
+
+  if (compacted.fullResponse) {
+    await upsertJobArchive(jobId, compacted.fullResponse);
+  }
 }
