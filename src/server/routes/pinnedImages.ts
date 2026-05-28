@@ -7,14 +7,21 @@ import {
   buildPinnedImageConsumerKey,
   findPinnedImageByHash,
   getEffectivePinnedImagesCapacityBytes,
+  listPinnedImageClientUsage,
   PINNED_IMAGES_DIR,
+  prunePinnedImagesToClients,
   reconcilePinnedImageConsumersForClient,
   releasePinnedImageReference,
   getTrackedPinnedStorageUsageBytes,
   registerPinnedImageBackup,
   sanitizeClientId
 } from "../lib/pinnedImageStorageStats";
-import { backupPinnedImageRequestSchema, reconcilePinnedImagesRequestSchema, releasePinnedImageRequestSchema } from "../schemas/pinnedImages";
+import {
+  backupPinnedImageRequestSchema,
+  prunePinnedImagesRequestSchema,
+  reconcilePinnedImagesRequestSchema,
+  releasePinnedImageRequestSchema
+} from "../schemas/pinnedImages";
 
 function getRequestClientId(request: Request, fallbackClientId?: string | null): string {
   if (fallbackClientId) {
@@ -215,6 +222,47 @@ export function registerPinnedImageRoutes(app: Hono): void {
       ok: true,
       reconciledEntries: reconcileResult.reconciledEntries,
       deletedFiles: reconcileResult.filesToDelete.length
+    });
+  });
+
+  app.use("/api/pinned-images/clients", requireInvitedSession);
+  app.get("/api/pinned-images/clients", async (c) => {
+    const clients = await listPinnedImageClientUsage();
+    return c.json({
+      ok: true,
+      clients
+    });
+  });
+
+  app.use("/api/pinned-images/prune", requireInvitedSession);
+  app.post("/api/pinned-images/prune", async (c) => {
+    const payload = await c.req.json().catch(() => null);
+    const parsed = prunePinnedImagesRequestSchema.safeParse(payload);
+
+    if (!parsed.success) {
+      return c.json({ ok: false, error: "Invalid pinned image prune request" }, 400);
+    }
+
+    const pruneResult = await prunePinnedImagesToClients(parsed.data.keepClientIds);
+    await Promise.all(
+      pruneResult.filesToDelete.map(async (fileName) => {
+        const filePath = resolve(PINNED_IMAGES_DIR, fileName);
+        if (!filePath.startsWith(PINNED_IMAGES_DIR)) {
+          return;
+        }
+
+        await unlink(filePath).catch(() => {
+          // Ignore missing files during cleanup.
+        });
+      })
+    );
+
+    return c.json({
+      ok: true,
+      removedEntries: pruneResult.removedEntries,
+      removedClients: pruneResult.removedClients,
+      deletedFiles: pruneResult.filesToDelete.length,
+      keptEntries: pruneResult.keptEntries
     });
   });
 

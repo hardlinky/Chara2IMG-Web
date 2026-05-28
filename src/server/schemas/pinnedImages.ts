@@ -25,3 +25,7 @@ export const reconcilePinnedImagesRequestSchema = z.object({
     })
   )
 });
+
+export const prunePinnedImagesRequestSchema = z.object({
+  keepClientIds: z.array(z.string().min(1).max(128)).min(1)
+});

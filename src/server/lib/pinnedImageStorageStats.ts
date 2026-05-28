@@ -272,6 +272,61 @@ export async function reconcilePinnedImageConsumersForClient(
   };
 }
 
+export async function listPinnedImageClientUsage(): Promise<Array<{ clientId: string; entries: number; bytes: number }>> {
+  const manifest = await readManifest();
+  const usage = new Map<string, { entries: number; bytes: number }>();
+
+  for (const entry of manifest.entries) {
+    const clientId = sanitizeClientId(entry.clientId);
+    const current = usage.get(clientId) ?? { entries: 0, bytes: 0 };
+    current.entries += 1;
+    current.bytes += normalizeFiniteBytes(entry.sizeBytes);
+    usage.set(clientId, current);
+  }
+
+  return [...usage.entries()]
+    .map(([clientId, summary]) => ({
+      clientId,
+      entries: summary.entries,
+      bytes: summary.bytes
+    }))
+    .sort((left, right) => right.bytes - left.bytes || left.clientId.localeCompare(right.clientId));
+}
+
+export async function prunePinnedImagesToClients(
+  keepClientIds: string[]
+): Promise<{ removedEntries: number; keptEntries: number; filesToDelete: string[]; removedClients: string[] }> {
+  const manifest = await readManifest();
+  const keepSet = new Set(keepClientIds.map((value) => sanitizeClientId(value)));
+
+  let removedEntries = 0;
+  const filesToDelete = new Set<string>();
+  const removedClients = new Set<string>();
+  const nextEntries: ManifestEntry[] = [];
+
+  for (const entry of manifest.entries) {
+    const entryClientId = sanitizeClientId(entry.clientId);
+    if (keepSet.has(entryClientId)) {
+      nextEntries.push(entry);
+      continue;
+    }
+
+    removedEntries += 1;
+    filesToDelete.add(entry.fileName);
+    removedClients.add(entryClientId);
+  }
+
+  manifest.entries = nextEntries;
+  await writeManifest(manifest);
+
+  return {
+    removedEntries,
+    keptEntries: nextEntries.length,
+    filesToDelete: [...filesToDelete],
+    removedClients: [...removedClients].sort((left, right) => left.localeCompare(right))
+  };
+}
+
 export async function getTrackedPinnedStorageUsageBytes(clientId: string): Promise<{ userUsedBytes: number; allUsersUsedBytes: number }> {
   const manifest = await readManifest();
   const normalizedClientId = sanitizeClientId(clientId);
