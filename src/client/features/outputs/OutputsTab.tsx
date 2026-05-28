@@ -8,11 +8,15 @@ import "./outputsGallery.css";
 import "../../styles/jobsOutput.css";
 
 type OutputsGalleryMode = "per-job" | "all-images";
-type OutputsPinFilter = "all" | "pinned" | "unpinned";
+type OutputsPinFilter = "all" | "pinned" | "unpinned" | "cached" | "archived";
 const MOBILE_OUTPUT_DENSITIES: readonly OutputDensity[] = ["compact", "balanced"];
 const GALLERY_PAGE_SIZE = 10;
 const OUTPUTS_PIN_FILTER_STORAGE_KEY = "chara2imgOutputsPinFilter";
 const OUTPUTS_VIEW_MODE_STORAGE_KEY = "chara2imgOutputsViewMode";
+
+function isServerBackedImageUrl(value: string): boolean {
+  return value.startsWith("/api/pinned-images/") || /\/api\/pinned-images\//.test(value);
+}
 
 function getStoredOutputsPinFilter(): OutputsPinFilter {
   if (typeof window === "undefined") {
@@ -20,7 +24,7 @@ function getStoredOutputsPinFilter(): OutputsPinFilter {
   }
 
   const stored = window.localStorage.getItem(OUTPUTS_PIN_FILTER_STORAGE_KEY);
-  return stored === "all" || stored === "pinned" || stored === "unpinned" ? stored : "all";
+  return stored === "all" || stored === "pinned" || stored === "unpinned" || stored === "cached" || stored === "archived" ? stored : "all";
 }
 
 function getStoredOutputsViewMode(): OutputsGalleryMode {
@@ -98,6 +102,14 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
 
           if (pinFilter === "unpinned") {
             return !output.isPinned;
+          }
+
+          if (pinFilter === "cached") {
+            return !isServerBackedImageUrl(output.dataUrl);
+          }
+
+          if (pinFilter === "archived") {
+            return isServerBackedImageUrl(output.dataUrl);
           }
 
           return true;
@@ -255,6 +267,8 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
               <option value="all">All images</option>
               <option value="pinned">Pinned only</option>
               <option value="unpinned">Unpinned only</option>
+              <option value="cached">Cached only</option>
+              <option value="archived">Archived only</option>
             </select>
           </label>
           <label className="field">
