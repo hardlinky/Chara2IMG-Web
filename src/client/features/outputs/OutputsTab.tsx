@@ -10,6 +10,26 @@ type OutputsGalleryMode = "per-job" | "all-images";
 type OutputsPinFilter = "all" | "pinned" | "unpinned";
 const MOBILE_OUTPUT_DENSITIES: readonly OutputDensity[] = ["compact", "balanced"];
 const ALL_IMAGES_PAGE_SIZE = 48;
+const OUTPUTS_PIN_FILTER_STORAGE_KEY = "chara2imgOutputsPinFilter";
+const OUTPUTS_VIEW_MODE_STORAGE_KEY = "chara2imgOutputsViewMode";
+
+function getStoredOutputsPinFilter(): OutputsPinFilter {
+  if (typeof window === "undefined") {
+    return "all";
+  }
+
+  const stored = window.localStorage.getItem(OUTPUTS_PIN_FILTER_STORAGE_KEY);
+  return stored === "all" || stored === "pinned" || stored === "unpinned" ? stored : "all";
+}
+
+function getStoredOutputsViewMode(): OutputsGalleryMode {
+  if (typeof window === "undefined") {
+    return "per-job";
+  }
+
+  const stored = window.localStorage.getItem(OUTPUTS_VIEW_MODE_STORAGE_KEY);
+  return stored === "per-job" || stored === "all-images" ? stored : "per-job";
+}
 
 type OutputsTabProps = {
   clusters: RecentJobOutputCluster[];
@@ -28,8 +48,8 @@ function getGalleryClassName(density: (typeof OUTPUT_DENSITIES)[number]): string
 
 export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs, onRemoveOutputImage, onExportWorkflow, onToggleOutputPinned, canPinMore = true }: OutputsTabProps) {
   const gallery = useOutputGallery(clusters);
-  const [galleryMode, setGalleryMode] = useState<OutputsGalleryMode>("per-job");
-  const [pinFilter, setPinFilter] = useState<OutputsPinFilter>("all");
+  const [galleryMode, setGalleryMode] = useState<OutputsGalleryMode>(() => getStoredOutputsViewMode());
+  const [pinFilter, setPinFilter] = useState<OutputsPinFilter>(() => getStoredOutputsPinFilter());
   const [allImagesVisibleCount, setAllImagesVisibleCount] = useState(ALL_IMAGES_PAGE_SIZE);
   const [isMobile, setIsMobile] = useState(() => (typeof window !== "undefined" ? window.matchMedia("(max-width: 600px)").matches : false));
 
@@ -111,6 +131,22 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
   useEffect(() => {
     setAllImagesVisibleCount(ALL_IMAGES_PAGE_SIZE);
   }, [galleryMode, pinFilter]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.localStorage.setItem(OUTPUTS_PIN_FILTER_STORAGE_KEY, pinFilter);
+  }, [pinFilter]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.localStorage.setItem(OUTPUTS_VIEW_MODE_STORAGE_KEY, galleryMode);
+  }, [galleryMode]);
 
   // Expose openJobOutputs globally for cross-tab hack
   if (typeof window !== "undefined") {

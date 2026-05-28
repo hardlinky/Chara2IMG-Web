@@ -3,6 +3,7 @@ import type { RecentJobOutputCluster } from "../../../shared/contracts/jobs";
 
 export const OUTPUT_DENSITIES = ["compact", "balanced", "comfortable"] as const;
 export type OutputDensity = (typeof OUTPUT_DENSITIES)[number];
+const OUTPUT_DENSITY_STORAGE_KEY = "chara2imgOutputsDensity";
 
 type GalleryView =
   | { mode: "gallery" }
@@ -15,7 +16,14 @@ type ReturnContext = {
 };
 
 export function useOutputGallery(clusters: RecentJobOutputCluster[]) {
-  const [density, setDensity] = useState<OutputDensity>("balanced");
+  const [density, setDensity] = useState<OutputDensity>(() => {
+    if (typeof window === "undefined") {
+      return "balanced";
+    }
+
+    const stored = window.localStorage.getItem(OUTPUT_DENSITY_STORAGE_KEY);
+    return stored === "compact" || stored === "balanced" || stored === "comfortable" ? stored : "balanced";
+  });
   const [view, setView] = useState<GalleryView>({ mode: "gallery" });
   const [returnContext, setReturnContext] = useState<ReturnContext | null>(null);
 
@@ -90,6 +98,14 @@ export function useOutputGallery(clusters: RecentJobOutputCluster[]) {
     }
     setReturnContext(null);
   }, [returnContext, view]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.localStorage.setItem(OUTPUT_DENSITY_STORAGE_KEY, density);
+  }, [density]);
 
   return {
     density,

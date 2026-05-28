@@ -20,6 +20,8 @@ import { sanitizeWorkflowForExport } from "./lib/workflowExport";
 import { isActiveRunpodStatus } from "../shared/contracts/jobs";
 import type { DynamicInputDraftValues } from "../shared/contracts/inputs";
 
+const APP_ACTIVE_TAB_STORAGE_KEY = "chara2imgActiveTab";
+
 function toRunpodWorkflowInput(payload: Record<string, unknown>): Record<string, unknown> {
   if ("workflow" in payload) {
     return payload;
@@ -57,8 +59,25 @@ const BASE_APP_TABS: AppTabDefinition[] = [
 
 const SERVER_MANAGED_RUNPOD_KEY = "__SERVER_MANAGED_RUNPOD_KEY__";
 
+function getStoredActiveTab(): "setup" | "input" | "jobs" | "output" {
+  if (typeof window === "undefined") {
+    return "setup";
+  }
+
+  const stored = window.localStorage.getItem(APP_ACTIVE_TAB_STORAGE_KEY);
+  return stored === "setup" || stored === "input" || stored === "jobs" || stored === "output" ? stored : "setup";
+}
+
+function persistActiveTab(tabId: "setup" | "input" | "jobs" | "output"): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(APP_ACTIVE_TAB_STORAGE_KEY, tabId);
+}
+
 export function App() {
-  const [activeTab, setActiveTab] = useState<"setup" | "input" | "jobs" | "output">("setup");
+  const [activeTab, setActiveTab] = useState<"setup" | "input" | "jobs" | "output">(() => getStoredActiveTab());
   const [invited, setInvited] = useState(false);
   const [runpodKey, setRunpodKey] = useState(getRunpodKey());
   const [hasServerRunpodApiKey, setHasServerRunpodApiKey] = useState(false);
@@ -116,6 +135,10 @@ export function App() {
     () => BASE_APP_TABS.map((tab) => (tab.id === "jobs" && runningJobsCount > 0 ? { ...tab, badge: runningJobsCount } : tab)),
     [runningJobsCount]
   );
+
+  useEffect(() => {
+    persistActiveTab(activeTab);
+  }, [activeTab]);
 
   async function onRunPayloadBuilt(snapshot: {
     payload: Record<string, unknown>;
