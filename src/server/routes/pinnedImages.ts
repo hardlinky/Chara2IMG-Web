@@ -1,9 +1,10 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import type { Hono } from "hono";
 import { requireInvitedSession } from "../middleware/session";
 import {
+  findPinnedImageByHash,
   getEffectivePinnedImagesCapacityBytes,
   PINNED_IMAGES_DIR,
   getTrackedPinnedStorageUsageBytes,
@@ -53,6 +54,10 @@ function decodeDataUrl(dataUrl: string): { mimeType: string; bytes: Uint8Array }
   }
 }
 
+function computeContentHash(bytes: Uint8Array): string {
+  return createHash("sha256").update(bytes).digest("hex");
+}
+
 export function registerPinnedImageRoutes(app: Hono): void {
   app.get("/api/pinned-images/stats", async (c) => {
     const clientId = getRequestClientId(c.req.raw, c.req.query("clientId"));
@@ -83,6 +88,16 @@ export function registerPinnedImageRoutes(app: Hono): void {
       return c.json({ ok: false, error: "Pinned image payload is not a valid data URL" }, 400);
     }
 
+    const contentHash = computeContentHash(decoded.bytes);
+    const existing = await findPinnedImageByHash(clientId, contentHash);
+    if (existing) {
+      return c.json({
+        ok: true,
+        imageUrl: `/api/pinned-images/${encodeURIComponent(existing.fileName)}`,
+        mimeType: parsed.data.mimeType
+      });
+    }
+
     const usage = await getTrackedPinnedStorageUsageBytes(clientId);
     const totalCapacityBytes = await getEffectivePinnedImagesCapacityBytes();
     if (usage.allUsersUsedBytes + decoded.bytes.byteLength > totalCapacityBytes) {
@@ -95,7 +110,7 @@ export function registerPinnedImageRoutes(app: Hono): void {
 
     await mkdir(PINNED_IMAGES_DIR, { recursive: true });
     await writeFile(filePath, decoded.bytes);
-    await registerPinnedImageBackup(fileName, clientId, decoded.bytes.byteLength);
+  await registerPinnedImageBackup(fileName, clientId, decoded.bytes.byteLength, contentHash);
 
     return c.json({
       ok: true,

@@ -20,6 +20,7 @@ const MANIFEST_FILE_PATH = resolve(PINNED_IMAGES_DIR, "manifest.v1.json");
 type ManifestEntry = {
   fileName: string;
   clientId: string;
+  contentHash: string;
   sizeBytes: number;
   updatedAt: string;
 };
@@ -68,6 +69,7 @@ async function readManifest(): Promise<PinnedImagesManifest> {
             Boolean(entry) &&
             typeof entry.fileName === "string" &&
             typeof entry.clientId === "string" &&
+            typeof entry.contentHash === "string" &&
             Number.isFinite(Number(entry.sizeBytes)) &&
             typeof entry.updatedAt === "string"
           );
@@ -75,6 +77,7 @@ async function readManifest(): Promise<PinnedImagesManifest> {
         .map((entry) => ({
           fileName: entry.fileName,
           clientId: sanitizeClientId(entry.clientId),
+          contentHash: entry.contentHash,
           sizeBytes: normalizeFiniteBytes(entry.sizeBytes),
           updatedAt: entry.updatedAt
         }))
@@ -123,7 +126,7 @@ export async function getEffectivePinnedImagesCapacityBytes(): Promise<number> {
   return Math.max(1, Math.min(configured, diskCapacity));
 }
 
-export async function registerPinnedImageBackup(fileName: string, clientId: string, sizeBytes: number): Promise<void> {
+export async function registerPinnedImageBackup(fileName: string, clientId: string, sizeBytes: number, contentHash: string): Promise<void> {
   const manifest = await readManifest();
   const normalizedClientId = sanitizeClientId(clientId);
   const normalizedSize = normalizeFiniteBytes(sizeBytes);
@@ -133,6 +136,7 @@ export async function registerPinnedImageBackup(fileName: string, clientId: stri
   const nextEntry: ManifestEntry = {
     fileName,
     clientId: normalizedClientId,
+    contentHash,
     sizeBytes: normalizedSize,
     updatedAt: now
   };
@@ -144,6 +148,14 @@ export async function registerPinnedImageBackup(fileName: string, clientId: stri
   }
 
   await writeManifest(manifest);
+}
+
+export async function findPinnedImageByHash(clientId: string, contentHash: string): Promise<ManifestEntry | null> {
+  const manifest = await readManifest();
+  const normalizedClientId = sanitizeClientId(clientId);
+  return (
+    manifest.entries.find((entry) => sanitizeClientId(entry.clientId) === normalizedClientId && entry.contentHash === contentHash) ?? null
+  );
 }
 
 export async function getTrackedPinnedStorageUsageBytes(clientId: string): Promise<{ userUsedBytes: number; allUsersUsedBytes: number }> {
