@@ -95,7 +95,7 @@ export function AdminTab({ enabled }: AdminTabProps) {
     try {
       const result = await prunePinnedImagesViaProxy({ keepClientIds });
       setStatus(
-        `Pruned archived images. Removed entries: ${result.removedEntries}. Deleted files: ${result.deletedFiles}. Kept entries: ${result.keptEntries}.`
+        `Pruned archived images. Removed entries: ${result.removedEntries}. Deleted files: ${result.deletedFiles}. Orphaned files deleted: ${result.orphanedFilesDeleted}. Kept entries: ${result.keptEntries}.`
       );
       await loadClients();
     } catch {
@@ -116,7 +116,7 @@ export function AdminTab({ enabled }: AdminTabProps) {
     try {
       const preview = await previewPrunePinnedImagesViaProxy({ keepClientIds });
       setStatus(
-        `Dry run: preserve ${preview.keptEntries} images (${formatBytes(preview.keptBytes)}), prune ${preview.removedEntries} images (${formatBytes(preview.removedBytes)}).`
+        `Dry run: preserve ${preview.keptEntries} images (${formatBytes(preview.keptBytes)}), prune ${preview.removedEntries} images (${formatBytes(preview.removedBytes)}), delete ${preview.orphanedFiles} orphaned files (${formatBytes(preview.orphanedBytes)}).`
       );
     } catch {
       setStatus("Dry run request failed.");

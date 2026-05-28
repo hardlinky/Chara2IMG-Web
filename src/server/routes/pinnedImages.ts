@@ -304,7 +304,8 @@ export function registerPinnedImageRoutes(app: Hono): void {
       removedEntries: pruneResult.removedEntries,
       removedClients: pruneResult.removedClients,
       deletedFiles: pruneResult.filesToDelete.length,
-      keptEntries: pruneResult.keptEntries
+      keptEntries: pruneResult.keptEntries,
+      orphanedFilesDeleted: pruneResult.orphanedFilesDeleted
     });
   });
 
@@ -325,7 +326,9 @@ export function registerPinnedImageRoutes(app: Hono): void {
       keptClients: preview.keptClients,
       removedEntries: preview.removedEntries,
       removedBytes: preview.removedBytes,
-      removedClients: preview.removedClients
+      removedClients: preview.removedClients,
+      orphanedFiles: preview.orphanedFiles,
+      orphanedBytes: preview.orphanedBytes
     });
   });
 

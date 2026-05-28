@@ -1,4 +1,4 @@
-import { mkdir, readFile, statfs, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, stat, statfs, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -190,6 +190,42 @@ export async function findPinnedImageByHash(clientId: string, contentHash: strin
   );
 }
 
+async function listOrphanedImageFiles(manifest: PinnedImagesManifest): Promise<Array<{ fileName: string; sizeBytes: number }>> {
+  const manifestFileNames = new Set(manifest.entries.map((entry) => entry.fileName));
+
+  let files: string[];
+  try {
+    files = await readdir(PINNED_IMAGES_DIR);
+  } catch {
+    return [];
+  }
+
+  const orphans: Array<{ fileName: string; sizeBytes: number }> = [];
+
+  for (const file of files) {
+    if (file === "manifest.v1.json") {
+      continue;
+    }
+
+    if (!/^[a-zA-Z0-9._-]+$/.test(file)) {
+      continue;
+    }
+
+    if (manifestFileNames.has(file)) {
+      continue;
+    }
+
+    try {
+      const fileStat = await stat(resolve(PINNED_IMAGES_DIR, file));
+      orphans.push({ fileName: file, sizeBytes: fileStat.size });
+    } catch {
+      // Skip unreadable files.
+    }
+  }
+
+  return orphans;
+}
+
 export async function findPinnedImageByFileName(clientId: string, fileName: string): Promise<ManifestEntry | null> {
   const manifest = await readManifest();
   const normalizedClientId = sanitizeClientId(clientId);
@@ -308,6 +344,8 @@ export async function previewPrunePinnedImagesToClients(
   removedEntries: number;
   removedBytes: number;
   removedClients: string[];
+  orphanedFiles: number;
+  orphanedBytes: number;
 }> {
   const manifest = await readManifest();
   const keepSet = new Set(keepClientIds.map((value) => sanitizeClientId(value)));
@@ -335,19 +373,25 @@ export async function previewPrunePinnedImagesToClients(
     removedClients.add(entryClientId);
   }
 
+  const orphans = await listOrphanedImageFiles(manifest);
+  const orphanedFiles = orphans.length;
+  const orphanedBytes = orphans.reduce((sum, orphan) => sum + orphan.sizeBytes, 0);
+
   return {
     keptEntries,
     keptBytes,
     keptClients: [...keptClients].sort((left, right) => left.localeCompare(right)),
     removedEntries,
     removedBytes,
-    removedClients: [...removedClients].sort((left, right) => left.localeCompare(right))
+    removedClients: [...removedClients].sort((left, right) => left.localeCompare(right)),
+    orphanedFiles,
+    orphanedBytes
   };
 }
 
 export async function prunePinnedImagesToClients(
   keepClientIds: string[]
-): Promise<{ removedEntries: number; keptEntries: number; filesToDelete: string[]; removedClients: string[] }> {
+): Promise<{ removedEntries: number; keptEntries: number; filesToDelete: string[]; removedClients: string[]; orphanedFilesDeleted: number }> {
   const manifest = await readManifest();
   const keepSet = new Set(keepClientIds.map((value) => sanitizeClientId(value)));
 
@@ -368,6 +412,11 @@ export async function prunePinnedImagesToClients(
     removedClients.add(entryClientId);
   }
 
+  const orphans = await listOrphanedImageFiles(manifest);
+  for (const orphan of orphans) {
+    filesToDelete.add(orphan.fileName);
+  }
+
   manifest.entries = nextEntries;
   await writeManifest(manifest);
 
@@ -375,7 +424,8 @@ export async function prunePinnedImagesToClients(
     removedEntries,
     keptEntries: nextEntries.length,
     filesToDelete: [...filesToDelete],
-    removedClients: [...removedClients].sort((left, right) => left.localeCompare(right))
+    removedClients: [...removedClients].sort((left, right) => left.localeCompare(right)),
+    orphanedFilesDeleted: orphans.length
   };
 }
 

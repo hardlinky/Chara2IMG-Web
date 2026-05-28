@@ -66,6 +66,8 @@ type PrunePinnedImagesPreviewResponse = {
   removedEntries: number;
   removedBytes: number;
   removedClients: string[];
+  orphanedFiles: number;
+  orphanedBytes: number;
 };
 
 type PrunePinnedImagesResponse = {
@@ -74,6 +76,7 @@ type PrunePinnedImagesResponse = {
   removedClients: string[];
   deletedFiles: number;
   keptEntries: number;
+  orphanedFilesDeleted: number;
 };
 
 type PinnedImageStorageStatsResponse = {
