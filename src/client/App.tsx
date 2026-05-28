@@ -14,6 +14,7 @@ import { useActiveWorkflowTemplate } from "./features/workflows/useActiveWorkflo
 import { fetchSystemConfig, updateAppViaProxy } from "./lib/api/runpodProxyClient";
 import { getStoredEndpointId, saveEndpointId } from "./lib/endpointStorage";
 import { APP_VERSION_LABEL } from "./lib/appVersion";
+import { estimateRecentJobsStoredBytes } from "./lib/recentJobsStorage";
 import { submitRunAndPersistRecentJob } from "./lib/jobSubmission";
 import { getRunpodKey } from "./lib/runpodKeyStorage";
 import { sanitizeWorkflowForExport } from "./lib/workflowExport";
@@ -104,7 +105,7 @@ export function App() {
   const [jobActionError, setJobActionError] = useState("");
   const [isUpdatingApp, setIsUpdatingApp] = useState(false);
   const [updateStatus, setUpdateStatus] = useState("");
-  const [storageStatus, setStorageStatus] = useState("Storage: unavailable");
+  const [storageStatus, setStorageStatus] = useState("Storage: session 0 B | total used unavailable | capacity unavailable");
   const [editorApi, setEditorApi] = useState<{
     applyExternalDraftValues: (
       sourceTemplateFingerprint: string,
@@ -164,44 +165,33 @@ export function App() {
       return;
     }
 
-    if (typeof navigator === "undefined" || !navigator.storage?.estimate) {
-      setStorageStatus("Storage: unavailable");
-      return;
-    }
-
     let cancelled = false;
     setStorageStatus("Storage: checking...");
 
-    void navigator.storage
-      .estimate()
-      .then((estimate) => {
-        if (cancelled) {
-          return;
-        }
+    const storageEstimatePromise =
+      typeof navigator !== "undefined" && navigator.storage?.estimate
+        ? navigator.storage.estimate().catch(() => null)
+        : Promise.resolve<StorageEstimate | null>(null);
 
-        const usage = typeof estimate.usage === "number" ? estimate.usage : 0;
-        const quota = typeof estimate.quota === "number" ? estimate.quota : 0;
+    void Promise.all([estimateRecentJobsStoredBytes().catch(() => 0), storageEstimatePromise]).then(([sessionBytes, estimate]) => {
+      if (cancelled) {
+        return;
+      }
 
-        if (quota > 0) {
-          const ratio = Math.min(100, Math.max(0, (usage / quota) * 100));
-          setStorageStatus(`Storage: ${formatBytes(usage)} / ${formatBytes(quota)} (${ratio.toFixed(1)}%)`);
-          return;
-        }
+      const totalUsedBytes = typeof estimate?.usage === "number" ? estimate.usage : null;
+      const totalCapacityBytes = typeof estimate?.quota === "number" ? estimate.quota : null;
 
-        setStorageStatus(`Storage: ${formatBytes(usage)}`);
-      })
-      .catch(() => {
-        if (cancelled) {
-          return;
-        }
+      const sessionLabel = formatBytes(sessionBytes);
+      const totalUsedLabel = totalUsedBytes !== null ? formatBytes(totalUsedBytes) : "unavailable";
+      const totalCapacityLabel = totalCapacityBytes !== null ? formatBytes(totalCapacityBytes) : "unavailable";
 
-        setStorageStatus("Storage: unavailable");
-      });
+      setStorageStatus(`Storage: session ${sessionLabel} | total used ${totalUsedLabel} | capacity ${totalCapacityLabel}`);
+    });
 
     return () => {
       cancelled = true;
     };
-  }, [invited, recentJobs.pinnedImageCount, recentJobs.visibleJobs.length]);
+  }, [invited, recentJobs.pinnedImageCount, recentJobs.visibleJobs.length, recentJobs.completedOutputClusters.length]);
 
   async function onRunPayloadBuilt(snapshot: {
     payload: Record<string, unknown>;

@@ -551,6 +551,17 @@ export async function clearRecentJobs(): Promise<void> {
   await db.table<StoredRecentJobArchive, string>("jobArchives").clear();
 }
 
+export async function estimateRecentJobsStoredBytes(): Promise<number> {
+  const [jobs, archives] = await Promise.all([
+    db.table<StoredRecentJob, string>("jobs").toArray(),
+    db.table<StoredRecentJobArchive, string>("jobArchives").toArray()
+  ]);
+
+  const jobsBytes = JSON.stringify(jobs).length;
+  const archivesBytes = JSON.stringify(archives).length;
+  return jobsBytes + archivesBytes;
+}
+
 export async function updateRecentJobLifecycle(
   jobId: string,
   lifecycle: StoredRecentJob["lifecycle"],
