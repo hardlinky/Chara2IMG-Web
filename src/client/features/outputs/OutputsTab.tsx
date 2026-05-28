@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { type SyntheticEvent, useEffect, useMemo, useState } from "react";
 import { Gallery, Item } from "react-photoswipe-gallery";
 import type { RecentJobOutputCluster } from "../../../shared/contracts/jobs";
 import { JobOutputsView } from "./JobOutputsView";
@@ -54,6 +54,7 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
   const [pinFilter, setPinFilter] = useState<OutputsPinFilter>(() => getStoredOutputsPinFilter());
   const [galleryPage, setGalleryPage] = useState(1);
   const [hydratedJobClusters, setHydratedJobClusters] = useState<Record<string, RecentJobOutputCluster>>({});
+  const [imageDimensions, setImageDimensions] = useState<Record<string, { width: number; height: number }>>({});
   const [isMobile, setIsMobile] = useState(() => (typeof window !== "undefined" ? window.matchMedia("(max-width: 600px)").matches : false));
 
   useEffect(() => {
@@ -149,6 +150,28 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
   useEffect(() => {
     setGalleryPage(1);
   }, [galleryMode, pinFilter]);
+
+  const getImageDimensionKey = (jobId: string, outputIndex: number): string => `${jobId}:${outputIndex}`;
+
+  const handleImageLoad = (jobId: string, outputIndex: number, event: SyntheticEvent<HTMLImageElement>) => {
+    const { naturalWidth, naturalHeight } = event.currentTarget;
+    if (naturalWidth <= 0 || naturalHeight <= 0) {
+      return;
+    }
+
+    const key = getImageDimensionKey(jobId, outputIndex);
+    setImageDimensions((current) => {
+      const existing = current[key];
+      if (existing && existing.width === naturalWidth && existing.height === naturalHeight) {
+        return current;
+      }
+
+      return {
+        ...current,
+        [key]: { width: naturalWidth, height: naturalHeight }
+      };
+    });
+  };
 
   useEffect(() => {
     if (!onLoadOutputCluster || !selectedJobId || hydratedJobClusters[selectedJobId]) {
@@ -267,12 +290,17 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
         >
           <div className={getGalleryClassName(gallery.density)}>
             {pagedClusters.map((cluster) => (
+              (() => {
+                const dimensionKey = getImageDimensionKey(cluster.jobId, cluster.representative.outputIndex);
+                const dimensions = imageDimensions[dimensionKey] ?? { width: 1024, height: 1024 };
+
+                return (
               <article key={cluster.jobId} className="outputs-cluster-card">
                 <Item
                   original={cluster.representative.dataUrl}
                   thumbnail={cluster.representative.dataUrl}
-                  width="1024"
-                  height="1024"
+                  width={String(dimensions.width)}
+                  height={String(dimensions.height)}
                   caption={`${cluster.jobId} #1`}
                 >
                   {({ ref, open }) => (
@@ -282,6 +310,7 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
                         imagePrefix={cluster.jobId}
                         imageLabel="1"
                         onOpen={open}
+                        onImageLoad={(event) => handleImageLoad(cluster.jobId, cluster.representative.outputIndex, event)}
                         onViewJobOutputs={() => gallery.openJobOutputs(cluster.jobId)}
                         onRemoveImage={onRemoveOutputImage ? () => onRemoveOutputImage(cluster.jobId, cluster.representative.outputIndex) : undefined}
                         onTogglePin={onToggleOutputPinned ? () => onToggleOutputPinned(cluster.jobId, cluster.representative.outputIndex, !cluster.representative.isPinned) : undefined}
@@ -295,6 +324,8 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
                   <span>{cluster.jobId}</span>
                 </div>
               </article>
+                );
+              })()
             ))}
           </div>
         </Gallery>
@@ -314,12 +345,17 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
         >
           <div className={getGalleryClassName(gallery.density)}>
             {pagedAllOutputImages.map((outputImage) => (
+              (() => {
+                const dimensionKey = getImageDimensionKey(outputImage.jobId, outputImage.outputIndex);
+                const dimensions = imageDimensions[dimensionKey] ?? { width: 1024, height: 1024 };
+
+                return (
               <article key={`${outputImage.jobId}-${outputImage.outputIndex}`} className="outputs-cluster-card">
                 <Item
                   original={outputImage.dataUrl}
                   thumbnail={outputImage.dataUrl}
-                  width="1024"
-                  height="1024"
+                  width={String(dimensions.width)}
+                  height={String(dimensions.height)}
                   caption={`${outputImage.jobId} #${outputImage.outputIndex + 1}`}
                 >
                   {({ ref, open }) => (
@@ -329,6 +365,7 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
                         imagePrefix={outputImage.jobId}
                         imageLabel={`${outputImage.outputIndex + 1}`}
                         onOpen={open}
+                        onImageLoad={(event) => handleImageLoad(outputImage.jobId, outputImage.outputIndex, event)}
                         onViewJobOutputs={() => gallery.openJobOutputs(outputImage.jobId)}
                         onRemoveImage={onRemoveOutputImage ? () => onRemoveOutputImage(outputImage.jobId, outputImage.outputIndex) : undefined}
                         onTogglePin={onToggleOutputPinned ? () => onToggleOutputPinned(outputImage.jobId, outputImage.outputIndex, !outputImage.isPinned) : undefined}
@@ -342,6 +379,8 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
                   <span>{`#${outputImage.outputIndex + 1}`}</span>
                 </div>
               </article>
+                );
+              })()
             ))}
           </div>
         </Gallery>
