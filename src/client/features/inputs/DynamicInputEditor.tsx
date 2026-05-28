@@ -529,7 +529,7 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
         window.cancelAnimationFrame(frameId);
       }
     };
-  }, [props.draftValues, props.isActive]);
+  }, [props.isActive]);
 
   useEffect(() => {
     if (!isResizingColumns || typeof window === "undefined") {
