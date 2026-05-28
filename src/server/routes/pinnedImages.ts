@@ -5,6 +5,7 @@ import type { Hono } from "hono";
 import { requireAdminSession, requireInvitedSession } from "../middleware/session";
 import {
   buildPinnedImageConsumerKey,
+  findPinnedImageByFileName,
   findPinnedImageByHash,
   getEffectivePinnedImagesCapacityBytes,
   listPinnedImageClientUsage,
@@ -205,6 +206,45 @@ export function registerPinnedImageRoutes(app: Hono): void {
       })
       .filter((ref): ref is { fileName: string; consumerKey: string } => Boolean(ref));
 
+    let backfilledEntries = 0;
+    const ensuredFiles = new Set<string>();
+
+    for (const ref of refs) {
+      const key = `${clientId}:${ref.fileName}`;
+      if (ensuredFiles.has(key)) {
+        continue;
+      }
+      ensuredFiles.add(key);
+
+      const existing = await findPinnedImageByFileName(clientId, ref.fileName);
+      if (existing) {
+        continue;
+      }
+
+      const filePath = resolve(PINNED_IMAGES_DIR, ref.fileName);
+      if (!filePath.startsWith(PINNED_IMAGES_DIR)) {
+        continue;
+      }
+
+      const bytes = await readFile(filePath).catch(() => null);
+      if (!bytes) {
+        continue;
+      }
+
+      const contentHash = computeContentHash(Uint8Array.from(bytes));
+      await registerPinnedImageBackup(ref.fileName, clientId, bytes.byteLength, contentHash, ref.consumerKey);
+      backfilledEntries += 1;
+    }
+
+    for (const ref of refs) {
+      const existing = await findPinnedImageByFileName(clientId, ref.fileName);
+      if (!existing) {
+        continue;
+      }
+
+      await registerPinnedImageBackup(ref.fileName, clientId, existing.sizeBytes, existing.contentHash, ref.consumerKey);
+    }
+
     const reconcileResult = await reconcilePinnedImageConsumersForClient(clientId, refs);
     await Promise.all(
       reconcileResult.filesToDelete.map(async (fileName) => {
@@ -222,7 +262,8 @@ export function registerPinnedImageRoutes(app: Hono): void {
     return c.json({
       ok: true,
       reconciledEntries: reconcileResult.reconciledEntries,
-      deletedFiles: reconcileResult.filesToDelete.length
+      deletedFiles: reconcileResult.filesToDelete.length,
+      backfilledEntries
     });
   });
 

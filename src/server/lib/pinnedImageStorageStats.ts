@@ -190,6 +190,12 @@ export async function findPinnedImageByHash(clientId: string, contentHash: strin
   );
 }
 
+export async function findPinnedImageByFileName(clientId: string, fileName: string): Promise<ManifestEntry | null> {
+  const manifest = await readManifest();
+  const normalizedClientId = sanitizeClientId(clientId);
+  return manifest.entries.find((entry) => sanitizeClientId(entry.clientId) === normalizedClientId && entry.fileName === fileName) ?? null;
+}
+
 export async function releasePinnedImageReference(fileName: string, clientId: string, consumerKey: string): Promise<{ shouldDeleteFile: boolean }> {
   const manifest = await readManifest();
   const normalizedClientId = sanitizeClientId(clientId);
