@@ -8,12 +8,13 @@ import {
   findPinnedImageByHash,
   getEffectivePinnedImagesCapacityBytes,
   PINNED_IMAGES_DIR,
+  reconcilePinnedImageConsumersForClient,
   releasePinnedImageReference,
   getTrackedPinnedStorageUsageBytes,
   registerPinnedImageBackup,
   sanitizeClientId
 } from "../lib/pinnedImageStorageStats";
-import { backupPinnedImageRequestSchema, releasePinnedImageRequestSchema } from "../schemas/pinnedImages";
+import { backupPinnedImageRequestSchema, reconcilePinnedImagesRequestSchema, releasePinnedImageRequestSchema } from "../schemas/pinnedImages";
 
 function getRequestClientId(request: Request, fallbackClientId?: string | null): string {
   if (fallbackClientId) {
@@ -170,6 +171,51 @@ export function registerPinnedImageRoutes(app: Hono): void {
     }
 
     return c.json({ ok: true, deleted: releaseResult.shouldDeleteFile });
+  });
+
+  app.use("/api/pinned-images/reconcile", requireInvitedSession);
+  app.post("/api/pinned-images/reconcile", async (c) => {
+    const payload = await c.req.json().catch(() => null);
+    const parsed = reconcilePinnedImagesRequestSchema.safeParse(payload);
+
+    if (!parsed.success) {
+      return c.json({ ok: false, error: "Invalid pinned image reconcile request" }, 400);
+    }
+
+    const clientId = getRequestClientId(c.req.raw, parsed.data.clientId ?? null);
+    const refs = parsed.data.refs
+      .map((ref) => {
+        const fileName = parsePinnedImageFileNameFromUrl(ref.imageUrl);
+        if (!fileName) {
+          return null;
+        }
+
+        return {
+          fileName,
+          consumerKey: buildPinnedImageConsumerKey(clientId, ref.jobId, ref.outputIndex)
+        };
+      })
+      .filter((ref): ref is { fileName: string; consumerKey: string } => Boolean(ref));
+
+    const reconcileResult = await reconcilePinnedImageConsumersForClient(clientId, refs);
+    await Promise.all(
+      reconcileResult.filesToDelete.map(async (fileName) => {
+        const filePath = resolve(PINNED_IMAGES_DIR, fileName);
+        if (!filePath.startsWith(PINNED_IMAGES_DIR)) {
+          return;
+        }
+
+        await unlink(filePath).catch(() => {
+          // Ignore missing files during cleanup.
+        });
+      })
+    );
+
+    return c.json({
+      ok: true,
+      reconciledEntries: reconcileResult.reconciledEntries,
+      deletedFiles: reconcileResult.filesToDelete.length
+    });
   });
 
   app.use("/api/pinned-images/:fileName", requireInvitedSession);

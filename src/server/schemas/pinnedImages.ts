@@ -14,3 +14,14 @@ export const releasePinnedImageRequestSchema = z.object({
   outputIndex: z.number().int().nonnegative(),
   imageUrl: z.string().min(1)
 });
+
+export const reconcilePinnedImagesRequestSchema = z.object({
+  clientId: z.string().min(1).max(128).optional(),
+  refs: z.array(
+    z.object({
+      jobId: z.string().min(1),
+      outputIndex: z.number().int().nonnegative(),
+      imageUrl: z.string().min(1)
+    })
+  )
+});

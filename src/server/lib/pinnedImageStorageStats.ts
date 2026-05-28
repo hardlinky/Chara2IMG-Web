@@ -220,6 +220,58 @@ export async function releasePinnedImageReference(fileName: string, clientId: st
   return { shouldDeleteFile: false };
 }
 
+export async function reconcilePinnedImageConsumersForClient(
+  clientId: string,
+  refs: Array<{ fileName: string; consumerKey: string }>
+): Promise<{ filesToDelete: string[]; reconciledEntries: number }> {
+  const manifest = await readManifest();
+  const normalizedClientId = sanitizeClientId(clientId);
+
+  const activeConsumersByFile = new Map<string, Set<string>>();
+  for (const ref of refs) {
+    const normalizedConsumer = normalizeConsumerKey(ref.consumerKey);
+    const set = activeConsumersByFile.get(ref.fileName) ?? new Set<string>();
+    set.add(normalizedConsumer);
+    activeConsumersByFile.set(ref.fileName, set);
+  }
+
+  const filesToDelete: string[] = [];
+  let reconciledEntries = 0;
+  const nextEntries: ManifestEntry[] = [];
+
+  for (const entry of manifest.entries) {
+    if (sanitizeClientId(entry.clientId) !== normalizedClientId) {
+      nextEntries.push(entry);
+      continue;
+    }
+
+    const activeConsumers = activeConsumersByFile.get(entry.fileName) ?? new Set<string>();
+    const currentConsumers = entry.consumers.length > 0 ? entry.consumers : [];
+    const nextConsumers = currentConsumers.filter((consumer) => activeConsumers.has(consumer));
+
+    reconciledEntries += 1;
+    if (nextConsumers.length === 0) {
+      filesToDelete.push(entry.fileName);
+      continue;
+    }
+
+    nextEntries.push({
+      ...entry,
+      consumers: nextConsumers,
+      refCount: nextConsumers.length,
+      updatedAt: new Date().toISOString()
+    });
+  }
+
+  manifest.entries = nextEntries;
+  await writeManifest(manifest);
+
+  return {
+    filesToDelete: [...new Set(filesToDelete)],
+    reconciledEntries
+  };
+}
+
 export async function getTrackedPinnedStorageUsageBytes(clientId: string): Promise<{ userUsedBytes: number; allUsersUsedBytes: number }> {
   const manifest = await readManifest();
   const normalizedClientId = sanitizeClientId(clientId);

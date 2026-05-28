@@ -28,6 +28,21 @@ type ReleasePinnedImageResponse = {
   deleted: boolean;
 };
 
+type ReconcilePinnedImagesPayload = {
+  clientId?: string;
+  refs: Array<{
+    jobId: string;
+    outputIndex: number;
+    imageUrl: string;
+  }>;
+};
+
+type ReconcilePinnedImagesResponse = {
+  ok: true;
+  reconciledEntries: number;
+  deletedFiles: number;
+};
+
 type PinnedImageStorageStatsResponse = {
   ok: true;
   userUsedBytes: number;
@@ -104,6 +119,28 @@ export async function releasePinnedImageViaProxy(payload: ReleasePinnedImagePayl
   const data = (await response.json().catch(() => null)) as ReleasePinnedImageResponse | { error?: string } | null;
   if (!response.ok || !data || !("ok" in data)) {
     throw new ProxyRequestError(response.status, `Pinned image release failed (${response.status})`, data);
+  }
+
+  return data;
+}
+
+export async function reconcilePinnedImagesViaProxy(payload: ReconcilePinnedImagesPayload): Promise<ReconcilePinnedImagesResponse> {
+  const clientId = getOrCreatePinnedImageClientId();
+  const response = await fetch("/api/pinned-images/reconcile", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    credentials: "include",
+    body: JSON.stringify({
+      ...payload,
+      clientId
+    })
+  });
+
+  const data = (await response.json().catch(() => null)) as ReconcilePinnedImagesResponse | { error?: string } | null;
+  if (!response.ok || !data || !("ok" in data)) {
+    throw new ProxyRequestError(response.status, `Pinned image reconcile failed (${response.status})`, data);
   }
 
   return data;

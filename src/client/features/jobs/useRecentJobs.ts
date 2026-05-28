@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RecentJobRecord } from "../../../shared/contracts/jobs";
-import { backupPinnedImageViaProxy, releasePinnedImageViaProxy } from "../../lib/api/pinnedImageClient";
+import { backupPinnedImageViaProxy, reconcilePinnedImagesViaProxy, releasePinnedImageViaProxy } from "../../lib/api/pinnedImageClient";
 import { cancelViaProxy, statusBatchViaProxy, statusViaProxy } from "../../lib/api/runpodProxyClient";
 import { submitRunAndPersistRecentJob } from "../../lib/jobSubmission";
 import { projectRecentJobOutputClusters } from "../../lib/jobOutputProjection";
@@ -456,6 +456,7 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
   const [isPolling, setIsPolling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [storageRefreshToken, setStorageRefreshToken] = useState(0);
+  const lastReconcileSignatureRef = useRef<string>("");
 
   const refreshRecentJobs = useCallback(async (resetPage: boolean = false) => {
     const nextJobs = await loadRecentJobs();
@@ -730,6 +731,47 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
     });
   }, [includeOutputClusters, visibleJobs]);
   const filteredJobs = useMemo(() => filterJobsByStatus(visibleJobs, statusFilter), [statusFilter, visibleJobs]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      const refs = visibleJobs.flatMap((job) => {
+        const response = job.lastResponse;
+        if (!response) {
+          return [] as Array<{ jobId: string; outputIndex: number; imageUrl: string }>;
+        }
+
+        return extractRunpodOutputImages(response)
+          .map((image, outputIndex) => ({
+            jobId: job.jobId,
+            outputIndex,
+            imageUrl: image.dataUrl
+          }))
+          .filter((entry) => isArchivedImageUrl(entry.imageUrl));
+      });
+
+      const signature = refs.map((ref) => `${ref.jobId}:${ref.outputIndex}:${ref.imageUrl}`).sort().join("|");
+      if (signature === lastReconcileSignatureRef.current) {
+        return;
+      }
+
+      lastReconcileSignatureRef.current = signature;
+
+      try {
+        await reconcilePinnedImagesViaProxy({ refs });
+      } catch {
+        if (!cancelled) {
+          setError("Failed to reconcile archived image references.");
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [visibleJobs]);
+
   const pageCount = Math.max(1, Math.ceil(filteredJobs.length / RECENT_JOB_PAGE_SIZE));
 
   useEffect(() => {
