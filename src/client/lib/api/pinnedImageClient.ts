@@ -16,6 +16,16 @@ type BackupPinnedImageResponse = {
   mimeType: "image/png" | "image/jpeg" | "image/webp" | "image/gif";
 };
 
+type ReleasePinnedImagePayload = {
+  clientId?: string;
+  imageUrl: string;
+};
+
+type ReleasePinnedImageResponse = {
+  ok: true;
+  deleted: boolean;
+};
+
 type PinnedImageStorageStatsResponse = {
   ok: true;
   userUsedBytes: number;
@@ -70,6 +80,28 @@ export async function fetchPinnedImageStorageStatsViaProxy(): Promise<PinnedImag
   const data = (await response.json().catch(() => null)) as PinnedImageStorageStatsResponse | { error?: string } | null;
   if (!response.ok || !data || !("ok" in data) || data.ok !== true) {
     throw new ProxyRequestError(response.status, `Pinned image storage stats request failed (${response.status})`, data);
+  }
+
+  return data;
+}
+
+export async function releasePinnedImageViaProxy(payload: ReleasePinnedImagePayload): Promise<ReleasePinnedImageResponse> {
+  const clientId = getOrCreatePinnedImageClientId();
+  const response = await fetch("/api/pinned-images/release", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    credentials: "include",
+    body: JSON.stringify({
+      ...payload,
+      clientId
+    })
+  });
+
+  const data = (await response.json().catch(() => null)) as ReleasePinnedImageResponse | { error?: string } | null;
+  if (!response.ok || !data || !("ok" in data)) {
+    throw new ProxyRequestError(response.status, `Pinned image release failed (${response.status})`, data);
   }
 
   return data;

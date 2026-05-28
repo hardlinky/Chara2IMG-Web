@@ -7,3 +7,8 @@ export const backupPinnedImageRequestSchema = z.object({
   dataUrl: z.string().min(1),
   mimeType: z.enum(["image/png", "image/jpeg", "image/webp", "image/gif"])
 });
+
+export const releasePinnedImageRequestSchema = z.object({
+  clientId: z.string().min(1).max(128).optional(),
+  imageUrl: z.string().min(1)
+});

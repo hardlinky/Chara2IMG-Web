@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { RecentJobRecord } from "../../../shared/contracts/jobs";
-import { backupPinnedImageViaProxy } from "../../lib/api/pinnedImageClient";
+import { backupPinnedImageViaProxy, releasePinnedImageViaProxy } from "../../lib/api/pinnedImageClient";
 import { cancelViaProxy, statusBatchViaProxy, statusViaProxy } from "../../lib/api/runpodProxyClient";
 import { submitRunAndPersistRecentJob } from "../../lib/jobSubmission";
 import { projectRecentJobOutputClusters } from "../../lib/jobOutputProjection";
@@ -42,6 +42,10 @@ let supportsStatusBatchPolling: boolean | null = null;
 
 export function resetStatusBatchPollingSupportForTests(): void {
   supportsStatusBatchPolling = null;
+}
+
+function isArchivedImageUrl(value: string): boolean {
+  return value.startsWith("/api/pinned-images/") || /\/api\/pinned-images\//.test(value);
 }
 
 type RecentJobUpdateResult = {
@@ -519,17 +523,51 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
   );
 
   const removeVisibleJob = useCallback(async (jobId: string) => {
+    const job = await getRecentJob(jobId);
+    const archivedImageUrls = job?.lastResponse
+      ? extractRunpodOutputImages(job.lastResponse)
+        .map((image) => image.dataUrl)
+        .filter((imageUrl) => isArchivedImageUrl(imageUrl))
+      : [];
+
     await removeRecentJobFromVisibleList(jobId);
+
+    if (archivedImageUrls.length > 0) {
+      await Promise.allSettled(archivedImageUrls.map((imageUrl) => releasePinnedImageViaProxy({ imageUrl })));
+    }
+
     await refreshRecentJobs();
   }, [refreshRecentJobs]);
 
   const removeOutputImage = useCallback(async (jobId: string, outputIndex: number) => {
+    const job = await getRecentJob(jobId);
+    const targetImage = job?.lastResponse ? extractRunpodOutputImages(job.lastResponse)[outputIndex] : null;
+
     await removeRecentJobOutputImage(jobId, outputIndex);
+
+    if (targetImage && isArchivedImageUrl(targetImage.dataUrl)) {
+      await releasePinnedImageViaProxy({ imageUrl: targetImage.dataUrl }).catch(() => {
+        setError(`Failed to release archived image backup for ${jobId}.`);
+      });
+    }
+
     await refreshRecentJobs();
   }, [refreshRecentJobs]);
 
   const removeJobOutputs = useCallback(async (jobId: string) => {
+    const job = await getRecentJob(jobId);
+    const archivedImageUrls = job?.lastResponse
+      ? extractRunpodOutputImages(job.lastResponse)
+        .map((image) => image.dataUrl)
+        .filter((imageUrl) => isArchivedImageUrl(imageUrl))
+      : [];
+
     await removeRecentJobOutputs(jobId);
+
+    if (archivedImageUrls.length > 0) {
+      await Promise.allSettled(archivedImageUrls.map((imageUrl) => releasePinnedImageViaProxy({ imageUrl })));
+    }
+
     await refreshRecentJobs();
   }, [refreshRecentJobs]);
 

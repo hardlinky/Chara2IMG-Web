@@ -1,17 +1,19 @@
 import { createHash, randomUUID } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import type { Hono } from "hono";
 import { requireInvitedSession } from "../middleware/session";
 import {
   findPinnedImageByHash,
   getEffectivePinnedImagesCapacityBytes,
+  incrementPinnedImageReference,
   PINNED_IMAGES_DIR,
+  releasePinnedImageReference,
   getTrackedPinnedStorageUsageBytes,
   registerPinnedImageBackup,
   sanitizeClientId
 } from "../lib/pinnedImageStorageStats";
-import { backupPinnedImageRequestSchema } from "../schemas/pinnedImages";
+import { backupPinnedImageRequestSchema, releasePinnedImageRequestSchema } from "../schemas/pinnedImages";
 
 function getRequestClientId(request: Request, fallbackClientId?: string | null): string {
   if (fallbackClientId) {
@@ -58,6 +60,24 @@ function computeContentHash(bytes: Uint8Array): string {
   return createHash("sha256").update(bytes).digest("hex");
 }
 
+function parsePinnedImageFileNameFromUrl(imageUrl: string): string | null {
+  const trimmed = imageUrl.trim();
+  const decoded = decodeURIComponent(trimmed);
+  const marker = "/api/pinned-images/";
+  const index = decoded.indexOf(marker);
+  if (index < 0) {
+    return null;
+  }
+
+  const suffix = decoded.slice(index + marker.length);
+  const fileName = suffix.split("?")[0]?.split("#")[0] ?? "";
+  if (!fileName || !/^[a-zA-Z0-9._-]+$/.test(fileName)) {
+    return null;
+  }
+
+  return fileName;
+}
+
 export function registerPinnedImageRoutes(app: Hono): void {
   app.get("/api/pinned-images/stats", async (c) => {
     const clientId = getRequestClientId(c.req.raw, c.req.query("clientId"));
@@ -91,6 +111,7 @@ export function registerPinnedImageRoutes(app: Hono): void {
     const contentHash = computeContentHash(decoded.bytes);
     const existing = await findPinnedImageByHash(clientId, contentHash);
     if (existing) {
+      await incrementPinnedImageReference(existing.fileName);
       return c.json({
         ok: true,
         imageUrl: `/api/pinned-images/${encodeURIComponent(existing.fileName)}`,
@@ -110,13 +131,43 @@ export function registerPinnedImageRoutes(app: Hono): void {
 
     await mkdir(PINNED_IMAGES_DIR, { recursive: true });
     await writeFile(filePath, decoded.bytes);
-  await registerPinnedImageBackup(fileName, clientId, decoded.bytes.byteLength, contentHash);
+    await registerPinnedImageBackup(fileName, clientId, decoded.bytes.byteLength, contentHash);
 
     return c.json({
       ok: true,
       imageUrl: `/api/pinned-images/${encodeURIComponent(fileName)}`,
       mimeType: parsed.data.mimeType
     });
+  });
+
+  app.use("/api/pinned-images/release", requireInvitedSession);
+  app.post("/api/pinned-images/release", async (c) => {
+    const payload = await c.req.json().catch(() => null);
+    const parsed = releasePinnedImageRequestSchema.safeParse(payload);
+
+    if (!parsed.success) {
+      return c.json({ ok: false, error: "Invalid pinned image release request" }, 400);
+    }
+
+    const clientId = getRequestClientId(c.req.raw, parsed.data.clientId ?? null);
+    const fileName = parsePinnedImageFileNameFromUrl(parsed.data.imageUrl);
+    if (!fileName) {
+      return c.json({ ok: false, error: "Invalid pinned image url" }, 400);
+    }
+
+    const filePath = resolve(PINNED_IMAGES_DIR, fileName);
+    if (!filePath.startsWith(PINNED_IMAGES_DIR)) {
+      return c.json({ ok: false, error: "Invalid pinned image id" }, 400);
+    }
+
+    const releaseResult = await releasePinnedImageReference(fileName, clientId);
+    if (releaseResult.shouldDeleteFile) {
+      await unlink(filePath).catch(() => {
+        // Ignore missing files during cleanup.
+      });
+    }
+
+    return c.json({ ok: true, deleted: releaseResult.shouldDeleteFile });
   });
 
   app.use("/api/pinned-images/:fileName", requireInvitedSession);
