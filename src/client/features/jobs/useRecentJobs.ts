@@ -451,10 +451,12 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
   const [cancelingJobIds, setCancelingJobIds] = useState<string[]>([]);
   const [isPolling, setIsPolling] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [storageRefreshToken, setStorageRefreshToken] = useState(0);
 
   const refreshRecentJobs = useCallback(async (resetPage: boolean = false) => {
     const nextJobs = await loadRecentJobs();
     setJobs(nextJobs);
+    setStorageRefreshToken((current) => current + 1);
     if (resetPage) {
       setPageState(1);
     }
@@ -730,6 +732,7 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
     togglePinnedImage,
     pinnedVisibleCount,
     pinnedImageCount,
+    storageRefreshToken,
     canPinMoreJobs,
     formatSubmittedAtRelative,
     hasTimedOut: hasJobObservationTimedOut

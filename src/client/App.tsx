@@ -225,7 +225,7 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, [invited, recentJobs.pinnedImageCount, recentJobs.visibleJobs.length, recentJobs.completedOutputClusters.length]);
+  }, [invited, recentJobs.pinnedImageCount, recentJobs.visibleJobs.length, recentJobs.completedOutputClusters.length, recentJobs.storageRefreshToken]);
 
   async function onRunPayloadBuilt(snapshot: {
     payload: Record<string, unknown>;
