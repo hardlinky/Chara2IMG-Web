@@ -178,23 +178,18 @@ export function App() {
     includeOutputClusters: activeTab === "output"
   });
 
-  const pinnedJobsCount = recentJobs.pinnedVisibleCount;
-  const pinnedImagesCount = recentJobs.pinnedImageCount;
+  const transientJobsCount = recentJobs.transientJobsCount;
 
   const appTabs = useMemo<AppTabDefinition[]>(
     () =>
       BASE_APP_TABS.map((tab) => {
-        if (tab.id === "jobs" && pinnedJobsCount > 0) {
-          return { ...tab, badge: pinnedJobsCount };
-        }
-
-        if (tab.id === "output" && pinnedImagesCount > 0) {
-          return { ...tab, badge: pinnedImagesCount };
+        if (tab.id === "jobs" && transientJobsCount > 0) {
+          return { ...tab, badge: transientJobsCount };
         }
 
         return tab;
       }),
-    [pinnedJobsCount, pinnedImagesCount]
+    [transientJobsCount]
   );
 
   useEffect(() => {

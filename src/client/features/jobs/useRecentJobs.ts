@@ -720,6 +720,10 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
     () => visibleJobs.reduce((count, job) => count + (job.pinnedOutputIndices?.length ?? 0), 0),
     [visibleJobs]
   );
+  const transientJobsCount = useMemo(
+    () => visibleJobs.filter((job) => job.lifecycle.status === "IN_QUEUE" || job.lifecycle.status === "IN_PROGRESS").length,
+    [visibleJobs]
+  );
   const canPinMoreJobs = true;
   const completedOutputClusters = useMemo(() => {
     if (!includeOutputClusters) {
@@ -816,6 +820,7 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
     togglePinnedImage,
     pinnedVisibleCount,
     pinnedImageCount,
+    transientJobsCount,
     storageRefreshToken,
     canPinMoreJobs,
     formatSubmittedAtRelative,
