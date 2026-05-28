@@ -17,6 +17,10 @@ type OutputImageCardProps = {
   badge?: ReactNode;
 };
 
+function isServerBackedImageUrl(value: string): boolean {
+  return value.startsWith("/api/pinned-images/") || /\/api\/pinned-images\//.test(value);
+}
+
 function triggerDownload(image: RecentJobOutputImage, imagePrefix: string, imageLabel: string): void {
   const extension = image.mimeType === "image/jpeg" ? "jpg" : "png";
   const link = document.createElement("a");
@@ -76,12 +80,17 @@ export function OutputImageCard({
   badge
 }: OutputImageCardProps) {
   const showBottomActions = Boolean(onExportWorkflow || onLoadInputs || onViewJobOutputs);
+  const storageSourceLabel = isServerBackedImageUrl(image.dataUrl) ? "Server backup" : "Browser cache";
 
   return (
     <div className={`outputs-image-tile-wrapper ${maxVisible ? "" : "outputs-image-tile-hidden"}`.trim()}>
       <button type="button" className="outputs-image-tile" onClick={onOpen} aria-label={`Open ${imagePrefix} image ${imageLabel}`}>
         <img src={image.dataUrl} alt={`${imagePrefix} ${imageLabel}`} loading="lazy" onLoad={onImageLoad} />
       </button>
+      <div className="outputs-image-caption-row">
+        <span className="outputs-image-caption-label">{`${imagePrefix} #${imageLabel}`}</span>
+        <span className="outputs-image-source-chip">{storageSourceLabel}</span>
+      </div>
       {badge ? <span className="outputs-count-badge">{badge}</span> : null}
       {onTogglePin ? (
         <button

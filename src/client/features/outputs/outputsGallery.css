@@ -151,6 +151,33 @@
   margin: 0;
 }
 
+.outputs-image-caption-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.45rem;
+  padding: 0.3rem 0.45rem 0;
+  font-size: 0.74rem;
+  color: var(--color-text-secondary);
+}
+
+.outputs-image-caption-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.outputs-image-source-chip {
+  flex: 0 0 auto;
+  border: 1px solid rgba(101, 121, 149, 0.5);
+  border-radius: 999px;
+  padding: 0.08rem 0.42rem;
+  color: var(--color-text-muted);
+  background: rgba(17, 24, 34, 0.62);
+  white-space: nowrap;
+}
+
 .outputs-image-bottom-actions {
   position: absolute;
   left: 0.45rem;
