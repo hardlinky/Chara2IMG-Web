@@ -13,6 +13,7 @@ import { OutputsTab } from "./features/outputs/OutputsTab";
 import { ActiveWorkflowTemplate } from "./features/workflows/ActiveWorkflowTemplate";
 import { WorkflowImport } from "./features/workflows/WorkflowImport";
 import { useActiveWorkflowTemplate } from "./features/workflows/useActiveWorkflowTemplate";
+import { getOrCreatePinnedImageClientId } from "./lib/api/pinnedImageClient";
 import { fetchSystemConfig, fetchSystemStorageStats, ProxyRequestError, updateAppViaProxy } from "./lib/api/runpodProxyClient";
 import { getStoredEndpointId, saveEndpointId } from "./lib/endpointStorage";
 import { APP_VERSION_LABEL } from "./lib/appVersion";
@@ -143,6 +144,7 @@ export function App() {
       externalDraftValues: DynamicInputDraftValues
     ) => Promise<{ ok: true; draftValues: DynamicInputDraftValues } | { ok: false; reason: string }>;
   } | null>(null);
+  const currentClientId = getOrCreatePinnedImageClientId();
 
   const { activeTemplate, isLoading, error, persistTemplate, clearTemplate } = useActiveWorkflowTemplate();
 
@@ -369,7 +371,7 @@ export function App() {
             <button className="btn btn-secondary" type="button" onClick={() => void onUpdateApp()} disabled={isUpdatingApp}>
               {isUpdatingApp ? "Updating..." : "Update App"}
             </button>
-            <p className="app-header-status">Invited session active.</p>
+            <p className="app-header-status">{`Client ID: ${currentClientId}`}</p>
           </div>
         </>
       }
