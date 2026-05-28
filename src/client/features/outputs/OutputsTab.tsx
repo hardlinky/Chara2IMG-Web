@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Gallery, Item } from "react-photoswipe-gallery";
 import type { RecentJobOutputCluster } from "../../../shared/contracts/jobs";
 import { JobOutputsView } from "./JobOutputsView";
 import { OutputImageCard } from "./OutputImageCard";
@@ -9,7 +10,7 @@ import "../../styles/jobsOutput.css";
 type OutputsGalleryMode = "per-job" | "all-images";
 type OutputsPinFilter = "all" | "pinned" | "unpinned";
 const MOBILE_OUTPUT_DENSITIES: readonly OutputDensity[] = ["compact", "balanced"];
-const ALL_IMAGES_PAGE_SIZE = 48;
+const GALLERY_PAGE_SIZE = 10;
 const OUTPUTS_PIN_FILTER_STORAGE_KEY = "chara2imgOutputsPinFilter";
 const OUTPUTS_VIEW_MODE_STORAGE_KEY = "chara2imgOutputsViewMode";
 
@@ -51,7 +52,7 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
   const gallery = useOutputGallery(clusters);
   const [galleryMode, setGalleryMode] = useState<OutputsGalleryMode>(() => getStoredOutputsViewMode());
   const [pinFilter, setPinFilter] = useState<OutputsPinFilter>(() => getStoredOutputsPinFilter());
-  const [allImagesVisibleCount, setAllImagesVisibleCount] = useState(ALL_IMAGES_PAGE_SIZE);
+  const [galleryPage, setGalleryPage] = useState(1);
   const [hydratedJobClusters, setHydratedJobClusters] = useState<Record<string, RecentJobOutputCluster>>({});
   const [isMobile, setIsMobile] = useState(() => (typeof window !== "undefined" ? window.matchMedia("(max-width: 600px)").matches : false));
 
@@ -125,10 +126,20 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
       ),
     [filteredClusters]
   );
-  const visibleAllOutputImages = useMemo(
-    () => allOutputImages.slice(0, allImagesVisibleCount),
-    [allImagesVisibleCount, allOutputImages]
-  );
+
+  const pageItemCount = galleryMode === "per-job" ? filteredClusters.length : allOutputImages.length;
+  const galleryPageCount = Math.max(1, Math.ceil(pageItemCount / GALLERY_PAGE_SIZE));
+
+  useEffect(() => {
+    if (galleryPage > galleryPageCount) {
+      setGalleryPage(galleryPageCount);
+    }
+  }, [galleryPage, galleryPageCount]);
+
+  const pageStart = (galleryPage - 1) * GALLERY_PAGE_SIZE;
+  const pageEnd = pageStart + GALLERY_PAGE_SIZE;
+  const pagedClusters = useMemo(() => filteredClusters.slice(pageStart, pageEnd), [filteredClusters, pageEnd, pageStart]);
+  const pagedAllOutputImages = useMemo(() => allOutputImages.slice(pageStart, pageEnd), [allOutputImages, pageEnd, pageStart]);
 
   const selectedJobId = gallery.view.mode === "job" ? gallery.view.jobId : null;
   const selectedJobCluster = selectedJobId
@@ -136,7 +147,7 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
     : gallery.selectedCluster;
 
   useEffect(() => {
-    setAllImagesVisibleCount(ALL_IMAGES_PAGE_SIZE);
+    setGalleryPage(1);
   }, [galleryMode, pinFilter]);
 
   useEffect(() => {
@@ -241,57 +252,122 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
       {clusters.length > 0 && filteredClusters.length === 0 ? <p>No outputs match the selected pin filter.</p> : null}
 
       {galleryMode === "per-job" ? (
-        <div className={getGalleryClassName(gallery.density)}>
-          {filteredClusters.map((cluster) => (
-            <article key={cluster.jobId} className="outputs-cluster-card">
-              <OutputImageCard
-                image={cluster.representative}
-                imagePrefix={cluster.jobId}
-                imageLabel="1"
-                onOpen={() => gallery.openJobOutputs(cluster.jobId)}
-                onRemoveImage={onRemoveOutputImage ? () => onRemoveOutputImage(cluster.jobId, cluster.representative.outputIndex) : undefined}
-                onTogglePin={onToggleOutputPinned ? () => onToggleOutputPinned(cluster.jobId, cluster.representative.outputIndex, !cluster.representative.isPinned) : undefined}
-                canPinMore={canPinMore}
-                badge={`${cluster.outputCount} images`}
-              />
-              <div className="outputs-cluster-meta">
-                <span>{cluster.jobId}</span>
-              </div>
-            </article>
-          ))}
-        </div>
+        <Gallery
+          options={{
+            loop: true,
+            allowPanToNext: false,
+            preload: [1, 2],
+            escKey: true,
+            arrowKeys: true,
+            pinchToClose: true,
+            bgOpacity: 0.92,
+            showHideAnimationType: "zoom",
+            wheelToZoom: true
+          }}
+        >
+          <div className={getGalleryClassName(gallery.density)}>
+            {pagedClusters.map((cluster) => (
+              <article key={cluster.jobId} className="outputs-cluster-card">
+                <Item
+                  original={cluster.representative.dataUrl}
+                  thumbnail={cluster.representative.dataUrl}
+                  width="1024"
+                  height="1024"
+                  caption={`${cluster.jobId} #1`}
+                >
+                  {({ ref, open }) => (
+                    <div ref={ref as never}>
+                      <OutputImageCard
+                        image={cluster.representative}
+                        imagePrefix={cluster.jobId}
+                        imageLabel="1"
+                        onOpen={open}
+                        onViewJobOutputs={() => gallery.openJobOutputs(cluster.jobId)}
+                        onRemoveImage={onRemoveOutputImage ? () => onRemoveOutputImage(cluster.jobId, cluster.representative.outputIndex) : undefined}
+                        onTogglePin={onToggleOutputPinned ? () => onToggleOutputPinned(cluster.jobId, cluster.representative.outputIndex, !cluster.representative.isPinned) : undefined}
+                        canPinMore={canPinMore}
+                        badge={`${cluster.outputCount} images`}
+                      />
+                    </div>
+                  )}
+                </Item>
+                <div className="outputs-cluster-meta">
+                  <span>{cluster.jobId}</span>
+                </div>
+              </article>
+            ))}
+          </div>
+        </Gallery>
       ) : (
-        <div className={getGalleryClassName(gallery.density)}>
-          {visibleAllOutputImages.map((outputImage) => (
-            <article key={`${outputImage.jobId}-${outputImage.outputIndex}`} className="outputs-cluster-card">
-              <OutputImageCard
-                image={outputImage}
-                imagePrefix={outputImage.jobId}
-                imageLabel={`${outputImage.outputIndex + 1}`}
-                onOpen={() => gallery.openJobOutputs(outputImage.jobId)}
-                onRemoveImage={onRemoveOutputImage ? () => onRemoveOutputImage(outputImage.jobId, outputImage.outputIndex) : undefined}
-                onTogglePin={onToggleOutputPinned ? () => onToggleOutputPinned(outputImage.jobId, outputImage.outputIndex, !outputImage.isPinned) : undefined}
-                canPinMore={canPinMore}
-              />
-              <div className="outputs-cluster-meta">
-                <span>{outputImage.jobId}</span>
-                <span>{`#${outputImage.outputIndex + 1}`}</span>
-              </div>
-            </article>
-          ))}
-          {visibleAllOutputImages.length < allOutputImages.length ? (
-            <div className="outputs-job-view-more">
-              <button
-                className="btn btn-secondary"
-                type="button"
-                onClick={() => setAllImagesVisibleCount((current) => current + ALL_IMAGES_PAGE_SIZE)}
-              >
-                Load more images
-              </button>
-            </div>
-          ) : null}
-        </div>
+        <Gallery
+          options={{
+            loop: true,
+            allowPanToNext: false,
+            preload: [1, 2],
+            escKey: true,
+            arrowKeys: true,
+            pinchToClose: true,
+            bgOpacity: 0.92,
+            showHideAnimationType: "zoom",
+            wheelToZoom: true
+          }}
+        >
+          <div className={getGalleryClassName(gallery.density)}>
+            {pagedAllOutputImages.map((outputImage) => (
+              <article key={`${outputImage.jobId}-${outputImage.outputIndex}`} className="outputs-cluster-card">
+                <Item
+                  original={outputImage.dataUrl}
+                  thumbnail={outputImage.dataUrl}
+                  width="1024"
+                  height="1024"
+                  caption={`${outputImage.jobId} #${outputImage.outputIndex + 1}`}
+                >
+                  {({ ref, open }) => (
+                    <div ref={ref as never}>
+                      <OutputImageCard
+                        image={outputImage}
+                        imagePrefix={outputImage.jobId}
+                        imageLabel={`${outputImage.outputIndex + 1}`}
+                        onOpen={open}
+                        onViewJobOutputs={() => gallery.openJobOutputs(outputImage.jobId)}
+                        onRemoveImage={onRemoveOutputImage ? () => onRemoveOutputImage(outputImage.jobId, outputImage.outputIndex) : undefined}
+                        onTogglePin={onToggleOutputPinned ? () => onToggleOutputPinned(outputImage.jobId, outputImage.outputIndex, !outputImage.isPinned) : undefined}
+                        canPinMore={canPinMore}
+                      />
+                    </div>
+                  )}
+                </Item>
+                <div className="outputs-cluster-meta">
+                  <span>{outputImage.jobId}</span>
+                  <span>{`#${outputImage.outputIndex + 1}`}</span>
+                </div>
+              </article>
+            ))}
+          </div>
+        </Gallery>
       )}
+
+      {pageItemCount > 0 ? (
+        <div className="jobs-pagination">
+          <button
+            className="btn btn-secondary"
+            type="button"
+            onClick={() => setGalleryPage((current) => Math.max(1, current - 1))}
+            disabled={galleryPage <= 1}
+          >
+            Prev page
+          </button>
+          <span>{`Page ${galleryPage} / ${galleryPageCount}`}</span>
+          <button
+            className="btn btn-secondary"
+            type="button"
+            onClick={() => setGalleryPage((current) => Math.min(galleryPageCount, current + 1))}
+            disabled={galleryPage >= galleryPageCount}
+          >
+            Next page
+          </button>
+        </div>
+      ) : null}
     </section>
   );
 }

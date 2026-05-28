@@ -11,6 +11,7 @@ type OutputImageCardProps = {
   onTogglePin?: () => void;
   onExportWorkflow?: () => void;
   onLoadInputs?: () => void;
+  onViewJobOutputs?: () => void;
   canPinMore?: boolean;
   maxVisible?: boolean;
   badge?: ReactNode;
@@ -50,6 +51,15 @@ function LoadInputsIcon() {
   );
 }
 
+function ViewJobOutputsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false">
+      <path d="M4 6h16M4 12h10M4 18h7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M15 10h5v5m0-5-6 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function OutputImageCard({
   image,
   imagePrefix,
@@ -60,11 +70,12 @@ export function OutputImageCard({
   onTogglePin,
   onExportWorkflow,
   onLoadInputs,
+  onViewJobOutputs,
   canPinMore = true,
   maxVisible = true,
   badge
 }: OutputImageCardProps) {
-  const showBottomActions = Boolean(onExportWorkflow || onLoadInputs);
+  const showBottomActions = Boolean(onExportWorkflow || onLoadInputs || onViewJobOutputs);
 
   return (
     <div className={`outputs-image-tile-wrapper ${maxVisible ? "" : "outputs-image-tile-hidden"}`.trim()}>
@@ -95,6 +106,17 @@ export function OutputImageCard({
           >
             <DownloadIcon />
           </button>
+          {onViewJobOutputs ? (
+            <button
+              type="button"
+              className="outputs-image-action-btn"
+              aria-label={`View job outputs for ${imagePrefix}`}
+              title={`View job outputs for ${imagePrefix}`}
+              onClick={onViewJobOutputs}
+            >
+              <ViewJobOutputsIcon />
+            </button>
+          ) : null}
           {onExportWorkflow ? (
             <button
               type="button"
