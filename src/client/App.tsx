@@ -11,8 +11,7 @@ import { OutputsTab } from "./features/outputs/OutputsTab";
 import { ActiveWorkflowTemplate } from "./features/workflows/ActiveWorkflowTemplate";
 import { WorkflowImport } from "./features/workflows/WorkflowImport";
 import { useActiveWorkflowTemplate } from "./features/workflows/useActiveWorkflowTemplate";
-import { fetchPinnedImageStorageStatsViaProxy } from "./lib/api/pinnedImageClient";
-import { fetchSystemConfig, updateAppViaProxy } from "./lib/api/runpodProxyClient";
+import { fetchSystemConfig, fetchSystemStorageStats, ProxyRequestError, updateAppViaProxy } from "./lib/api/runpodProxyClient";
 import { getStoredEndpointId, saveEndpointId } from "./lib/endpointStorage";
 import { APP_VERSION_LABEL } from "./lib/appVersion";
 import { submitRunAndPersistRecentJob } from "./lib/jobSubmission";
@@ -20,6 +19,7 @@ import { getRunpodKey } from "./lib/runpodKeyStorage";
 import { sanitizeWorkflowForExport } from "./lib/workflowExport";
 import { isActiveRunpodStatus } from "../shared/contracts/jobs";
 import type { DynamicInputDraftValues } from "../shared/contracts/inputs";
+import type { SystemStorageStats } from "./lib/api/runpodProxyClient";
 
 const APP_ACTIVE_TAB_STORAGE_KEY = "chara2imgActiveTab";
 
@@ -67,6 +67,20 @@ function formatBytes(bytes: number): string {
 
   const decimals = unitIndex === 0 ? 0 : value >= 10 ? 1 : 2;
   return `${value.toFixed(decimals)} ${units[unitIndex]}`;
+}
+
+function isSystemStorageStats(value: unknown): value is SystemStorageStats {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const record = value as Partial<SystemStorageStats>;
+  return (
+    record.ok === true &&
+    typeof record.userUsedBytes === "number" &&
+    typeof record.allUsersUsedBytes === "number" &&
+    typeof record.totalCapacityBytes === "number"
+  );
 }
 
 const BASE_APP_TABS: AppTabDefinition[] = [
@@ -175,9 +189,9 @@ export function App() {
         ? navigator.storage.estimate().catch(() => null)
         : Promise.resolve<StorageEstimate | null>(null);
 
-    const serverStorageStatsPromise = fetchPinnedImageStorageStatsViaProxy().catch(() => null);
+    const serverStorageStatsPromise = fetchSystemStorageStats().catch((error: unknown) => error);
 
-    void Promise.all([browserStorageEstimatePromise, serverStorageStatsPromise]).then(([browserEstimate, serverStats]) => {
+    void Promise.all([browserStorageEstimatePromise, serverStorageStatsPromise]).then(([browserEstimate, serverStatsResult]) => {
       if (cancelled) {
         return;
       }
@@ -185,12 +199,18 @@ export function App() {
       const browserUsedBytes = typeof browserEstimate?.usage === "number" ? browserEstimate.usage : null;
       const browserUsedLabel = browserUsedBytes !== null ? formatBytes(browserUsedBytes) : "unavailable";
 
-      const serverUserUsedLabel = serverStats ? formatBytes(serverStats.userUsedBytes) : "unavailable";
-      const serverAllUsedLabel = serverStats ? formatBytes(serverStats.allUsersUsedBytes) : "unavailable";
-      const serverCapacityLabel = serverStats ? formatBytes(serverStats.totalCapacityBytes) : "unavailable";
+      const hasServerStats = isSystemStorageStats(serverStatsResult);
+      const serverUserUsedLabel = hasServerStats ? formatBytes(serverStatsResult.userUsedBytes) : "unavailable";
+      const serverAllUsedLabel = hasServerStats ? formatBytes(serverStatsResult.allUsersUsedBytes) : "unavailable";
+      const serverCapacityLabel = hasServerStats ? formatBytes(serverStatsResult.totalCapacityBytes) : "unavailable";
+      const serverErrorLabel = hasServerStats
+        ? ""
+        : serverStatsResult instanceof ProxyRequestError
+          ? ` [server stats ${serverStatsResult.status}]`
+          : " [server stats error]";
 
       setStorageStatus(
-        `Storage: browser ${browserUsedLabel} | server you ${serverUserUsedLabel} | server all ${serverAllUsedLabel} | server cap ${serverCapacityLabel}`
+        `Storage: browser ${browserUsedLabel} | server you ${serverUserUsedLabel} | server all ${serverAllUsedLabel} | server cap ${serverCapacityLabel}${serverErrorLabel}`
       );
     });
 

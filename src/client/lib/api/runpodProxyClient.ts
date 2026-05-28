@@ -73,6 +73,14 @@ export type SystemConfig = {
   hasRunpodApiKey: boolean;
 };
 
+export type SystemStorageStats = {
+  ok: true;
+  userUsedBytes: number;
+  allUsersUsedBytes: number;
+  totalCapacityBytes: number;
+  source?: string;
+};
+
 export async function fetchSystemConfig(): Promise<SystemConfig> {
   const response = await fetch("/api/system/config");
   if (!response.ok) {
@@ -80,6 +88,37 @@ export async function fetchSystemConfig(): Promise<SystemConfig> {
   }
 
   return (await response.json()) as SystemConfig;
+}
+
+function getOrCreateStorageClientId(): string {
+  if (typeof window === "undefined") {
+    return "server-render";
+  }
+
+  const storageKey = "chara2imgPinnedImageClientId";
+  const existing = window.localStorage.getItem(storageKey);
+  if (existing) {
+    return existing;
+  }
+
+  const generated = `client-${Math.random().toString(36).slice(2)}-${Date.now().toString(36)}`;
+  window.localStorage.setItem(storageKey, generated);
+  return generated;
+}
+
+export async function fetchSystemStorageStats(): Promise<SystemStorageStats> {
+  const clientId = encodeURIComponent(getOrCreateStorageClientId());
+  const response = await fetch(`/api/system/storage?clientId=${clientId}`, {
+    method: "GET",
+    credentials: "include"
+  });
+
+  const data = (await response.json().catch(() => null)) as SystemStorageStats | { error?: string } | null;
+  if (!response.ok || !data || !("ok" in data) || data.ok !== true) {
+    throw new ProxyRequestError(response.status, `System storage stats request failed (${response.status})`, data);
+  }
+
+  return data;
 }
 
 export class ProxyRequestError extends Error {
