@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { fetchPinnedImageClientsViaProxy, prunePinnedImagesViaProxy, type PinnedImageClientUsage } from "../../lib/api/pinnedImageClient";
+import {
+  fetchPinnedImageClientsViaProxy,
+  getOrCreatePinnedImageClientId,
+  prunePinnedImagesViaProxy,
+  type PinnedImageClientUsage
+} from "../../lib/api/pinnedImageClient";
 
 function formatBytes(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes < 0) {
@@ -26,8 +31,21 @@ type AdminTabProps = {
 export function AdminTab({ enabled }: AdminTabProps) {
   const [clients, setClients] = useState<PinnedImageClientUsage[]>([]);
   const [selectedClientIds, setSelectedClientIds] = useState<string[]>([]);
+  const [manualClientIdsText, setManualClientIdsText] = useState("");
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
+  const currentClientId = getOrCreatePinnedImageClientId();
+
+  const manualClientIds = useMemo(
+    () =>
+      manualClientIdsText
+        .split(/[\s,]+/)
+        .map((value) => value.trim())
+        .filter((value) => value.length > 0),
+    [manualClientIdsText]
+  );
+
+  const keepClientIds = useMemo(() => [...new Set([...selectedClientIds, ...manualClientIds])], [manualClientIds, selectedClientIds]);
 
   async function loadClients(): Promise<void> {
     if (!enabled) {
@@ -52,7 +70,7 @@ export function AdminTab({ enabled }: AdminTabProps) {
     void loadClients();
   }, [enabled]);
 
-  const selectedCount = selectedClientIds.length;
+  const selectedCount = keepClientIds.length;
   const totalBytes = useMemo(() => clients.reduce((sum, client) => sum + client.bytes, 0), [clients]);
 
   function toggleClient(clientId: string): void {
@@ -66,7 +84,7 @@ export function AdminTab({ enabled }: AdminTabProps) {
   }
 
   async function pruneToSelected(): Promise<void> {
-    if (!enabled || selectedClientIds.length === 0) {
+    if (!enabled || keepClientIds.length === 0) {
       return;
     }
 
@@ -74,7 +92,7 @@ export function AdminTab({ enabled }: AdminTabProps) {
     setStatus("");
 
     try {
-      const result = await prunePinnedImagesViaProxy({ keepClientIds: selectedClientIds });
+      const result = await prunePinnedImagesViaProxy({ keepClientIds });
       setStatus(
         `Pruned archived images. Removed entries: ${result.removedEntries}. Deleted files: ${result.deletedFiles}. Kept entries: ${result.keptEntries}.`
       );
@@ -99,6 +117,8 @@ export function AdminTab({ enabled }: AdminTabProps) {
       <section className="setup-card">
         <h2>Archived Image Clients</h2>
         <p>Pick clients to preserve. Prune removes archived images for every other client ID.</p>
+        <p>This list only shows client IDs that currently have archived entries on the server.</p>
+        <p>{`Current browser client ID: ${currentClientId}`}</p>
         <p>{`Clients: ${clients.length} | Total archive bytes: ${formatBytes(totalBytes)}`}</p>
         <div className="field" style={{ display: "grid", gap: "0.5rem" }}>
           {clients.length === 0 ? <p>No archived clients found.</p> : null}
@@ -113,9 +133,28 @@ export function AdminTab({ enabled }: AdminTabProps) {
             </label>
           ))}
         </div>
+        <label className="field" htmlFor="manual-keep-client-ids" style={{ marginTop: "0.75rem" }}>
+          Keep additional client IDs (comma or space separated)
+          <input
+            className="input"
+            id="manual-keep-client-ids"
+            type="text"
+            value={manualClientIdsText}
+            onChange={(event) => setManualClientIdsText(event.target.value)}
+            placeholder="client-abc client-def"
+          />
+        </label>
         <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.75rem", flexWrap: "wrap" }}>
           <button className="btn btn-secondary" type="button" onClick={() => void loadClients()} disabled={loading}>
             Refresh Clients
+          </button>
+          <button
+            className="btn btn-secondary"
+            type="button"
+            onClick={() => setManualClientIdsText((previous) => (previous.includes(currentClientId) ? previous : `${previous} ${currentClientId}`.trim()))}
+            disabled={loading}
+          >
+            Add Current Client ID
           </button>
           <button className="btn btn-primary" type="button" onClick={() => void pruneToSelected()} disabled={loading || selectedCount === 0}>
             {loading ? "Working..." : `Prune To ${selectedCount} Selected`}

@@ -73,7 +73,7 @@ type PinnedImageStorageStatsResponse = {
   totalCapacityBytes: number;
 };
 
-function getOrCreatePinnedImageClientId(): string {
+export function getOrCreatePinnedImageClientId(): string {
   if (typeof window === "undefined") {
     return "server-render";
   }
