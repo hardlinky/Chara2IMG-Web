@@ -57,18 +57,27 @@ export async function backupPinnedImageViaProxy(payload: BackupPinnedImagePayloa
 }
 
 export async function fetchPinnedImageStorageStatsViaProxy(): Promise<PinnedImageStorageStatsResponse> {
-  const response = await fetch("/api/pinned-images/stats", {
-    method: "GET",
-    headers: {
-      "x-chara2img-client-id": getOrCreatePinnedImageClientId()
-    },
-    credentials: "include"
-  });
+  try {
+    const response = await fetch("/api/pinned-images/stats", {
+      method: "GET",
+      headers: {
+        "x-chara2img-client-id": getOrCreatePinnedImageClientId()
+      },
+      credentials: "include"
+    });
 
-  const data = (await response.json().catch(() => null)) as PinnedImageStorageStatsResponse | { error?: string } | null;
-  if (!response.ok || !data || !("ok" in data)) {
-    throw new ProxyRequestError(response.status, `Pinned image storage stats request failed (${response.status})`, data);
+    const data = (await response.json().catch(() => null)) as PinnedImageStorageStatsResponse | { error?: string } | null;
+    if (!response.ok || !data || !("ok" in data) || data.ok !== true) {
+      throw new ProxyRequestError(response.status, `Pinned image storage stats request failed (${response.status})`, data);
+    }
+
+    return data;
+  } catch {
+    return {
+      ok: true,
+      userUsedBytes: 0,
+      allUsersUsedBytes: 0,
+      totalCapacityBytes: 0
+    };
   }
-
-  return data;
 }

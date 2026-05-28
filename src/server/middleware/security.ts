@@ -29,7 +29,7 @@ export function applySecurityMiddleware(app: Hono): void {
     cors({
       origin: (origin, context) => resolveAllowedOrigin(origin, context) ?? undefined,
       allowMethods: ["GET", "POST", "OPTIONS"],
-      allowHeaders: ["Content-Type"],
+      allowHeaders: ["Content-Type", "x-chara2img-client-id"],
       credentials: true
     })
   );
