@@ -1,66 +1,16 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, readdir, stat, statfs, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { join, resolve } from "node:path";
 import type { Hono } from "hono";
 import { requireInvitedSession } from "../middleware/session";
+import {
+  getEffectivePinnedImagesCapacityBytes,
+  PINNED_IMAGES_DIR,
+  getTrackedPinnedStorageUsageBytes,
+  registerPinnedImageBackup,
+  sanitizeClientId
+} from "../lib/pinnedImageStorageStats";
 import { backupPinnedImageRequestSchema } from "../schemas/pinnedImages";
-
-const CURRENT_DIR = dirname(fileURLToPath(import.meta.url));
-const PROJECT_ROOT = resolve(CURRENT_DIR, "../../..");
-const PINNED_IMAGES_DIR = (() => {
-  const configured = process.env.PINNED_IMAGES_STORAGE_DIR?.trim();
-  if (configured) {
-    return resolve(PROJECT_ROOT, configured);
-  }
-
-  return resolve(tmpdir(), "chara2img", "pinned-images");
-})();
-const DEFAULT_PINNED_IMAGES_CAPACITY_BYTES = 10 * 1024 * 1024 * 1024;
-
-function getConfiguredPinnedImagesCapacityBytes(): number {
-  const raw = process.env.PINNED_IMAGES_STORAGE_CAPACITY_BYTES;
-  const parsed = Number(raw);
-  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : DEFAULT_PINNED_IMAGES_CAPACITY_BYTES;
-}
-
-async function getPinnedImagesDiskCapacityBytes(): Promise<number | null> {
-  try {
-    await mkdir(PINNED_IMAGES_DIR, { recursive: true });
-    const fsStat = await statfs(PINNED_IMAGES_DIR);
-    const blockSize = Number((fsStat as { bsize?: number }).bsize ?? 0);
-    const blocks = Number((fsStat as { blocks?: number }).blocks ?? 0);
-
-    if (!Number.isFinite(blockSize) || !Number.isFinite(blocks) || blockSize <= 0 || blocks <= 0) {
-      return null;
-    }
-
-    return Math.floor(blockSize * blocks);
-  } catch {
-    return null;
-  }
-}
-
-async function getEffectivePinnedImagesCapacityBytes(): Promise<number> {
-  const configured = getConfiguredPinnedImagesCapacityBytes();
-  const diskCapacity = await getPinnedImagesDiskCapacityBytes();
-
-  if (diskCapacity === null) {
-    return configured;
-  }
-
-  return Math.max(1, Math.min(configured, diskCapacity));
-}
-
-function sanitizeClientId(value: string | null | undefined): string {
-  if (!value) {
-    return "anonymous";
-  }
-
-  const normalized = value.trim().replace(/[^a-zA-Z0-9_-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
-  return normalized || "anonymous";
-}
 
 function getRequestClientId(request: Request, fallbackClientId?: string | null): string {
   if (fallbackClientId) {
@@ -69,56 +19,6 @@ function getRequestClientId(request: Request, fallbackClientId?: string | null):
 
   const headerValue = request.headers.get("x-chara2img-client-id");
   return sanitizeClientId(headerValue);
-}
-
-async function collectPinnedStorageUsageBytes(clientId: string): Promise<{ userUsedBytes: number; allUsersUsedBytes: number }> {
-  try {
-    await mkdir(PINNED_IMAGES_DIR, { recursive: true });
-  } catch {
-    return {
-      userUsedBytes: 0,
-      allUsersUsedBytes: 0
-    };
-  }
-
-  let fileNames: string[] = [];
-  try {
-    fileNames = await readdir(PINNED_IMAGES_DIR);
-  } catch {
-    return {
-      userUsedBytes: 0,
-      allUsersUsedBytes: 0
-    };
-  }
-
-  let userUsedBytes = 0;
-  let allUsersUsedBytes = 0;
-
-  for (const fileName of fileNames) {
-    const filePath = resolve(PINNED_IMAGES_DIR, fileName);
-    if (!filePath.startsWith(PINNED_IMAGES_DIR)) {
-      continue;
-    }
-
-    try {
-      const fileStat = await stat(filePath);
-      if (!fileStat.isFile()) {
-        continue;
-      }
-
-      allUsersUsedBytes += fileStat.size;
-      if (fileName.startsWith(`${clientId}-`)) {
-        userUsedBytes += fileStat.size;
-      }
-    } catch {
-      // Skip files that disappear mid-scan.
-    }
-  }
-
-  return {
-    userUsedBytes,
-    allUsersUsedBytes
-  };
 }
 
 function mimeTypeToExtension(mimeType: string): string {
@@ -156,7 +56,7 @@ function decodeDataUrl(dataUrl: string): { mimeType: string; bytes: Uint8Array }
 export function registerPinnedImageRoutes(app: Hono): void {
   app.get("/api/pinned-images/stats", async (c) => {
     const clientId = getRequestClientId(c.req.raw, c.req.query("clientId"));
-    const usage = await collectPinnedStorageUsageBytes(clientId);
+    const usage = await getTrackedPinnedStorageUsageBytes(clientId);
     const totalCapacityBytes = await getEffectivePinnedImagesCapacityBytes();
 
     return c.json({
@@ -183,18 +83,19 @@ export function registerPinnedImageRoutes(app: Hono): void {
       return c.json({ ok: false, error: "Pinned image payload is not a valid data URL" }, 400);
     }
 
-    const usage = await collectPinnedStorageUsageBytes(clientId);
+    const usage = await getTrackedPinnedStorageUsageBytes(clientId);
     const totalCapacityBytes = await getEffectivePinnedImagesCapacityBytes();
     if (usage.allUsersUsedBytes + decoded.bytes.byteLength > totalCapacityBytes) {
       return c.json({ ok: false, error: "Pinned image storage is full" }, 507);
     }
 
     const extension = mimeTypeToExtension(parsed.data.mimeType);
-    const fileName = `${clientId}-${parsed.data.jobId}-${parsed.data.outputIndex}-${randomUUID()}.${extension}`;
+    const fileName = `${clientId}__${parsed.data.jobId}-${parsed.data.outputIndex}-${randomUUID()}.${extension}`;
     const filePath = join(PINNED_IMAGES_DIR, fileName);
 
     await mkdir(PINNED_IMAGES_DIR, { recursive: true });
     await writeFile(filePath, decoded.bytes);
+    await registerPinnedImageBackup(fileName, clientId, decoded.bytes.byteLength);
 
     return c.json({
       ok: true,
