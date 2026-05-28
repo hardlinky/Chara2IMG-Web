@@ -277,6 +277,7 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
       {props.jobs.length > 0 ? (
         <ul className="jobs-list">
           {props.jobs.map((job) => {
+            const isPinnedJob = Boolean(job.pinnedAt) || Boolean(job.pinnedOutputIndices?.length);
             const executionTime = formatExecutionTime(job, now);
             const failureSnippet = formatFailureSnippet(job);
             const workerId = findWorkerId(job.lastResponse);
@@ -288,7 +289,10 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
             return (
               <li key={job.jobId} className="jobs-card">
                 <div className="jobs-card-meta">
-                  <strong>{job.jobId}</strong>
+                  <strong className="jobs-card-id">
+                    <span>{job.jobId}</span>
+                    {isPinnedJob ? <span className="jobs-card-pinned-icon" aria-label="Pinned job" title="Pinned job">📌</span> : null}
+                  </strong>
                   <time dateTime={completionTimestamp} title={timestampTooltip}>
                     {completionMeta}
                   </time>

@@ -82,6 +82,17 @@
   flex-wrap: wrap;
 }
 
+.jobs-card-id {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.jobs-card-pinned-icon {
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
 .jobs-status-row {
   display: flex;
   flex-wrap: wrap;
