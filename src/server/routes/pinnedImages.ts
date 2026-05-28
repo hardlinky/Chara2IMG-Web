@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, stat, statfs, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Hono } from "hono";
@@ -11,10 +11,38 @@ const PROJECT_ROOT = resolve(CURRENT_DIR, "../../..");
 const PINNED_IMAGES_DIR = resolve(PROJECT_ROOT, ".data", "pinned-images");
 const DEFAULT_PINNED_IMAGES_CAPACITY_BYTES = 10 * 1024 * 1024 * 1024;
 
-function getPinnedImagesCapacityBytes(): number {
+function getConfiguredPinnedImagesCapacityBytes(): number {
   const raw = process.env.PINNED_IMAGES_STORAGE_CAPACITY_BYTES;
   const parsed = Number(raw);
   return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : DEFAULT_PINNED_IMAGES_CAPACITY_BYTES;
+}
+
+async function getPinnedImagesDiskCapacityBytes(): Promise<number | null> {
+  try {
+    await mkdir(PINNED_IMAGES_DIR, { recursive: true });
+    const fsStat = await statfs(PINNED_IMAGES_DIR);
+    const blockSize = Number((fsStat as { bsize?: number }).bsize ?? 0);
+    const blocks = Number((fsStat as { blocks?: number }).blocks ?? 0);
+
+    if (!Number.isFinite(blockSize) || !Number.isFinite(blocks) || blockSize <= 0 || blocks <= 0) {
+      return null;
+    }
+
+    return Math.floor(blockSize * blocks);
+  } catch {
+    return null;
+  }
+}
+
+async function getEffectivePinnedImagesCapacityBytes(): Promise<number> {
+  const configured = getConfiguredPinnedImagesCapacityBytes();
+  const diskCapacity = await getPinnedImagesDiskCapacityBytes();
+
+  if (diskCapacity === null) {
+    return configured;
+  }
+
+  return Math.max(1, Math.min(configured, diskCapacity));
 }
 
 function sanitizeClientId(value: string | null | undefined): string {
@@ -103,7 +131,7 @@ export function registerPinnedImageRoutes(app: Hono): void {
   app.get("/api/pinned-images/stats", async (c) => {
     const clientId = getRequestClientId(c.req.raw);
     const usage = await collectPinnedStorageUsageBytes(clientId);
-    const totalCapacityBytes = getPinnedImagesCapacityBytes();
+    const totalCapacityBytes = await getEffectivePinnedImagesCapacityBytes();
 
     return c.json({
       ok: true,
@@ -128,7 +156,7 @@ export function registerPinnedImageRoutes(app: Hono): void {
     }
 
     const usage = await collectPinnedStorageUsageBytes(clientId);
-    const totalCapacityBytes = getPinnedImagesCapacityBytes();
+    const totalCapacityBytes = await getEffectivePinnedImagesCapacityBytes();
     if (usage.allUsersUsedBytes + decoded.bytes.byteLength > totalCapacityBytes) {
       return c.json({ ok: false, error: "Pinned image storage is full" }, 507);
     }
