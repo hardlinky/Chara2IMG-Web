@@ -63,6 +63,16 @@ describe("recentJobsStorage", () => {
     expect(visible[0]?.provenance.templateFingerprint).toBe("fp-1");
   });
 
+  it("creates new jobs as visible (not hidden)", async () => {
+    await upsertRecentJob(createJob("job-visible", "2026-05-23T10:00:00.000Z"));
+
+    const stored = await getRecentJob("job-visible");
+    const visible = await listVisibleRecentJobs();
+
+    expect(stored?.hiddenAt).toBeNull();
+    expect(visible.find((job) => job.jobId === "job-visible")).toBeDefined();
+  });
+
   it("supports one-way hide and prunes hidden rows after 24 hours", async () => {
     await upsertRecentJob(createJob("job-hide", "2026-05-23T10:00:00.000Z"));
     await hideRecentJob("job-hide", "2026-05-23T12:00:00.000Z");
