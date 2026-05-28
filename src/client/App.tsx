@@ -101,8 +101,7 @@ const BASE_APP_TABS: AppTabDefinition[] = [
   { id: "setup", label: "Setup" },
   { id: "input", label: "Input" },
   { id: "jobs", label: "Jobs" },
-  { id: "output", label: "Output" },
-  { id: "admin", label: "Admin" }
+  { id: "output", label: "Output" }
 ];
 
 const SERVER_MANAGED_RUNPOD_KEY = "__SERVER_MANAGED_RUNPOD_KEY__";
@@ -368,8 +367,8 @@ export function App() {
         <>
           <h1>{`Chara2IMG Web ${APP_VERSION_LABEL}`}</h1>
           <div className="app-header-right">
-            <button className="btn btn-secondary" type="button" onClick={() => void onUpdateApp()} disabled={isUpdatingApp}>
-              {isUpdatingApp ? "Updating..." : "Update App"}
+            <button className="btn btn-secondary" type="button" onClick={() => setActiveTab("admin")}>
+              Admin
             </button>
             <p className="app-header-status">{`Client ID: ${currentClientId}`}</p>
           </div>
@@ -381,7 +380,6 @@ export function App() {
           <span>{`Endpoint: ${runEndpointId || "Not set"}`}</span>
           <span>{`Template: ${activeTemplate ? "Loaded" : "Not loaded"}`}</span>
           <span>{storageStatus}</span>
-          {updateStatus ? <span>{updateStatus}</span> : null}
         </>
       }
       panels={{
@@ -493,6 +491,16 @@ export function App() {
         ),
         admin: (
           <div className="section-stack">
+            <section className="setup-card">
+              <h2>Admin Maintenance</h2>
+              <p>Use this section for privileged operations.</p>
+              <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
+                <button className="btn btn-secondary" type="button" onClick={() => void onUpdateApp()} disabled={isUpdatingApp}>
+                  {isUpdatingApp ? "Updating..." : "Update App"}
+                </button>
+                {updateStatus ? <span>{updateStatus}</span> : null}
+              </div>
+            </section>
             {adminGranted ? <AdminTab enabled={true} /> : <AdminGate onGranted={setAdminGranted} />}
           </div>
         )

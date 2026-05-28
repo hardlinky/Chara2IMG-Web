@@ -13,6 +13,7 @@ type AppShellProps = {
 
 export function AppShell({ tabs, activeTab, onTabChange, headerRowOne, headerRowTwo, panels }: AppShellProps) {
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const panelIds = Object.keys(panels) as AppTabId[];
 
   useEffect(() => {
     function onScroll(): void {
@@ -39,19 +40,20 @@ export function AppShell({ tabs, activeTab, onTabChange, headerRowOne, headerRow
           <TopTabRail tabs={tabs} activeTab={activeTab} onTabChange={onTabChange} />
         </header>
 
-        {tabs.map((tab) => {
-          const selected = tab.id === activeTab;
+        {panelIds.map((panelId) => {
+          const selected = panelId === activeTab;
+          const hasTab = tabs.some((tab) => tab.id === panelId);
 
           return (
             <section
-              key={tab.id}
-              id={`panel-${tab.id}`}
+              key={panelId}
+              id={`panel-${panelId}`}
               role="tabpanel"
-              aria-labelledby={`tab-${tab.id}`}
+              aria-labelledby={hasTab ? `tab-${panelId}` : undefined}
               hidden={!selected}
               className="panel-surface tab-panel"
             >
-              {panels[tab.id]}
+              {panels[panelId]}
             </section>
           );
         })}
