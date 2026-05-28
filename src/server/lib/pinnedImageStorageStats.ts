@@ -293,6 +293,52 @@ export async function listPinnedImageClientUsage(): Promise<Array<{ clientId: st
     .sort((left, right) => right.bytes - left.bytes || left.clientId.localeCompare(right.clientId));
 }
 
+export async function previewPrunePinnedImagesToClients(
+  keepClientIds: string[]
+): Promise<{
+  keptEntries: number;
+  keptBytes: number;
+  keptClients: string[];
+  removedEntries: number;
+  removedBytes: number;
+  removedClients: string[];
+}> {
+  const manifest = await readManifest();
+  const keepSet = new Set(keepClientIds.map((value) => sanitizeClientId(value)));
+
+  let keptEntries = 0;
+  let keptBytes = 0;
+  let removedEntries = 0;
+  let removedBytes = 0;
+  const keptClients = new Set<string>();
+  const removedClients = new Set<string>();
+
+  for (const entry of manifest.entries) {
+    const entryClientId = sanitizeClientId(entry.clientId);
+    const sizeBytes = normalizeFiniteBytes(entry.sizeBytes);
+
+    if (keepSet.has(entryClientId)) {
+      keptEntries += 1;
+      keptBytes += sizeBytes;
+      keptClients.add(entryClientId);
+      continue;
+    }
+
+    removedEntries += 1;
+    removedBytes += sizeBytes;
+    removedClients.add(entryClientId);
+  }
+
+  return {
+    keptEntries,
+    keptBytes,
+    keptClients: [...keptClients].sort((left, right) => left.localeCompare(right)),
+    removedEntries,
+    removedBytes,
+    removedClients: [...removedClients].sort((left, right) => left.localeCompare(right))
+  };
+}
+
 export async function prunePinnedImagesToClients(
   keepClientIds: string[]
 ): Promise<{ removedEntries: number; keptEntries: number; filesToDelete: string[]; removedClients: string[] }> {

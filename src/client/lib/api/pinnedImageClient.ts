@@ -58,6 +58,16 @@ type PrunePinnedImagesPayload = {
   keepClientIds: string[];
 };
 
+type PrunePinnedImagesPreviewResponse = {
+  ok: true;
+  keptEntries: number;
+  keptBytes: number;
+  keptClients: string[];
+  removedEntries: number;
+  removedBytes: number;
+  removedClients: string[];
+};
+
 type PrunePinnedImagesResponse = {
   ok: true;
   removedEntries: number;
@@ -196,6 +206,24 @@ export async function prunePinnedImagesViaProxy(payload: PrunePinnedImagesPayloa
   const data = (await response.json().catch(() => null)) as PrunePinnedImagesResponse | { error?: string } | null;
   if (!response.ok || !data || !("ok" in data)) {
     throw new ProxyRequestError(response.status, `Pinned image prune request failed (${response.status})`, data);
+  }
+
+  return data;
+}
+
+export async function previewPrunePinnedImagesViaProxy(payload: PrunePinnedImagesPayload): Promise<PrunePinnedImagesPreviewResponse> {
+  const response = await fetch("/api/pinned-images/prune-preview", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    credentials: "include",
+    body: JSON.stringify(payload)
+  });
+
+  const data = (await response.json().catch(() => null)) as PrunePinnedImagesPreviewResponse | { error?: string } | null;
+  if (!response.ok || !data || !("ok" in data)) {
+    throw new ProxyRequestError(response.status, `Pinned image prune preview request failed (${response.status})`, data);
   }
 
   return data;

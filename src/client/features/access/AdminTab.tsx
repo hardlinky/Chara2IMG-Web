@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   fetchPinnedImageClientsViaProxy,
   getOrCreatePinnedImageClientId,
+  previewPrunePinnedImagesViaProxy,
   prunePinnedImagesViaProxy,
   type PinnedImageClientUsage
 } from "../../lib/api/pinnedImageClient";
@@ -104,6 +105,26 @@ export function AdminTab({ enabled }: AdminTabProps) {
     }
   }
 
+  async function previewPruneToSelected(): Promise<void> {
+    if (!enabled || keepClientIds.length === 0) {
+      return;
+    }
+
+    setLoading(true);
+    setStatus("");
+
+    try {
+      const preview = await previewPrunePinnedImagesViaProxy({ keepClientIds });
+      setStatus(
+        `Dry run: preserve ${preview.keptEntries} images (${formatBytes(preview.keptBytes)}), prune ${preview.removedEntries} images (${formatBytes(preview.removedBytes)}).`
+      );
+    } catch {
+      setStatus("Dry run request failed.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   if (!enabled) {
     return (
       <section className="setup-card">
@@ -155,6 +176,9 @@ export function AdminTab({ enabled }: AdminTabProps) {
             disabled={loading}
           >
             Add Current Client ID
+          </button>
+          <button className="btn btn-secondary" type="button" onClick={() => void previewPruneToSelected()} disabled={loading || selectedCount === 0}>
+            {loading ? "Working..." : "Dry Run"}
           </button>
           <button className="btn btn-primary" type="button" onClick={() => void pruneToSelected()} disabled={loading || selectedCount === 0}>
             {loading ? "Working..." : `Prune To ${selectedCount} Selected`}

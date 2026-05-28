@@ -9,6 +9,7 @@ import {
   getEffectivePinnedImagesCapacityBytes,
   listPinnedImageClientUsage,
   PINNED_IMAGES_DIR,
+  previewPrunePinnedImagesToClients,
   prunePinnedImagesToClients,
   reconcilePinnedImageConsumersForClient,
   releasePinnedImageReference,
@@ -263,6 +264,27 @@ export function registerPinnedImageRoutes(app: Hono): void {
       removedClients: pruneResult.removedClients,
       deletedFiles: pruneResult.filesToDelete.length,
       keptEntries: pruneResult.keptEntries
+    });
+  });
+
+  app.use("/api/pinned-images/prune-preview", requireAdminSession);
+  app.post("/api/pinned-images/prune-preview", async (c) => {
+    const payload = await c.req.json().catch(() => null);
+    const parsed = prunePinnedImagesRequestSchema.safeParse(payload);
+
+    if (!parsed.success) {
+      return c.json({ ok: false, error: "Invalid pinned image prune preview request" }, 400);
+    }
+
+    const preview = await previewPrunePinnedImagesToClients(parsed.data.keepClientIds);
+    return c.json({
+      ok: true,
+      keptEntries: preview.keptEntries,
+      keptBytes: preview.keptBytes,
+      keptClients: preview.keptClients,
+      removedEntries: preview.removedEntries,
+      removedBytes: preview.removedBytes,
+      removedClients: preview.removedClients
     });
   });
 
