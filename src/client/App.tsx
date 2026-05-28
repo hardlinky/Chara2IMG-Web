@@ -11,10 +11,10 @@ import { OutputsTab } from "./features/outputs/OutputsTab";
 import { ActiveWorkflowTemplate } from "./features/workflows/ActiveWorkflowTemplate";
 import { WorkflowImport } from "./features/workflows/WorkflowImport";
 import { useActiveWorkflowTemplate } from "./features/workflows/useActiveWorkflowTemplate";
+import { fetchPinnedImageStorageStatsViaProxy } from "./lib/api/pinnedImageClient";
 import { fetchSystemConfig, updateAppViaProxy } from "./lib/api/runpodProxyClient";
 import { getStoredEndpointId, saveEndpointId } from "./lib/endpointStorage";
 import { APP_VERSION_LABEL } from "./lib/appVersion";
-import { estimateRecentJobsStoredBytes } from "./lib/recentJobsStorage";
 import { submitRunAndPersistRecentJob } from "./lib/jobSubmission";
 import { getRunpodKey } from "./lib/runpodKeyStorage";
 import { sanitizeWorkflowForExport } from "./lib/workflowExport";
@@ -105,7 +105,9 @@ export function App() {
   const [jobActionError, setJobActionError] = useState("");
   const [isUpdatingApp, setIsUpdatingApp] = useState(false);
   const [updateStatus, setUpdateStatus] = useState("");
-  const [storageStatus, setStorageStatus] = useState("Storage: session 0 B | total used unavailable | capacity unavailable");
+  const [storageStatus, setStorageStatus] = useState(
+    "Storage: browser unavailable | server you unavailable | server all unavailable | server cap unavailable"
+  );
   const [editorApi, setEditorApi] = useState<{
     applyExternalDraftValues: (
       sourceTemplateFingerprint: string,
@@ -168,24 +170,28 @@ export function App() {
     let cancelled = false;
     setStorageStatus("Storage: checking...");
 
-    const storageEstimatePromise =
+    const browserStorageEstimatePromise =
       typeof navigator !== "undefined" && navigator.storage?.estimate
         ? navigator.storage.estimate().catch(() => null)
         : Promise.resolve<StorageEstimate | null>(null);
 
-    void Promise.all([estimateRecentJobsStoredBytes().catch(() => 0), storageEstimatePromise]).then(([sessionBytes, estimate]) => {
+    const serverStorageStatsPromise = fetchPinnedImageStorageStatsViaProxy().catch(() => null);
+
+    void Promise.all([browserStorageEstimatePromise, serverStorageStatsPromise]).then(([browserEstimate, serverStats]) => {
       if (cancelled) {
         return;
       }
 
-      const totalUsedBytes = typeof estimate?.usage === "number" ? estimate.usage : null;
-      const totalCapacityBytes = typeof estimate?.quota === "number" ? estimate.quota : null;
+      const browserUsedBytes = typeof browserEstimate?.usage === "number" ? browserEstimate.usage : null;
+      const browserUsedLabel = browserUsedBytes !== null ? formatBytes(browserUsedBytes) : "unavailable";
 
-      const sessionLabel = formatBytes(sessionBytes);
-      const totalUsedLabel = totalUsedBytes !== null ? formatBytes(totalUsedBytes) : "unavailable";
-      const totalCapacityLabel = totalCapacityBytes !== null ? formatBytes(totalCapacityBytes) : "unavailable";
+      const serverUserUsedLabel = serverStats ? formatBytes(serverStats.userUsedBytes) : "unavailable";
+      const serverAllUsedLabel = serverStats ? formatBytes(serverStats.allUsersUsedBytes) : "unavailable";
+      const serverCapacityLabel = serverStats ? formatBytes(serverStats.totalCapacityBytes) : "unavailable";
 
-      setStorageStatus(`Storage: session ${sessionLabel} | total used ${totalUsedLabel} | capacity ${totalCapacityLabel}`);
+      setStorageStatus(
+        `Storage: browser ${browserUsedLabel} | server you ${serverUserUsedLabel} | server all ${serverAllUsedLabel} | server cap ${serverCapacityLabel}`
+      );
     });
 
     return () => {

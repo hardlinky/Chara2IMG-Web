@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Hono } from "hono";
@@ -9,6 +9,61 @@ import { backupPinnedImageRequestSchema } from "../schemas/pinnedImages";
 const CURRENT_DIR = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = resolve(CURRENT_DIR, "../../..");
 const PINNED_IMAGES_DIR = resolve(PROJECT_ROOT, ".data", "pinned-images");
+const DEFAULT_PINNED_IMAGES_CAPACITY_BYTES = 10 * 1024 * 1024 * 1024;
+
+function getPinnedImagesCapacityBytes(): number {
+  const raw = process.env.PINNED_IMAGES_STORAGE_CAPACITY_BYTES;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : DEFAULT_PINNED_IMAGES_CAPACITY_BYTES;
+}
+
+function sanitizeClientId(value: string | null | undefined): string {
+  if (!value) {
+    return "anonymous";
+  }
+
+  const normalized = value.trim().replace(/[^a-zA-Z0-9_-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+  return normalized || "anonymous";
+}
+
+function getRequestClientId(request: Request): string {
+  const headerValue = request.headers.get("x-chara2img-client-id");
+  return sanitizeClientId(headerValue);
+}
+
+async function collectPinnedStorageUsageBytes(clientId: string): Promise<{ userUsedBytes: number; allUsersUsedBytes: number }> {
+  await mkdir(PINNED_IMAGES_DIR, { recursive: true });
+  const fileNames = await readdir(PINNED_IMAGES_DIR);
+
+  let userUsedBytes = 0;
+  let allUsersUsedBytes = 0;
+
+  for (const fileName of fileNames) {
+    const filePath = resolve(PINNED_IMAGES_DIR, fileName);
+    if (!filePath.startsWith(PINNED_IMAGES_DIR)) {
+      continue;
+    }
+
+    try {
+      const fileStat = await stat(filePath);
+      if (!fileStat.isFile()) {
+        continue;
+      }
+
+      allUsersUsedBytes += fileStat.size;
+      if (fileName.startsWith(`${clientId}-`)) {
+        userUsedBytes += fileStat.size;
+      }
+    } catch {
+      // Skip files that disappear mid-scan.
+    }
+  }
+
+  return {
+    userUsedBytes,
+    allUsersUsedBytes
+  };
+}
 
 function mimeTypeToExtension(mimeType: string): string {
   switch (mimeType) {
@@ -45,7 +100,21 @@ function decodeDataUrl(dataUrl: string): { mimeType: string; bytes: Uint8Array }
 export function registerPinnedImageRoutes(app: Hono): void {
   app.use("/api/pinned-images/*", requireInvitedSession);
 
+  app.get("/api/pinned-images/stats", async (c) => {
+    const clientId = getRequestClientId(c.req.raw);
+    const usage = await collectPinnedStorageUsageBytes(clientId);
+    const totalCapacityBytes = getPinnedImagesCapacityBytes();
+
+    return c.json({
+      ok: true,
+      userUsedBytes: usage.userUsedBytes,
+      allUsersUsedBytes: usage.allUsersUsedBytes,
+      totalCapacityBytes
+    });
+  });
+
   app.post("/api/pinned-images/backup", async (c) => {
+    const clientId = getRequestClientId(c.req.raw);
     const payload = await c.req.json().catch(() => null);
     const parsed = backupPinnedImageRequestSchema.safeParse(payload);
 
@@ -58,8 +127,14 @@ export function registerPinnedImageRoutes(app: Hono): void {
       return c.json({ ok: false, error: "Pinned image payload is not a valid data URL" }, 400);
     }
 
+    const usage = await collectPinnedStorageUsageBytes(clientId);
+    const totalCapacityBytes = getPinnedImagesCapacityBytes();
+    if (usage.allUsersUsedBytes + decoded.bytes.byteLength > totalCapacityBytes) {
+      return c.json({ ok: false, error: "Pinned image storage is full" }, 507);
+    }
+
     const extension = mimeTypeToExtension(parsed.data.mimeType);
-    const fileName = `${parsed.data.jobId}-${parsed.data.outputIndex}-${randomUUID()}.${extension}`;
+    const fileName = `${clientId}-${parsed.data.jobId}-${parsed.data.outputIndex}-${randomUUID()}.${extension}`;
     const filePath = join(PINNED_IMAGES_DIR, fileName);
 
     await mkdir(PINNED_IMAGES_DIR, { recursive: true });
