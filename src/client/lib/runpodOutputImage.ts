@@ -6,6 +6,41 @@ export type RunpodOutputImage = {
 
 export type RunpodImagePreview = RunpodOutputImage;
 
+function inferMimeTypeFromUrl(value: string): RunpodOutputImage["mimeType"] {
+  const sanitized = value.split("?")[0]?.toLowerCase() ?? "";
+  if (sanitized.endsWith(".jpg") || sanitized.endsWith(".jpeg")) {
+    return "image/jpeg";
+  }
+
+  if (sanitized.endsWith(".webp")) {
+    return "image/webp";
+  }
+
+  if (sanitized.endsWith(".gif")) {
+    return "image/gif";
+  }
+
+  return "image/png";
+}
+
+function fromPinnedImageUrl(value: string, sourcePath: string): RunpodOutputImage | null {
+  const normalized = value.trim();
+  if (!normalized) {
+    return null;
+  }
+
+  const isPinnedPath = normalized.startsWith("/api/pinned-images/") || /\/api\/pinned-images\//.test(normalized);
+  if (!isPinnedPath) {
+    return null;
+  }
+
+  return {
+    dataUrl: normalized,
+    mimeType: inferMimeTypeFromUrl(normalized),
+    sourcePath
+  };
+}
+
 function decodeBase64(input: string): Uint8Array | null {
   try {
     if (typeof atob === "function") {
@@ -115,7 +150,7 @@ function inspectAllImages(value: unknown, path: string, depth: number, results: 
   }
 
   if (typeof value === "string") {
-    const image = fromDataUrl(value, path) ?? fromBase64(value, path);
+    const image = fromDataUrl(value, path) ?? fromBase64(value, path) ?? fromPinnedImageUrl(value, path);
     if (image) {
       results.push(image);
     }
