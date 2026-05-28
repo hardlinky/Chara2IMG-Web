@@ -62,7 +62,11 @@ function sanitizeClientId(value: string | null | undefined): string {
   return normalized || "anonymous";
 }
 
-function getRequestClientId(request: Request): string {
+function getRequestClientId(request: Request, fallbackClientId?: string | null): string {
+  if (fallbackClientId) {
+    return sanitizeClientId(fallbackClientId);
+  }
+
   const headerValue = request.headers.get("x-chara2img-client-id");
   return sanitizeClientId(headerValue);
 }
@@ -151,7 +155,7 @@ function decodeDataUrl(dataUrl: string): { mimeType: string; bytes: Uint8Array }
 
 export function registerPinnedImageRoutes(app: Hono): void {
   app.get("/api/pinned-images/stats", async (c) => {
-    const clientId = getRequestClientId(c.req.raw);
+    const clientId = getRequestClientId(c.req.raw, c.req.query("clientId"));
     const usage = await collectPinnedStorageUsageBytes(clientId);
     const totalCapacityBytes = await getEffectivePinnedImagesCapacityBytes();
 
@@ -165,13 +169,14 @@ export function registerPinnedImageRoutes(app: Hono): void {
 
   app.use("/api/pinned-images/backup", requireInvitedSession);
   app.post("/api/pinned-images/backup", async (c) => {
-    const clientId = getRequestClientId(c.req.raw);
     const payload = await c.req.json().catch(() => null);
     const parsed = backupPinnedImageRequestSchema.safeParse(payload);
 
     if (!parsed.success) {
       return c.json({ ok: false, error: "Invalid pinned image backup request" }, 400);
     }
+
+    const clientId = getRequestClientId(c.req.raw, parsed.data.clientId ?? null);
 
     const decoded = decodeDataUrl(parsed.data.dataUrl);
     if (!decoded || decoded.mimeType !== parsed.data.mimeType) {

@@ -3,6 +3,7 @@ import { ProxyRequestError } from "./runpodProxyClient";
 const PINNED_IMAGE_CLIENT_ID_STORAGE_KEY = "chara2imgPinnedImageClientId";
 
 type BackupPinnedImagePayload = {
+  clientId?: string;
   jobId: string;
   outputIndex: number;
   dataUrl: string;
@@ -38,14 +39,17 @@ function getOrCreatePinnedImageClientId(): string {
 }
 
 export async function backupPinnedImageViaProxy(payload: BackupPinnedImagePayload): Promise<BackupPinnedImageResponse> {
+  const clientId = getOrCreatePinnedImageClientId();
   const response = await fetch("/api/pinned-images/backup", {
     method: "POST",
     headers: {
-      "Content-Type": "application/json",
-      "x-chara2img-client-id": getOrCreatePinnedImageClientId()
+      "Content-Type": "application/json"
     },
     credentials: "include",
-    body: JSON.stringify(payload)
+    body: JSON.stringify({
+      ...payload,
+      clientId
+    })
   });
 
   const data = (await response.json().catch(() => null)) as BackupPinnedImageResponse | { error?: string } | null;
@@ -57,27 +61,16 @@ export async function backupPinnedImageViaProxy(payload: BackupPinnedImagePayloa
 }
 
 export async function fetchPinnedImageStorageStatsViaProxy(): Promise<PinnedImageStorageStatsResponse> {
-  try {
-    const response = await fetch("/api/pinned-images/stats", {
-      method: "GET",
-      headers: {
-        "x-chara2img-client-id": getOrCreatePinnedImageClientId()
-      },
-      credentials: "include"
-    });
+  const clientId = encodeURIComponent(getOrCreatePinnedImageClientId());
+  const response = await fetch(`/api/pinned-images/stats?clientId=${clientId}`, {
+    method: "GET",
+    credentials: "include"
+  });
 
-    const data = (await response.json().catch(() => null)) as PinnedImageStorageStatsResponse | { error?: string } | null;
-    if (!response.ok || !data || !("ok" in data) || data.ok !== true) {
-      throw new ProxyRequestError(response.status, `Pinned image storage stats request failed (${response.status})`, data);
-    }
-
-    return data;
-  } catch {
-    return {
-      ok: true,
-      userUsedBytes: 0,
-      allUsersUsedBytes: 0,
-      totalCapacityBytes: 0
-    };
+  const data = (await response.json().catch(() => null)) as PinnedImageStorageStatsResponse | { error?: string } | null;
+  if (!response.ok || !data || !("ok" in data) || data.ok !== true) {
+    throw new ProxyRequestError(response.status, `Pinned image storage stats request failed (${response.status})`, data);
   }
+
+  return data;
 }

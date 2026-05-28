@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const backupPinnedImageRequestSchema = z.object({
+  clientId: z.string().min(1).max(128).optional(),
   jobId: z.string().min(1),
   outputIndex: z.number().int().nonnegative(),
   dataUrl: z.string().min(1),
