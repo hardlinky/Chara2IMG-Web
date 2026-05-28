@@ -1,10 +1,16 @@
 import type { Context, MiddlewareHandler } from "hono";
 import { deleteCookie, getSignedCookie, setSignedCookie } from "hono/cookie";
+import { createHash } from "node:crypto";
+import { getAdminPasskey } from "../security/adminPasskey";
 
 const SESSION_COOKIE_NAME = "invited_session";
 const SESSION_COOKIE_VALUE = "invited";
 const ADMIN_SESSION_COOKIE_NAME = "admin_session";
-const ADMIN_SESSION_COOKIE_VALUE = "admin";
+
+function getAdminSessionCookieValue(): string {
+  const digest = createHash("sha256").update(getAdminPasskey()).digest("hex").slice(0, 24);
+  return `admin:${digest}`;
+}
 
 function getCookieSecret(): string {
   return process.env.COOKIE_SECRET ?? "";
@@ -37,7 +43,7 @@ export async function hasInvitedSession(c: Context): Promise<boolean> {
 }
 
 export async function issueAdminSessionCookie(c: Context): Promise<void> {
-  await setSignedCookie(c, ADMIN_SESSION_COOKIE_NAME, ADMIN_SESSION_COOKIE_VALUE, getCookieSecret(), getCookieOptions());
+  await setSignedCookie(c, ADMIN_SESSION_COOKIE_NAME, getAdminSessionCookieValue(), getCookieSecret(), getCookieOptions());
 }
 
 export function clearAdminSessionCookie(c: Context): void {
@@ -49,7 +55,7 @@ export function clearAdminSessionCookie(c: Context): void {
 
 export async function hasAdminSession(c: Context): Promise<boolean> {
   const signedValue = await getSignedCookie(c, getCookieSecret(), ADMIN_SESSION_COOKIE_NAME);
-  return signedValue === ADMIN_SESSION_COOKIE_VALUE;
+  return signedValue === getAdminSessionCookieValue();
 }
 
 export const requireInvitedSession: MiddlewareHandler = async (c, next) => {
