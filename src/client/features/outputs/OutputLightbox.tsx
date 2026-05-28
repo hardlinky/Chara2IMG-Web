@@ -26,6 +26,7 @@ export function OutputLightbox({
   canPinMore = true
 }: OutputLightboxProps) {
   const [imageDimensions, setImageDimensions] = useState<Record<number, { width: number; height: number }>>({});
+  const visibleImages = images.slice(0, maxVisible);
 
   const handleImageLoad = (index: number, event: SyntheticEvent<HTMLImageElement>) => {
     const { naturalWidth, naturalHeight } = event.currentTarget;
@@ -61,7 +62,7 @@ export function OutputLightbox({
       }}
     >
       <div className="outputs-lightbox outputs-image-grid">
-        {images.map((image, index) => {
+        {visibleImages.map((image, index) => {
           const dimensions = imageDimensions[index] ?? { width: 1024, height: 1024 };
 
           return (
@@ -86,7 +87,6 @@ export function OutputLightbox({
                     onExportWorkflow={onExportWorkflow}
                     onLoadInputs={onLoadInputs}
                     canPinMore={canPinMore}
-                    maxVisible={index < maxVisible}
                   />
                 </div>
               )}

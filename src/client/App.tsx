@@ -101,7 +101,11 @@ export function App() {
     saveEndpointId(value);
   }
 
-  const recentJobs = useRecentJobs({ endpointId: runEndpointId, apiKey: effectiveRunpodKey || undefined });
+  const recentJobs = useRecentJobs({
+    endpointId: runEndpointId,
+    apiKey: effectiveRunpodKey || undefined,
+    includeOutputClusters: activeTab === "output"
+  });
 
   const runningJobsCount = useMemo(
     () => recentJobs.visibleJobs.filter((job) => isActiveRunpodStatus(job.lifecycle.status)).length,

@@ -34,7 +34,7 @@ const sampleImages = [
 ];
 
 describe("OutputLightbox", () => {
-  it("renders job-scoped image tiles and hidden class for paginated overflow", () => {
+  it("renders only visible job-scoped image tiles when paginating", () => {
     const html = renderToStaticMarkup(
       <OutputLightbox
         imagePrefix="job-1"
@@ -46,8 +46,7 @@ describe("OutputLightbox", () => {
     expect(html).toContain("outputs-image-grid");
     expect(html).toContain("outputs-lightbox");
     expect(html).toContain("Open job-1 image 1");
-    expect(html).toContain("Open job-1 image 2");
-    expect(html).toContain("outputs-image-tile-hidden");
+    expect(html).not.toContain("Open job-1 image 2");
   });
 
   it("renders remove buttons when onRemoveImage is provided", () => {

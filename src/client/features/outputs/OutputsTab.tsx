@@ -9,6 +9,7 @@ import "../../styles/jobsOutput.css";
 type OutputsGalleryMode = "per-job" | "all-images";
 type OutputsPinFilter = "all" | "pinned" | "unpinned";
 const MOBILE_OUTPUT_DENSITIES: readonly OutputDensity[] = ["compact", "balanced"];
+const ALL_IMAGES_PAGE_SIZE = 48;
 
 type OutputsTabProps = {
   clusters: RecentJobOutputCluster[];
@@ -29,6 +30,7 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
   const gallery = useOutputGallery(clusters);
   const [galleryMode, setGalleryMode] = useState<OutputsGalleryMode>("per-job");
   const [pinFilter, setPinFilter] = useState<OutputsPinFilter>("all");
+  const [allImagesVisibleCount, setAllImagesVisibleCount] = useState(ALL_IMAGES_PAGE_SIZE);
   const [isMobile, setIsMobile] = useState(() => (typeof window !== "undefined" ? window.matchMedia("(max-width: 600px)").matches : false));
 
   useEffect(() => {
@@ -101,6 +103,14 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
       ),
     [filteredClusters]
   );
+  const visibleAllOutputImages = useMemo(
+    () => allOutputImages.slice(0, allImagesVisibleCount),
+    [allImagesVisibleCount, allOutputImages]
+  );
+
+  useEffect(() => {
+    setAllImagesVisibleCount(ALL_IMAGES_PAGE_SIZE);
+  }, [galleryMode, pinFilter]);
 
   // Expose openJobOutputs globally for cross-tab hack
   if (typeof window !== "undefined") {
@@ -192,7 +202,7 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
         </div>
       ) : (
         <div className={getGalleryClassName(gallery.density)}>
-          {allOutputImages.map((outputImage) => (
+          {visibleAllOutputImages.map((outputImage) => (
             <article key={`${outputImage.jobId}-${outputImage.outputIndex}`} className="outputs-cluster-card">
               <OutputImageCard
                 image={outputImage}
@@ -209,6 +219,17 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
               </div>
             </article>
           ))}
+          {visibleAllOutputImages.length < allOutputImages.length ? (
+            <div className="outputs-job-view-more">
+              <button
+                className="btn btn-secondary"
+                type="button"
+                onClick={() => setAllImagesVisibleCount((current) => current + ALL_IMAGES_PAGE_SIZE)}
+              >
+                Load more images
+              </button>
+            </div>
+          ) : null}
         </div>
       )}
     </section>

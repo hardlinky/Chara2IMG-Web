@@ -26,6 +26,7 @@ import {
 type UseRecentJobsOptions = {
   endpointId?: string;
   apiKey?: string;
+  includeOutputClusters?: boolean;
 };
 
 export const RECENT_JOB_PAGE_SIZE = 10;
@@ -425,6 +426,7 @@ export async function toggleRecentJobOutputPinnedState(jobId: string, outputInde
 export function useRecentJobs(options: UseRecentJobsOptions = {}) {
   const endpointId = options.endpointId;
   const apiKey = options.apiKey;
+  const includeOutputClusters = options.includeOutputClusters ?? true;
   const [jobs, setJobs] = useState<RecentJobRecord[]>([]);
   const [statusFilter, setStatusFilterState] = useState<RecentJobStatusFilter>(() => getStoredStatusFilter());
   const [page, setPageState] = useState(1);
@@ -569,7 +571,13 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
     [visibleJobs]
   );
   const canPinMoreJobs = true;
-  const completedOutputClusters = useMemo(() => projectRecentJobOutputClusters(visibleJobs), [visibleJobs]);
+  const completedOutputClusters = useMemo(() => {
+    if (!includeOutputClusters) {
+      return [];
+    }
+
+    return projectRecentJobOutputClusters(visibleJobs);
+  }, [includeOutputClusters, visibleJobs]);
   const filteredJobs = useMemo(() => filterJobsByStatus(visibleJobs, statusFilter), [statusFilter, visibleJobs]);
   const pageCount = Math.max(1, Math.ceil(filteredJobs.length / RECENT_JOB_PAGE_SIZE));
 
