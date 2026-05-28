@@ -320,9 +320,6 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
                     </div>
                   )}
                 </Item>
-                <div className="outputs-cluster-meta">
-                  <span>{cluster.jobId}</span>
-                </div>
               </article>
                 );
               })()
@@ -374,10 +371,6 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
                     </div>
                   )}
                 </Item>
-                <div className="outputs-cluster-meta">
-                  <span>{outputImage.jobId}</span>
-                  <span>{`#${outputImage.outputIndex + 1}`}</span>
-                </div>
               </article>
                 );
               })()

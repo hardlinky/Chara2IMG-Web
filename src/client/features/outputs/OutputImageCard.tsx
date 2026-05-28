@@ -64,6 +64,23 @@ function ViewJobOutputsIcon() {
   );
 }
 
+function CachedSourceIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" focusable="false">
+      <path d="M7 8V6a5 5 0 0 1 10 0v2m-9 0h8a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2Z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function ArchivedSourceIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" focusable="false">
+      <path d="M4 7h16v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7Z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M3 4h18v3H3zM9 12h6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function OutputImageCard({
   image,
   imagePrefix,
@@ -80,7 +97,8 @@ export function OutputImageCard({
   badge
 }: OutputImageCardProps) {
   const showBottomActions = Boolean(onExportWorkflow || onLoadInputs || onViewJobOutputs);
-  const storageSourceLabel = isServerBackedImageUrl(image.dataUrl) ? "Server backup" : "Browser cache";
+  const isArchived = isServerBackedImageUrl(image.dataUrl);
+  const storageSourceLabel = isArchived ? "Archived" : "Cached";
 
   return (
     <div className={`outputs-image-tile-wrapper ${maxVisible ? "" : "outputs-image-tile-hidden"}`.trim()}>
@@ -89,7 +107,10 @@ export function OutputImageCard({
       </button>
       <div className="outputs-image-caption-row">
         <span className="outputs-image-caption-label">{`${imagePrefix} #${imageLabel}`}</span>
-        <span className="outputs-image-source-chip">{storageSourceLabel}</span>
+        <span className="outputs-image-source-chip" title={isArchived ? "Loaded from server backup" : "Loaded from browser cache"}>
+          {isArchived ? <ArchivedSourceIcon /> : <CachedSourceIcon />}
+          <span>{storageSourceLabel}</span>
+        </span>
       </div>
       {badge ? <span className="outputs-count-badge">{badge}</span> : null}
       {onTogglePin ? (
