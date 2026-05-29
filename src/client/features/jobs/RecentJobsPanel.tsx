@@ -387,25 +387,15 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
         </ul>
       ) : null}
 
-      <nav className="jobs-pagination" aria-label="recent jobs pagination">
+      <div className="jobs-pagination" aria-label="recent jobs pagination">
         <button className="btn btn-secondary" type="button" disabled={props.page <= 1} onClick={() => props.onPageChange(props.page - 1)}>
-          Prev
+          Prev page
         </button>
-        {props.pageNumbers.map((pageNumber) => (
-          <button
-            key={pageNumber}
-            className="btn btn-secondary"
-            type="button"
-            aria-current={pageNumber === props.page ? "page" : undefined}
-            onClick={() => props.onPageChange(pageNumber)}
-          >
-            {pageNumber}
-          </button>
-        ))}
+        <span>{`Page ${props.page} / ${props.pageCount}`}</span>
         <button className="btn btn-secondary" type="button" disabled={props.page >= props.pageCount} onClick={() => props.onPageChange(props.page + 1)}>
-          Next
+          Next page
         </button>
-      </nav>
+      </div>
     </section>
   );
 }
