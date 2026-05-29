@@ -285,6 +285,16 @@ export async function downloadPinnedImagesArchiveBatchViaProxy(clientIds: string
     body: JSON.stringify({ clientIds })
   });
 
+  // Mixed-version deployments can serve a newer client before the backend process
+  // restarts onto a build that includes /archive-batch. Fall back to the legacy
+  // single-client archive endpoint so downloads still work.
+  if (response.status === 404) {
+    for (const clientId of clientIds) {
+      await downloadPinnedImagesArchiveViaProxy(clientId);
+    }
+    return;
+  }
+
   if (!response.ok) {
     const data = (await response.json().catch(() => null)) as { error?: string } | null;
     throw new ProxyRequestError(response.status, `Pinned image archive batch download failed (${response.status})`, data);
