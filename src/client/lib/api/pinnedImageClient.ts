@@ -99,13 +99,14 @@ type TransientPinnedArchiveItem = {
   outputIndex: number;
   dataUrl: string;
   mimeType: "image/png" | "image/jpeg" | "image/webp" | "image/gif";
+  workflowTemplateFileName?: string;
+  workflowInputs?: Record<string, unknown>;
+  workflowJson?: Record<string, unknown>;
 };
 
 type TransientPinnedArchiveWorkflow = {
-  jobId: string;
-  workflowFileName?: string;
+  workflowFileName: string;
   workflowTemplate?: Record<string, unknown>;
-  workflowInputs?: Record<string, unknown>;
   workflowJson?: Record<string, unknown>;
 };
 
@@ -329,7 +330,7 @@ function buildPinnedWorkflowMetadata(job: RecentJobRecord): {
 async function collectPinnedArchivePayload(): Promise<PinnedArchivePayload> {
   const jobs = await listRecentJobs();
   const transientPinnedItems: TransientPinnedArchiveItem[] = [];
-  const transientWorkflowsByJobId = new Map<string, TransientPinnedArchiveWorkflow>();
+  const transientWorkflowsByFileName = new Map<string, TransientPinnedArchiveWorkflow>();
   const archivedPinnedFileNames = new Set<string>();
 
   for (const job of jobs) {
@@ -346,11 +347,13 @@ async function collectPinnedArchivePayload(): Promise<PinnedArchivePayload> {
     const pinnedIndices = new Set(job.pinnedOutputIndices ?? []);
     const allOutputsPinnedByLegacyFlag = Boolean(job.pinnedAt) && pinnedIndices.size === 0;
     const workflowMetadata = buildPinnedWorkflowMetadata(job);
+    const workflowTemplateFileName = (workflowMetadata.workflowFileName?.trim() || "workflow").replace(/[^a-zA-Z0-9._-]+/g, "-");
     const hasWorkflowMetadata = Boolean(workflowMetadata.workflowTemplate || workflowMetadata.workflowJson);
-    if (hasWorkflowMetadata && !transientWorkflowsByJobId.has(job.jobId)) {
-      transientWorkflowsByJobId.set(job.jobId, {
-        jobId: job.jobId,
-        ...workflowMetadata
+    if (hasWorkflowMetadata && !transientWorkflowsByFileName.has(workflowTemplateFileName)) {
+      transientWorkflowsByFileName.set(workflowTemplateFileName, {
+        workflowFileName: workflowTemplateFileName,
+        workflowTemplate: workflowMetadata.workflowTemplate,
+        workflowJson: workflowMetadata.workflowJson
       });
     }
 
@@ -381,14 +384,17 @@ async function collectPinnedArchivePayload(): Promise<PinnedArchivePayload> {
         jobId: job.jobId,
         outputIndex,
         dataUrl: image.dataUrl,
-        mimeType: image.mimeType
+        mimeType: image.mimeType,
+        workflowTemplateFileName,
+        workflowInputs: workflowMetadata.workflowInputs,
+        workflowJson: workflowMetadata.workflowJson && !workflowMetadata.workflowTemplate ? workflowMetadata.workflowJson : undefined
       });
     }
   }
 
   return {
     transientPinnedItems,
-    transientWorkflows: [...transientWorkflowsByJobId.values()],
+    transientWorkflows: [...transientWorkflowsByFileName.values()],
     archivedPinnedFileNames: [...archivedPinnedFileNames].sort((left, right) => left.localeCompare(right))
   };
 }
