@@ -146,8 +146,23 @@ function renderInputControl(
         <input
           className={className}
           type="number"
-          value={typeof value === "number" ? value : 0}
-          onChange={(event) => setValue(control.id, Number(event.target.value))}
+          value={typeof value === "number" || typeof value === "string" ? value : ""}
+          onChange={(event) => {
+            const rawValue = event.target.value;
+            if (rawValue === "") {
+              setValue(control.id, "");
+              return;
+            }
+
+            if (!/^-?\d*(\.\d+)?$/.test(rawValue)) {
+              return;
+            }
+
+            const parsed = Number(rawValue);
+            if (Number.isFinite(parsed)) {
+              setValue(control.id, parsed);
+            }
+          }}
         />
       );
     case "boolean":

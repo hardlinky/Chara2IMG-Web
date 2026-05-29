@@ -64,7 +64,8 @@ function validateNumberConstraints(control: DynamicInputControl, value: number):
 
 export function validateInlineControl(
   control: DynamicInputControl,
-  value: DynamicInputValue
+  value: DynamicInputValue,
+  enforceRunRules: boolean = false
 ): DynamicInputInlineValidationResult {
   const requiredError = validateRequired(control, value);
   if (requiredError) {
@@ -80,6 +81,25 @@ export function validateInlineControl(
   }
 
   if (control.kind === "number") {
+    if (value === "") {
+      if (enforceRunRules) {
+        return {
+          valid: false,
+          errors: [
+            {
+              controlId: control.id,
+              message: `${control.name} must be numeric.`
+            }
+          ]
+        };
+      }
+
+      return {
+        valid: true,
+        errors: []
+      };
+    }
+
     if (typeof value !== "number") {
       return {
         valid: false,
@@ -197,7 +217,7 @@ export function validateDraftForRun(
 ): DynamicInputRunValidationResult {
   const errors = controls.flatMap((control) => {
     const candidate = draftValues[control.id] ?? control.defaultValue;
-    return validateInlineControl(control, candidate).errors;
+    return validateInlineControl(control, candidate, true).errors;
   });
 
   const nameErrors = validateSectionNames(controls, draftValues);
