@@ -173,6 +173,7 @@ export function consumeSuccessfulRunpodJobState(endpointId: string, jobId: strin
 
 export function removeUnknownRunpodJobStates(endpointId: string, knownIds: string[]): void {
   const allowed = new Set(knownIds);
+  let changed = false;
 
   for (const [key, record] of store.entries()) {
     if (record.endpointId !== endpointId) {
@@ -181,7 +182,23 @@ export function removeUnknownRunpodJobStates(endpointId: string, knownIds: strin
 
     if (!allowed.has(record.jobId)) {
       store.delete(key);
+      changed = true;
     }
+  }
+
+  for (const [key, record] of persistedSuccessfulStore.entries()) {
+    if (record.endpointId !== endpointId) {
+      continue;
+    }
+
+    if (!allowed.has(record.jobId)) {
+      persistedSuccessfulStore.delete(key);
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    persistSuccessfulStates();
   }
 }
 

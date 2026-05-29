@@ -26,6 +26,10 @@ type ManifestEntry = {
   refCount: number;
   consumers: string[];
   updatedAt: string;
+  workflowFileName?: string;
+  workflowTemplate?: Record<string, unknown>;
+  workflowInputs?: Record<string, unknown>;
+  workflowJson?: Record<string, unknown>;
 };
 
 type PinnedImagesManifest = {
@@ -89,8 +93,27 @@ function normalizeManifestEntries(entries: unknown[], fallbackClientId?: string)
       consumers: Array.isArray(entry.consumers)
         ? [...new Set(entry.consumers.filter((consumer): consumer is string => typeof consumer === "string" && consumer.trim().length > 0))]
         : [],
-      updatedAt: entry.updatedAt
+      updatedAt: entry.updatedAt,
+      workflowFileName:
+        typeof (entry as { workflowFileName?: unknown }).workflowFileName === "string"
+          ? sanitizeWorkflowFileName((entry as { workflowFileName?: unknown }).workflowFileName as string)
+          : undefined,
+      workflowJson: isWorkflowJson((entry as { workflowJson?: unknown }).workflowJson)
+        ? (entry as { workflowJson: Record<string, unknown> }).workflowJson
+        : undefined
     }));
+}
+
+function isWorkflowJson(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function sanitizeWorkflowFileName(value: string): string {
+  return value.trim().replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "") || "workflow";
+}
+
+function normalizeWorkflowJson(value: unknown): Record<string, unknown> | undefined {
+  return isWorkflowJson(value) ? value : undefined;
 }
 
 function dedupeManifestEntries(entries: ManifestEntry[]): ManifestEntry[] {
@@ -194,7 +217,11 @@ async function writeManifest(manifest: PinnedImagesManifest): Promise<void> {
       consumers: Array.isArray(entry.consumers)
         ? [...new Set(entry.consumers.filter((consumer): consumer is string => typeof consumer === "string" && consumer.trim().length > 0))]
         : [],
-      updatedAt: entry.updatedAt
+      updatedAt: entry.updatedAt,
+      workflowFileName: entry.workflowFileName,
+      workflowTemplate: entry.workflowTemplate,
+      workflowInputs: entry.workflowInputs,
+      workflowJson: entry.workflowJson
     });
     groupedByClient.set(normalizedClientId, current);
   }
@@ -299,12 +326,23 @@ export function buildPinnedImageConsumerKey(clientId: string, jobId: string, out
   return `${sanitizeClientId(clientId)}:${jobId}:${Math.max(0, Math.floor(outputIndex))}`;
 }
 
-export async function registerPinnedImageBackup(fileName: string, clientId: string, sizeBytes: number, contentHash: string, consumerKey: string): Promise<void> {
+export async function registerPinnedImageBackup(
+  fileName: string,
+  clientId: string,
+  sizeBytes: number,
+  contentHash: string,
+  consumerKey: string,
+  workflowMetadata?: { workflowFileName?: string; workflowJson?: Record<string, unknown> }
+): Promise<void> {
   const manifest = await readManifest();
   const normalizedClientId = sanitizeClientId(clientId);
   const normalizedSize = normalizeFiniteBytes(sizeBytes);
   const normalizedConsumer = normalizeConsumerKey(consumerKey);
   const now = new Date().toISOString();
+  const workflowFileName = typeof workflowMetadata?.workflowFileName === "string"
+    ? sanitizeWorkflowFileName(workflowMetadata.workflowFileName)
+    : undefined;
+  const workflowJson = normalizeWorkflowJson(workflowMetadata?.workflowJson);
 
   const existingIndex = manifest.entries.findIndex((entry) => entry.fileName === fileName);
   const nextEntry: ManifestEntry = {
@@ -314,7 +352,9 @@ export async function registerPinnedImageBackup(fileName: string, clientId: stri
     sizeBytes: normalizedSize,
     refCount: 1,
     consumers: [normalizedConsumer],
-    updatedAt: now
+    updatedAt: now,
+    workflowFileName,
+    workflowJson
   };
 
   if (existingIndex >= 0) {
@@ -330,7 +370,9 @@ export async function registerPinnedImageBackup(fileName: string, clientId: stri
       sizeBytes: normalizedSize,
       refCount: nextConsumers.length > 0 ? nextConsumers.length : Math.max(1, existing.refCount),
       consumers: nextConsumers,
-      updatedAt: now
+      updatedAt: now,
+      workflowFileName: workflowFileName ?? existing.workflowFileName,
+      workflowJson: workflowJson ?? existing.workflowJson
     };
   } else {
     manifest.entries.push(nextEntry);
@@ -396,6 +438,10 @@ export async function listPinnedImageEntriesForClient(clientId: string): Promise
   refCount: number;
   consumers: string[];
   updatedAt: string;
+  workflowFileName?: string;
+  workflowTemplate?: Record<string, unknown>;
+  workflowInputs?: Record<string, unknown>;
+  workflowJson?: Record<string, unknown>;
 }>> {
   const manifest = await readManifest();
   const normalizedClientId = sanitizeClientId(clientId);
@@ -408,7 +454,9 @@ export async function listPinnedImageEntriesForClient(clientId: string): Promise
       sizeBytes: normalizeFiniteBytes(entry.sizeBytes),
       refCount: Math.max(1, normalizeFiniteBytes(entry.refCount ?? 1)),
       consumers: [...entry.consumers],
-      updatedAt: entry.updatedAt
+      updatedAt: entry.updatedAt,
+      workflowFileName: entry.workflowFileName,
+      workflowJson: entry.workflowJson
     }))
     .sort((left, right) => left.fileName.localeCompare(right.fileName));
 }

@@ -29,6 +29,36 @@ import {
   releasePinnedImageRequestSchema
 } from "../schemas/pinnedImages";
 
+function sanitizeWorkflowExport(workflow: Record<string, unknown>): Record<string, unknown> {
+  const cloned = structuredClone(workflow) as Record<string, unknown>;
+
+  for (const node of Object.values(cloned)) {
+    if (!node || typeof node !== "object" || Array.isArray(node)) {
+      continue;
+    }
+
+    const inputs = (node as { inputs?: unknown }).inputs;
+    if (!inputs || typeof inputs !== "object" || Array.isArray(inputs)) {
+      continue;
+    }
+
+    for (const [key, value] of Object.entries(inputs as Record<string, unknown>)) {
+      const normalizedKey = key.toLowerCase();
+      const normalizedValue = typeof value === "string" ? value.trim().toLowerCase() : "";
+
+      if (!normalizedValue) {
+        continue;
+      }
+
+      if (normalizedValue.startsWith("data:image/") || normalizedKey === "base64_data") {
+        (inputs as Record<string, unknown>)[key] = "";
+      }
+    }
+  }
+
+  return cloned;
+}
+
 function getRequestClientId(request: Request, fallbackClientId?: string | null): string {
   if (fallbackClientId) {
     return sanitizeClientId(fallbackClientId);
@@ -74,6 +104,48 @@ function computeContentHash(bytes: Uint8Array): string {
   return createHash("sha256").update(bytes).digest("hex");
 }
 
+function sanitizeArchiveFileNamePart(value: string | undefined, fallback: string): string {
+  const source = (value ?? fallback).trim();
+  const sanitized = source.replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+  return sanitized || fallback;
+}
+
+function buildWorkflowArchivePayload(entry: {
+  workflowTemplate?: Record<string, unknown>;
+  workflowInputs?: Record<string, unknown>;
+  workflowJson?: Record<string, unknown>;
+}): Record<string, unknown> | null {
+  if (entry.workflowTemplate) {
+    if (entry.workflowInputs && Object.keys(entry.workflowInputs).length > 0) {
+      return sanitizeWorkflowExport({
+        workflow: entry.workflowTemplate,
+        ...entry.workflowInputs
+      });
+    }
+
+    return sanitizeWorkflowExport(entry.workflowTemplate);
+  }
+
+  return entry.workflowJson ? sanitizeWorkflowExport(entry.workflowJson) : null;
+}
+
+function parseConsumerKey(consumerKey: string): { jobId: string; outputIndex: number } | null {
+  const parts = consumerKey.split(":");
+  if (parts.length !== 3) {
+    return null;
+  }
+
+  const outputIndex = Number(parts[2]);
+  if (!Number.isInteger(outputIndex) || outputIndex < 0) {
+    return null;
+  }
+
+  return {
+    jobId: parts[1] ?? "job",
+    outputIndex
+  };
+}
+
 function parsePinnedImageFileNameFromUrl(imageUrl: string): string | null {
   const trimmed = imageUrl.trim();
   const decoded = decodeURIComponent(trimmed);
@@ -117,6 +189,12 @@ export function registerPinnedImageRoutes(app: Hono): void {
 
     const clientId = getRequestClientId(c.req.raw, parsed.data.clientId ?? null);
     const consumerKey = buildPinnedImageConsumerKey(clientId, parsed.data.jobId, parsed.data.outputIndex);
+    const workflowMetadata = parsed.data.workflowJson
+      ? {
+          workflowFileName: parsed.data.workflowFileName,
+          workflowJson: parsed.data.workflowJson
+        }
+      : undefined;
 
     const decoded = decodeDataUrl(parsed.data.dataUrl);
     if (!decoded || decoded.mimeType !== parsed.data.mimeType) {
@@ -126,7 +204,7 @@ export function registerPinnedImageRoutes(app: Hono): void {
     const contentHash = computeContentHash(decoded.bytes);
     const existing = await findPinnedImageByHash(clientId, contentHash);
     if (existing) {
-      await registerPinnedImageBackup(existing.fileName, clientId, existing.sizeBytes, existing.contentHash, consumerKey);
+      await registerPinnedImageBackup(existing.fileName, clientId, existing.sizeBytes, existing.contentHash, consumerKey, workflowMetadata);
       return c.json({
         ok: true,
         imageUrl: `/api/pinned-images/${encodeURIComponent(existing.fileName)}`,
@@ -146,7 +224,7 @@ export function registerPinnedImageRoutes(app: Hono): void {
 
     await mkdir(PINNED_IMAGES_DIR, { recursive: true });
     await writeFile(filePath, decoded.bytes);
-    await registerPinnedImageBackup(fileName, clientId, decoded.bytes.byteLength, contentHash, consumerKey);
+    await registerPinnedImageBackup(fileName, clientId, decoded.bytes.byteLength, contentHash, consumerKey, workflowMetadata);
 
     return c.json({
       ok: true,
@@ -365,6 +443,7 @@ export function registerPinnedImageRoutes(app: Hono): void {
 
     const zipFile = new yazl.ZipFile();
     const missingFiles: string[] = [];
+    const workflowArchiveFiles = new Set<string>();
     let zippedEntries = 0;
 
     for (const entry of entries) {
@@ -383,6 +462,20 @@ export function registerPinnedImageRoutes(app: Hono): void {
 
       zipFile.addFile(filePath, entry.fileName);
       zippedEntries += 1;
+
+      const workflowArchivePayload = buildWorkflowArchivePayload(entry);
+      if (workflowArchivePayload && entry.workflowFileName && entry.consumers.length > 0) {
+        const consumer = parseConsumerKey(entry.consumers[0] ?? "");
+        const workflowBase = sanitizeArchiveFileNamePart(entry.workflowFileName, "workflow");
+        const workflowFileName = consumer
+          ? `workflows/${sanitizeArchiveFileNamePart(targetClientId, "client")}-${consumer.jobId}-${workflowBase}.json`
+          : `workflows/${sanitizeArchiveFileNamePart(targetClientId, "client")}-${workflowBase}.json`;
+
+        if (!workflowArchiveFiles.has(workflowFileName)) {
+          workflowArchiveFiles.add(workflowFileName);
+          zipFile.addBuffer(Buffer.from(`${JSON.stringify(workflowArchivePayload, null, 2)}\n`, "utf8"), workflowFileName);
+        }
+      }
     }
 
     const metadata = {
@@ -435,6 +528,7 @@ export function registerPinnedImageRoutes(app: Hono): void {
     const zipFile = new yazl.ZipFile();
     const missingFiles: Array<{ clientId: string; fileName: string }> = [];
     const includedByClient = new Map<string, number>();
+    const workflowArchiveFiles = new Set<string>();
 
     for (const clientId of clientIds) {
       const entries = await listPinnedImageEntriesForClient(clientId);
@@ -454,6 +548,20 @@ export function registerPinnedImageRoutes(app: Hono): void {
 
         zipFile.addFile(filePath, `${clientId}/${entry.fileName}`);
         includedByClient.set(clientId, (includedByClient.get(clientId) ?? 0) + 1);
+
+        const workflowArchivePayload = buildWorkflowArchivePayload(entry);
+        if (workflowArchivePayload && entry.workflowFileName && entry.consumers.length > 0) {
+          const consumer = parseConsumerKey(entry.consumers[0] ?? "");
+          const workflowBase = sanitizeArchiveFileNamePart(entry.workflowFileName, "workflow");
+          const workflowFileName = consumer
+            ? `${clientId}/workflows/${sanitizeArchiveFileNamePart(clientId, "client")}-${consumer.jobId}-${workflowBase}.json`
+            : `${clientId}/workflows/${sanitizeArchiveFileNamePart(clientId, "client")}-${workflowBase}.json`;
+
+          if (!workflowArchiveFiles.has(workflowFileName)) {
+            workflowArchiveFiles.add(workflowFileName);
+            zipFile.addBuffer(Buffer.from(`${JSON.stringify(workflowArchivePayload, null, 2)}\n`, "utf8"), workflowFileName);
+          }
+        }
       }
     }
 

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RecentJobRecord } from "../../../shared/contracts/jobs";
 import { backupPinnedImageViaProxy, reconcilePinnedImagesViaProxy, releasePinnedImageViaProxy } from "../../lib/api/pinnedImageClient";
+import { sanitizeWorkflowForExport } from "../../lib/workflowExport";
 import { cancelViaProxy, statusBatchViaProxy, statusViaProxy } from "../../lib/api/runpodProxyClient";
 import { submitRunAndPersistRecentJob } from "../../lib/jobSubmission";
 import { projectRecentJobOutputClusters } from "../../lib/jobOutputProjection";
@@ -528,11 +529,32 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
             }
 
             try {
+              const submittedInput = job.provenance.submittedInput && typeof job.provenance.submittedInput === "object"
+                ? (job.provenance.submittedInput as Record<string, unknown>)
+                : null;
+              const workflowTemplateSource = submittedInput && submittedInput.workflow && typeof submittedInput.workflow === "object" && !Array.isArray(submittedInput.workflow)
+                ? (submittedInput.workflow as Record<string, unknown>)
+                : submittedInput;
+              const workflowInputsSource = submittedInput && submittedInput.workflow && typeof submittedInput.workflow === "object" && !Array.isArray(submittedInput.workflow)
+                ? Object.fromEntries(Object.entries(submittedInput).filter(([key]) => key !== "workflow"))
+                : {};
+              const workflowTemplate = workflowTemplateSource && typeof workflowTemplateSource === "object" && !Array.isArray(workflowTemplateSource)
+                ? sanitizeWorkflowForExport(workflowTemplateSource as Record<string, unknown>)
+                : undefined;
+              const workflowInputs = Object.keys(workflowInputsSource).length > 0
+                ? sanitizeWorkflowForExport(workflowInputsSource)
+                : undefined;
+              const workflowJson = workflowTemplate && workflowInputs ? { workflow: workflowTemplate, ...workflowInputs } : workflowTemplate;
+
               const backup = await backupPinnedImageViaProxy({
                 jobId: job.jobId,
                 outputIndex,
                 dataUrl: image.dataUrl,
-                mimeType: image.mimeType
+                mimeType: image.mimeType,
+                workflowFileName: job.provenance.workflowFileName,
+                workflowTemplate,
+                workflowInputs,
+                workflowJson
               });
 
               await setRecentJobOutputPinned(job.jobId, outputIndex, true, job.pinnedAt ?? new Date().toISOString(), backup.imageUrl);

@@ -8,6 +8,10 @@ type BackupPinnedImagePayload = {
   outputIndex: number;
   dataUrl: string;
   mimeType: "image/png" | "image/jpeg" | "image/webp" | "image/gif";
+  workflowFileName?: string;
+  workflowTemplate?: Record<string, unknown>;
+  workflowInputs?: Record<string, unknown>;
+  workflowJson?: Record<string, unknown>;
 };
 
 type BackupPinnedImageResponse = {

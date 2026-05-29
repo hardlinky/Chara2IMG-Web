@@ -4,7 +4,7 @@ import { cancelRequestSchema, purgeQueueRequestSchema, retryRequestSchema, runRe
 import { forwardRunpodRequest } from "../lib/runpodClient";
 import { pollRunpodJobNow, trackRunpodJob } from "../lib/runpodJobTracker";
 import { redactSecrets } from "../lib/redaction";
-import { getCachedRunpodJobState, setCachedRunpodJobState } from "../lib/runpodJobStateStore";
+import { getCachedRunpodJobState, removeUnknownRunpodJobStates, setCachedRunpodJobState } from "../lib/runpodJobStateStore";
 import { logServerError, logServerWarning } from "../lib/logger";
 
 function resolveRunpodApiKey(requestApiKey: string): string {
@@ -126,6 +126,10 @@ export function registerRunpodProxyRoutes(app: Hono): void {
       return c.json({ ok: false, error: "Invalid status-batch request" }, 400);
     }
 
+    if (parsed.data.knownIds) {
+      removeUnknownRunpodJobStates(parsed.data.endpointId, parsed.data.knownIds);
+    }
+
     const items = await Promise.all(
       parsed.data.ids.map(async (id) => {
         try {
@@ -158,7 +162,7 @@ export function registerRunpodProxyRoutes(app: Hono): void {
             ok: true,
             statusCode: polled.statusCode,
             data: polled.data,
-            source: "tracker"
+            source: "runpod"
           };
         } catch (error) {
           logServerError("Runpod status-batch item failed", error, {

@@ -230,8 +230,8 @@ export function AdminTab({ enabled }: AdminTabProps) {
 
         {enabled ? (
           <>
-            <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
-              <label className="field" htmlFor="client-selection-ids" style={{ margin: 0, flex: "1 1 16rem" }}>
+            <div className="admin-selection-row">
+              <label className="field admin-selection-field" htmlFor="client-selection-ids">
                 Client selection
                 <input
                   className="input"
@@ -242,7 +242,7 @@ export function AdminTab({ enabled }: AdminTabProps) {
                   placeholder="client-abc client-def"
                 />
               </label>
-              <span className="status-inline" data-tone="warning">{`Selected: ${selectedCount}`}</span>
+              <span className="admin-selection-count" aria-label={`Selected clients: ${selectedCount}`}>{selectedCount}</span>
             </div>
 
             <div className="field" style={{ display: "grid", gap: "0.4rem", marginTop: "0.75rem" }}>

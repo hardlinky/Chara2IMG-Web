@@ -243,3 +243,33 @@ button:focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: 1px;
 }
+
+.admin-selection-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  flex-wrap: nowrap;
+}
+
+.admin-selection-field {
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.admin-selection-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.5rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
