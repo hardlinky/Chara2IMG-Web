@@ -710,34 +710,6 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
   const togglePinnedImage = useCallback(async (jobId: string, outputIndex: number, pinned: boolean) => {
     const result = await toggleRecentJobOutputPinnedState(jobId, outputIndex, pinned);
 
-    if (result.ok) {
-      const job = await getRecentJob(jobId);
-      const targetImage = job?.lastResponse ? extractRunpodOutputImages(job.lastResponse)[outputIndex] : null;
-
-      if (pinned && targetImage && !isArchivedImageUrl(targetImage.dataUrl) && targetImage.dataUrl.startsWith("data:") && job) {
-        try {
-          const workflowMetadata = buildPinnedWorkflowMetadata(job);
-          const backup = await backupPinnedImageViaProxy({
-            jobId,
-            outputIndex,
-            dataUrl: targetImage.dataUrl,
-            mimeType: targetImage.mimeType,
-            ...workflowMetadata
-          });
-
-          await setRecentJobOutputPinned(jobId, outputIndex, true, new Date().toISOString(), backup.imageUrl);
-        } catch {
-          setError("Pinned image saved locally but archive backup failed. Retry in a few seconds.");
-        }
-      }
-
-      if (!pinned && targetImage && isArchivedImageUrl(targetImage.dataUrl)) {
-        await releasePinnedImageViaProxy({ imageUrl: targetImage.dataUrl, jobId, outputIndex }).catch(() => {
-          setError("Image unpinned locally but archive release failed.");
-        });
-      }
-    }
-
     await refreshRecentJobs();
     if (!result.ok) {
       setError(result.reason);
