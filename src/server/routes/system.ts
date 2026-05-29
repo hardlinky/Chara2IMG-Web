@@ -92,6 +92,9 @@ export function registerSystemRoutes(app: Hono): void {
       const pull = await runCommand("git-pull", "git", ["pull", "--ff-only"]);
       results.push(pull);
 
+      const install = await runCommand("npm-install", "npm", ["install", "--include=dev"]);
+      results.push(install);
+
       const build = await runCommand("npm-build", "npm", ["run", "build"]);
       results.push(build);
 
