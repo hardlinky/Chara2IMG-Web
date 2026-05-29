@@ -246,8 +246,9 @@ function renderInputControl(
           ? (value as { enabled: boolean; loraName: string; strength: number })
           : { enabled: false, loraName: control.name, strength: 0 };
 
-      const min = control.constraints.min ?? -5;
-      const max = control.constraints.max ?? 5;
+      const sliderMin = 0;
+      const sliderMax = 2;
+      const sliderStep = 0.05;
 
       return (
         <div className="input-lora-card">
@@ -274,9 +275,7 @@ function renderInputControl(
                 id={`${control.id}-strength`}
                 className={className}
                 type="number"
-                min={min}
-                max={max}
-                step={0.05}
+                step={sliderStep}
                 value={loraValue.strength}
                 onChange={(event) =>
                   setValue(control.id, {
@@ -291,9 +290,9 @@ function renderInputControl(
           <input
             className={hasInlineError ? "input-lora-slider input-invalid" : "input-lora-slider"}
             type="range"
-            min={min}
-            max={max}
-            step={0.05}
+            min={sliderMin}
+            max={sliderMax}
+            step={sliderStep}
             value={loraValue.strength}
             onChange={(event) =>
               setValue(control.id, {
