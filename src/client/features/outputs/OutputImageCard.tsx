@@ -106,7 +106,6 @@ export function OutputImageCard({
         <button type="button" className="outputs-image-tile" onClick={onOpen} aria-label={`Open ${imagePrefix} image ${imageLabel}`}>
           <img src={image.dataUrl} alt={`${imagePrefix} ${imageLabel}`} loading="lazy" onLoad={onImageLoad} />
         </button>
-        {badge ? <span className="outputs-image-count-badge">{badge}</span> : null}
         {onTogglePin ? (
           <button
             type="button"
@@ -183,6 +182,7 @@ export function OutputImageCard({
           {isArchived ? <ArchivedSourceIcon /> : <CachedSourceIcon />}
           <span>{storageSourceLabel}</span>
         </span>
+        {badge ? <span className="outputs-image-source-chip outputs-image-counter-chip">{badge}</span> : null}
       </div>
     </div>
   );

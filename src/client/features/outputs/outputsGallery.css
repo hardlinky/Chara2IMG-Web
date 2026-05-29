@@ -181,6 +181,10 @@
   white-space: nowrap;
 }
 
+.outputs-image-counter-chip {
+  gap: 0;
+}
+
 .outputs-image-bottom-actions {
   position: absolute;
   left: 0.45rem;
