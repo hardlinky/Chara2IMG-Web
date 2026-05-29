@@ -300,6 +300,35 @@ function parsePinnedImageFileNameFromUrl(imageUrl: string): string | null {
   return fileName;
 }
 
+async function selfHealPinnedManifestForClient(
+  clientId: string,
+  existingEntries: Array<{ fileName: string; consumers: string[] }>
+): Promise<void> {
+  const refs = existingEntries.flatMap((entry) =>
+    entry.consumers.map((consumerKey) => ({
+      fileName: entry.fileName,
+      consumerKey
+    }))
+  );
+
+  const reconcileResult = await reconcilePinnedImageConsumersForClient(clientId, refs);
+  await Promise.all(
+    reconcileResult.filesToDelete.map(async (fileName) => {
+      const filePath = resolve(PINNED_IMAGES_DIR, fileName);
+      if (!filePath.startsWith(PINNED_IMAGES_DIR)) {
+        return;
+      }
+
+      await unlink(filePath).catch((error) => {
+        logServerWarning("Failed to delete self-healed stale pinned image file", error, {
+          fileName,
+          clientId
+        });
+      });
+    })
+  );
+}
+
 export function registerPinnedImageRoutes(app: Hono): void {
   app.get("/api/pinned-images/stats", async (c) => {
     const clientId = getRequestClientId(c.req.raw, c.req.query("clientId"));
@@ -587,6 +616,7 @@ export function registerPinnedImageRoutes(app: Hono): void {
 
     const zipFile = new yazl.ZipFile();
     const missingFiles: string[] = [];
+    const existingEntriesForHeal: Array<{ fileName: string; consumers: string[] }> = [];
     const workflowArchiveFiles = new Set<string>();
     const workflowArchiveKeys = new Set<string>();
     let zippedEntries = 0;
@@ -612,6 +642,7 @@ export function registerPinnedImageRoutes(app: Hono): void {
 
       zipFile.addFile(filePath, entry.fileName);
       zippedEntries += 1;
+      existingEntriesForHeal.push({ fileName: entry.fileName, consumers: entry.consumers });
 
       const workflowArchivePayload = buildWorkflowArchivePayload(entry);
       if (workflowArchivePayload && entry.consumers.length > 0) {
@@ -632,6 +663,10 @@ export function registerPinnedImageRoutes(app: Hono): void {
           zipFile.addBuffer(Buffer.from(`${JSON.stringify(workflowArchivePayload, null, 2)}\n`, "utf8"), workflowFileName);
         }
       }
+    }
+
+    if (missingFiles.length > 0) {
+      await selfHealPinnedManifestForClient(targetClientId, existingEntriesForHeal);
     }
 
     if (targetClientId === requestClientId && transientPinnedItems.length > 0) {
@@ -732,6 +767,7 @@ export function registerPinnedImageRoutes(app: Hono): void {
 
     const zipFile = new yazl.ZipFile();
     const missingFiles: Array<{ clientId: string; fileName: string }> = [];
+    const existingEntriesByClient = new Map<string, Array<{ fileName: string; consumers: string[] }>>();
     const includedByClient = new Map<string, number>();
     const workflowArchiveFiles = new Set<string>();
     const workflowArchiveKeys = new Set<string>();
@@ -759,6 +795,9 @@ export function registerPinnedImageRoutes(app: Hono): void {
 
         zipFile.addFile(filePath, `${clientId}/${entry.fileName}`);
         includedByClient.set(clientId, (includedByClient.get(clientId) ?? 0) + 1);
+        const currentEntries = existingEntriesByClient.get(clientId) ?? [];
+        currentEntries.push({ fileName: entry.fileName, consumers: entry.consumers });
+        existingEntriesByClient.set(clientId, currentEntries);
 
         const workflowArchivePayload = buildWorkflowArchivePayload(entry);
         if (workflowArchivePayload && entry.consumers.length > 0) {
@@ -821,6 +860,12 @@ export function registerPinnedImageRoutes(app: Hono): void {
           workflowArchiveFiles.add(workflowFileName);
           zipFile.addBuffer(Buffer.from(`${JSON.stringify(workflowArchivePayload, null, 2)}\n`, "utf8"), workflowFileName);
         }
+      }
+    }
+
+    if (missingFiles.length > 0) {
+      for (const [clientId, existingEntries] of existingEntriesByClient.entries()) {
+        await selfHealPinnedManifestForClient(clientId, existingEntries);
       }
     }
 
