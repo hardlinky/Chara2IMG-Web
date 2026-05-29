@@ -2,9 +2,9 @@ import type { Hono } from "hono";
 import { requireInvitedSession } from "../middleware/session";
 import { cancelRequestSchema, purgeQueueRequestSchema, retryRequestSchema, runRequestSchema, statusBatchRequestSchema, statusRequestSchema } from "../schemas/runpodProxy";
 import { forwardRunpodRequest } from "../lib/runpodClient";
+import { pollRunpodJobNow, trackRunpodJob } from "../lib/runpodJobTracker";
 import { redactSecrets } from "../lib/redaction";
-import { consumeSuccessfulRunpodJobState, getCachedRunpodJobState, removeUnknownRunpodJobStates, setCachedRunpodJobState } from "../lib/runpodJobStateStore";
-import { normalizeRunpodStatus } from "../../shared/contracts/jobs";
+import { getCachedRunpodJobState, setCachedRunpodJobState } from "../lib/runpodJobStateStore";
 
 function resolveRunpodApiKey(requestApiKey: string): string {
   const serverApiKey = process.env.RUNPOD_API_KEY?.trim();
@@ -58,7 +58,9 @@ export function registerRunpodProxyRoutes(app: Hono): void {
           const jobId = typeof parsedBody.id === "string" ? parsedBody.id : typeof parsedBody.jobId === "string" ? parsedBody.jobId : null;
 
           if (jobId) {
+            const resolvedApiKey = resolveRunpodApiKey(parsed.data.apiKey);
             setCachedRunpodJobState(parsed.data.endpointId, jobId, parsedBody);
+            trackRunpodJob(parsed.data.endpointId, jobId, resolvedApiKey);
           }
         } catch {
           // Ignore non-JSON run responses for cache tracking.
@@ -80,31 +82,28 @@ export function registerRunpodProxyRoutes(app: Hono): void {
     }
 
     try {
+      const resolvedApiKey = resolveRunpodApiKey(parsed.data.apiKey);
       const cached = getCachedRunpodJobState(parsed.data.endpointId, parsed.data.id);
-      if (cached?.isTerminal) {
-        if (cached.status && normalizeRunpodStatus(cached.status) === "COMPLETED") {
-          consumeSuccessfulRunpodJobState(parsed.data.endpointId, parsed.data.id);
+      if (cached) {
+        if (!cached.isTerminal) {
+          trackRunpodJob(parsed.data.endpointId, parsed.data.id, resolvedApiKey);
         }
         return c.json(cached.data);
       }
 
-      const response = await forwardRunpodRequest({
-        endpointId: parsed.data.endpointId,
-        apiKey: resolveRunpodApiKey(parsed.data.apiKey),
-        operation: "status",
-        id: parsed.data.id
-      });
-
-      const body = await response.text();
-      if (response.ok) {
-        try {
-          setCachedRunpodJobState(parsed.data.endpointId, parsed.data.id, JSON.parse(body));
-        } catch {
-          // Ignore non-JSON status payloads for cache tracking.
-        }
+      const polled = await pollRunpodJobNow(parsed.data.endpointId, parsed.data.id, resolvedApiKey);
+      if (polled.ok) {
+        return c.json(polled.data);
       }
 
-      return toProxyResponse(response, body);
+      return c.json(
+        {
+          ok: false,
+          error: polled.error,
+          data: polled.data ?? null
+        },
+        502
+      );
     } catch (error) {
       return c.json(toSafeProxyError(error), 502);
     }
@@ -118,18 +117,16 @@ export function registerRunpodProxyRoutes(app: Hono): void {
       return c.json({ ok: false, error: "Invalid status-batch request" }, 400);
     }
 
-    if (parsed.data.knownIds) {
-      removeUnknownRunpodJobStates(parsed.data.endpointId, parsed.data.knownIds);
-    }
-
     const items = await Promise.all(
       parsed.data.ids.map(async (id) => {
         try {
+          const resolvedApiKey = resolveRunpodApiKey(parsed.data.apiKey);
           const cached = getCachedRunpodJobState(parsed.data.endpointId, id);
-          if (cached?.isTerminal) {
-            if (cached.status && normalizeRunpodStatus(cached.status) === "COMPLETED") {
-              consumeSuccessfulRunpodJobState(parsed.data.endpointId, id);
+          if (cached) {
+            if (!cached.isTerminal) {
+              trackRunpodJob(parsed.data.endpointId, id, resolvedApiKey);
             }
+
             return {
               id,
               ok: true,
@@ -139,41 +136,24 @@ export function registerRunpodProxyRoutes(app: Hono): void {
             };
           }
 
-          const response = await forwardRunpodRequest({
-            endpointId: parsed.data.endpointId,
-            apiKey: resolveRunpodApiKey(parsed.data.apiKey),
-            operation: "status",
-            id
-          });
+          const polled = await pollRunpodJobNow(parsed.data.endpointId, id, resolvedApiKey);
 
-          const text = await response.text();
-          let data: unknown = null;
-          if (text) {
-            try {
-              data = JSON.parse(text);
-            } catch {
-              data = { raw: text };
-            }
-          }
-
-          if (!response.ok) {
+          if (!polled.ok) {
             return {
               id,
               ok: false,
-              statusCode: response.status,
-              error: `Runpod status request failed (${response.status})`,
-              data
+              statusCode: polled.statusCode,
+              error: polled.error,
+              data: polled.data ?? null
             };
           }
-
-          setCachedRunpodJobState(parsed.data.endpointId, id, data);
 
           return {
             id,
             ok: true,
-            statusCode: response.status,
-            data,
-            source: "runpod"
+            statusCode: polled.statusCode,
+            data: polled.data,
+            source: "tracker"
           };
         } catch (error) {
           return {
@@ -239,6 +219,7 @@ export function registerRunpodProxyRoutes(app: Hono): void {
       if (response.ok) {
         try {
           setCachedRunpodJobState(parsed.data.endpointId, parsed.data.id, JSON.parse(body));
+          trackRunpodJob(parsed.data.endpointId, parsed.data.id, resolveRunpodApiKey(parsed.data.apiKey));
         } catch {
           // Ignore non-JSON retry payloads for cache tracking.
         }
