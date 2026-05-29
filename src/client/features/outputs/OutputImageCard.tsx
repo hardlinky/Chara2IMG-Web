@@ -58,8 +58,8 @@ function LoadInputsIcon() {
 function ViewJobOutputsIcon() {
   return (
     <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false">
-      <path d="M4 6h16M4 12h10M4 18h7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <path d="M15 10h5v5m0-5-6 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" strokeWidth="2" />
     </svg>
   );
 }
