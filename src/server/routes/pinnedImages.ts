@@ -145,6 +145,10 @@ type TransientPinnedArchiveItem = {
   outputIndex: number;
   dataUrl: string;
   mimeType: "image/png" | "image/jpeg" | "image/webp" | "image/gif";
+};
+
+type TransientPinnedArchiveWorkflow = {
+  jobId: string;
   workflowFileName?: string;
   workflowTemplate?: Record<string, unknown>;
   workflowInputs?: Record<string, unknown>;
@@ -185,24 +189,53 @@ function parseTransientPinnedArchiveItems(payload: unknown): TransientPinnedArch
         mimeType
       };
 
-      if (typeof record.workflowFileName === "string") {
-        parsedItem.workflowFileName = record.workflowFileName;
-      }
-      if (record.workflowTemplate && typeof record.workflowTemplate === "object" && !Array.isArray(record.workflowTemplate)) {
-        parsedItem.workflowTemplate = record.workflowTemplate as Record<string, unknown>;
-      }
-      if (record.workflowInputs && typeof record.workflowInputs === "object" && !Array.isArray(record.workflowInputs)) {
-        parsedItem.workflowInputs = record.workflowInputs as Record<string, unknown>;
-      }
-      if (record.workflowJson && typeof record.workflowJson === "object" && !Array.isArray(record.workflowJson)) {
-        parsedItem.workflowJson = record.workflowJson as Record<string, unknown>;
-      }
-
       return parsedItem;
     })
     .filter((item): item is TransientPinnedArchiveItem => item !== null);
 
   return parsedItems;
+}
+
+function parseTransientPinnedWorkflows(payload: unknown): Map<string, TransientPinnedArchiveWorkflow> {
+  if (!payload || typeof payload !== "object") {
+    return new Map();
+  }
+
+  const rawItems = (payload as { transientWorkflows?: unknown }).transientWorkflows;
+  if (!Array.isArray(rawItems)) {
+    return new Map();
+  }
+
+  const workflowsByJobId = new Map<string, TransientPinnedArchiveWorkflow>();
+  for (const item of rawItems) {
+    if (!item || typeof item !== "object") {
+      continue;
+    }
+
+    const record = item as Record<string, unknown>;
+    const jobId = typeof record.jobId === "string" ? record.jobId.trim() : "";
+    if (!jobId) {
+      continue;
+    }
+
+    const workflow: TransientPinnedArchiveWorkflow = { jobId };
+    if (typeof record.workflowFileName === "string") {
+      workflow.workflowFileName = record.workflowFileName;
+    }
+    if (record.workflowTemplate && typeof record.workflowTemplate === "object" && !Array.isArray(record.workflowTemplate)) {
+      workflow.workflowTemplate = record.workflowTemplate as Record<string, unknown>;
+    }
+    if (record.workflowInputs && typeof record.workflowInputs === "object" && !Array.isArray(record.workflowInputs)) {
+      workflow.workflowInputs = record.workflowInputs as Record<string, unknown>;
+    }
+    if (record.workflowJson && typeof record.workflowJson === "object" && !Array.isArray(record.workflowJson)) {
+      workflow.workflowJson = record.workflowJson as Record<string, unknown>;
+    }
+
+    workflowsByJobId.set(jobId, workflow);
+  }
+
+  return workflowsByJobId;
 }
 
 function parseArchivedPinnedFileNames(payload: unknown): Set<string> | null {
@@ -537,6 +570,7 @@ export function registerPinnedImageRoutes(app: Hono): void {
     const isAdmin = await hasAdminSession(c);
     const payload = await c.req.json().catch(() => null);
     const transientPinnedItems = parseTransientPinnedArchiveItems(payload);
+    const transientWorkflowsByJobId = parseTransientPinnedWorkflows(payload);
     const archivedPinnedFileNames = parseArchivedPinnedFileNames(payload);
 
     if (!isAdmin && requestedClientId && requestedClientId !== requestClientId) {
@@ -607,7 +641,12 @@ export function registerPinnedImageRoutes(app: Hono): void {
         const archiveImagePath = `cached/${fileBase}.${extension}`;
         zipFile.addBuffer(Buffer.from(decoded.bytes), archiveImagePath);
 
-        const workflowArchivePayload = buildWorkflowArchivePayload(transientItem);
+        const workflowMetadata = transientWorkflowsByJobId.get(transientItem.jobId);
+        if (!workflowMetadata) {
+          continue;
+        }
+
+        const workflowArchivePayload = buildWorkflowArchivePayload(workflowMetadata);
         if (!workflowArchivePayload) {
           continue;
         }
@@ -618,7 +657,7 @@ export function registerPinnedImageRoutes(app: Hono): void {
         }
         workflowArchiveKeys.add(workflowKey);
 
-        const workflowBase = sanitizeArchiveFileNamePart(transientItem.workflowFileName, "workflow");
+        const workflowBase = sanitizeArchiveFileNamePart(workflowMetadata.workflowFileName, "workflow");
         const workflowFileName = `workflows/${sanitizeArchiveFileNamePart(targetClientId, "client")}-${sanitizeArchiveFileNamePart(transientItem.jobId, "job")}-${workflowBase}.json`;
         if (workflowArchiveFiles.has(workflowFileName)) {
           continue;
@@ -673,6 +712,7 @@ export function registerPinnedImageRoutes(app: Hono): void {
     const clientIds = [...new Set(rawClientIds.filter((value): value is string => typeof value === "string").map((value) => sanitizeClientId(value)))];
     const transientClientId = typeof payload?.transientClientId === "string" ? sanitizeClientId(payload.transientClientId) : null;
     const transientPinnedItems = parseTransientPinnedArchiveItems(payload);
+    const transientWorkflowsByJobId = parseTransientPinnedWorkflows(payload);
     const archivedPinnedFileNames = parseArchivedPinnedFileNames(payload);
 
     if (clientIds.length === 0) {
@@ -747,7 +787,12 @@ export function registerPinnedImageRoutes(app: Hono): void {
           zipFile.addBuffer(Buffer.from(decoded.bytes), archiveImagePath);
           includedByClient.set(clientId, (includedByClient.get(clientId) ?? 0) + 1);
 
-          const workflowArchivePayload = buildWorkflowArchivePayload(transientItem);
+          const workflowMetadata = transientWorkflowsByJobId.get(transientItem.jobId);
+          if (!workflowMetadata) {
+            continue;
+          }
+
+          const workflowArchivePayload = buildWorkflowArchivePayload(workflowMetadata);
           if (!workflowArchivePayload) {
             continue;
           }
@@ -758,7 +803,7 @@ export function registerPinnedImageRoutes(app: Hono): void {
           }
           workflowArchiveKeys.add(workflowKey);
 
-          const workflowBase = sanitizeArchiveFileNamePart(transientItem.workflowFileName, "workflow");
+          const workflowBase = sanitizeArchiveFileNamePart(workflowMetadata.workflowFileName, "workflow");
           const workflowFileName = `${clientId}/workflows/${sanitizeArchiveFileNamePart(clientId, "client")}-${sanitizeArchiveFileNamePart(transientItem.jobId, "job")}-${workflowBase}.json`;
           if (workflowArchiveFiles.has(workflowFileName)) {
             continue;

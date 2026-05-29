@@ -99,6 +99,10 @@ type TransientPinnedArchiveItem = {
   outputIndex: number;
   dataUrl: string;
   mimeType: "image/png" | "image/jpeg" | "image/webp" | "image/gif";
+};
+
+type TransientPinnedArchiveWorkflow = {
+  jobId: string;
   workflowFileName?: string;
   workflowTemplate?: Record<string, unknown>;
   workflowInputs?: Record<string, unknown>;
@@ -107,6 +111,7 @@ type TransientPinnedArchiveItem = {
 
 type PinnedArchivePayload = {
   transientPinnedItems: TransientPinnedArchiveItem[];
+  transientWorkflows: TransientPinnedArchiveWorkflow[];
   archivedPinnedFileNames: string[];
 };
 
@@ -324,6 +329,7 @@ function buildPinnedWorkflowMetadata(job: RecentJobRecord): {
 async function collectPinnedArchivePayload(): Promise<PinnedArchivePayload> {
   const jobs = await listRecentJobs();
   const transientPinnedItems: TransientPinnedArchiveItem[] = [];
+  const transientWorkflowsByJobId = new Map<string, TransientPinnedArchiveWorkflow>();
   const archivedPinnedFileNames = new Set<string>();
 
   for (const job of jobs) {
@@ -340,6 +346,13 @@ async function collectPinnedArchivePayload(): Promise<PinnedArchivePayload> {
     const pinnedIndices = new Set(job.pinnedOutputIndices ?? []);
     const allOutputsPinnedByLegacyFlag = Boolean(job.pinnedAt) && pinnedIndices.size === 0;
     const workflowMetadata = buildPinnedWorkflowMetadata(job);
+    const hasWorkflowMetadata = Boolean(workflowMetadata.workflowTemplate || workflowMetadata.workflowJson);
+    if (hasWorkflowMetadata && !transientWorkflowsByJobId.has(job.jobId)) {
+      transientWorkflowsByJobId.set(job.jobId, {
+        jobId: job.jobId,
+        ...workflowMetadata
+      });
+    }
 
     for (let outputIndex = 0; outputIndex < images.length; outputIndex += 1) {
       const image = images[outputIndex];
@@ -368,14 +381,14 @@ async function collectPinnedArchivePayload(): Promise<PinnedArchivePayload> {
         jobId: job.jobId,
         outputIndex,
         dataUrl: image.dataUrl,
-        mimeType: image.mimeType,
-        ...workflowMetadata
+        mimeType: image.mimeType
       });
     }
   }
 
   return {
     transientPinnedItems,
+    transientWorkflows: [...transientWorkflowsByJobId.values()],
     archivedPinnedFileNames: [...archivedPinnedFileNames].sort((left, right) => left.localeCompare(right))
   };
 }
@@ -386,7 +399,7 @@ export async function downloadPinnedImagesArchiveViaProxy(clientId?: string): Pr
   const includeTransientForClient = !clientId || clientId === currentClientId;
   const pinnedArchivePayload = includeTransientForClient
     ? await collectPinnedArchivePayload()
-    : { transientPinnedItems: [], archivedPinnedFileNames: [] };
+    : { transientPinnedItems: [], transientWorkflows: [], archivedPinnedFileNames: [] };
   let response = await fetch(`/api/pinned-images/archive${query}`, {
     method: "POST",
     headers: {
@@ -396,6 +409,7 @@ export async function downloadPinnedImagesArchiveViaProxy(clientId?: string): Pr
     credentials: "include",
     body: JSON.stringify({
       transientPinnedItems: pinnedArchivePayload.transientPinnedItems,
+      transientWorkflows: pinnedArchivePayload.transientWorkflows,
       archivedPinnedFileNames: pinnedArchivePayload.archivedPinnedFileNames
     })
   });
@@ -442,6 +456,7 @@ export async function downloadPinnedImagesArchiveBatchViaProxy(clientIds: string
       clientIds,
       transientClientId,
       transientPinnedItems: pinnedArchivePayload.transientPinnedItems,
+      transientWorkflows: pinnedArchivePayload.transientWorkflows,
       archivedPinnedFileNames: pinnedArchivePayload.archivedPinnedFileNames
     })
   });
