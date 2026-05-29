@@ -154,28 +154,28 @@ async function readManifest(): Promise<PinnedImagesManifest> {
     return emptyManifest();
   }
 
-  if (perClientEntries.length > 0) {
-    return {
-      version: 1,
-      entries: dedupeManifestEntries(perClientEntries)
-    };
-  }
+  let legacyEntries: ManifestEntry[] = [];
 
   try {
     const raw = await readFile(MANIFEST_FILE_PATH, "utf8");
     const parsed = JSON.parse(raw) as Partial<PinnedImagesManifest>;
 
     if (parsed.version !== 1 || !Array.isArray(parsed.entries)) {
-      return emptyManifest();
+      return {
+        version: 1,
+        entries: dedupeManifestEntries(perClientEntries)
+      };
     }
 
-    return {
-      version: 1,
-      entries: dedupeManifestEntries(normalizeManifestEntries(parsed.entries))
-    };
+    legacyEntries = normalizeManifestEntries(parsed.entries);
   } catch {
-    return emptyManifest();
+    legacyEntries = [];
   }
+
+  return {
+    version: 1,
+    entries: dedupeManifestEntries([...perClientEntries, ...legacyEntries])
+  };
 }
 
 async function writeManifest(manifest: PinnedImagesManifest): Promise<void> {
@@ -228,7 +228,33 @@ async function writeManifest(manifest: PinnedImagesManifest): Promise<void> {
     await rm(resolve(CLIENT_MANIFESTS_DIR, existingFile), { force: true });
   }
 
-  await rm(MANIFEST_FILE_PATH, { force: true });
+  const writtenClientIds = new Set(groupedByClient.keys());
+  try {
+    const raw = await readFile(MANIFEST_FILE_PATH, "utf8");
+    const parsed = JSON.parse(raw) as Partial<PinnedImagesManifest>;
+    if (parsed.version !== 1 || !Array.isArray(parsed.entries)) {
+      await rm(MANIFEST_FILE_PATH, { force: true });
+      return;
+    }
+
+    const normalizedLegacy = normalizeManifestEntries(parsed.entries);
+    const remainingLegacyEntries = normalizedLegacy.filter(
+      (entry) => !writtenClientIds.has(sanitizeClientId(entry.clientId))
+    );
+
+    if (remainingLegacyEntries.length === 0) {
+      await rm(MANIFEST_FILE_PATH, { force: true });
+      return;
+    }
+
+    const legacyManifest: PinnedImagesManifest = {
+      version: 1,
+      entries: dedupeManifestEntries(remainingLegacyEntries)
+    };
+    await writeFile(MANIFEST_FILE_PATH, `${JSON.stringify(legacyManifest, null, 2)}\n`, "utf8");
+  } catch {
+    await rm(MANIFEST_FILE_PATH, { force: true });
+  }
 }
 
 function getConfiguredPinnedImagesCapacityBytes(): number {
