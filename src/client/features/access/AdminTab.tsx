@@ -121,6 +121,17 @@ export function AdminTab({ enabled }: AdminTabProps) {
     setStatus("");
 
     try {
+      const preview = await previewPrunePinnedImagesViaProxy({ keepClientIds });
+      const previewSummary = `Dry run: preserve ${preview.keptEntries} images (${formatBytes(preview.keptBytes)}), prune ${preview.removedEntries} images (${formatBytes(preview.removedBytes)}), delete ${preview.orphanedFiles} orphaned files (${formatBytes(preview.orphanedBytes)}).`;
+      setLoading(false);
+
+      const confirmed = window.confirm(`${previewSummary}\n\nProceed with prune?`);
+      if (!confirmed) {
+        setStatus("Prune cancelled.");
+        return;
+      }
+
+      setLoading(true);
       const result = await prunePinnedImagesViaProxy({ keepClientIds });
       setStatus(
         `Pruned archived images. Removed entries: ${result.removedEntries}. Deleted files: ${result.deletedFiles}. Orphaned files deleted: ${result.orphanedFilesDeleted}. Kept entries: ${result.keptEntries}.`
@@ -128,26 +139,6 @@ export function AdminTab({ enabled }: AdminTabProps) {
       await loadClients();
     } catch {
       setStatus("Prune request failed.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function previewPruneToSelected(): Promise<void> {
-    if (!enabled || keepClientIds.length === 0) {
-      return;
-    }
-
-    setLoading(true);
-    setStatus("");
-
-    try {
-      const preview = await previewPrunePinnedImagesViaProxy({ keepClientIds });
-      setStatus(
-        `Dry run: preserve ${preview.keptEntries} images (${formatBytes(preview.keptBytes)}), prune ${preview.removedEntries} images (${formatBytes(preview.removedBytes)}), delete ${preview.orphanedFiles} orphaned files (${formatBytes(preview.orphanedBytes)}).`
-      );
-    } catch {
-      setStatus("Dry run request failed.");
     } finally {
       setLoading(false);
     }
@@ -193,9 +184,6 @@ export function AdminTab({ enabled }: AdminTabProps) {
           <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.75rem", flexWrap: "wrap" }}>
             <button className="btn btn-secondary" type="button" onClick={() => void downloadArchive()} disabled={loading || selectedCount === 0}>
               {loading ? "Working..." : "Download .zip"}
-            </button>
-            <button className="btn btn-secondary" type="button" onClick={() => void previewPruneToSelected()} disabled={loading || selectedCount === 0}>
-              {loading ? "Working..." : "Prune (Dry Run)"}
             </button>
             <button className="btn btn-primary" type="button" onClick={() => void pruneToSelected()} disabled={loading || selectedCount === 0}>
               {loading ? "Working..." : "Prune"}
