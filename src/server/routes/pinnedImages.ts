@@ -110,6 +110,17 @@ function sanitizeArchiveFileNamePart(value: string | undefined, fallback: string
   return sanitized || fallback;
 }
 
+function formatArchiveTimestamp(date: Date = new Date()): string {
+  const year = date.getUTCFullYear();
+  const month = `${date.getUTCMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getUTCDate()}`.padStart(2, "0");
+  const hours = `${date.getUTCHours()}`.padStart(2, "0");
+  const minutes = `${date.getUTCMinutes()}`.padStart(2, "0");
+  const seconds = `${date.getUTCSeconds()}`.padStart(2, "0");
+
+  return `${year}${month}${day}-${hours}${minutes}${seconds}`;
+}
+
 function buildWorkflowArchivePayload(entry: {
   workflowTemplate?: Record<string, unknown>;
   workflowInputs?: Record<string, unknown>;
@@ -489,7 +500,7 @@ export function registerPinnedImageRoutes(app: Hono): void {
     zipFile.addBuffer(Buffer.from(`${JSON.stringify(metadata, null, 2)}\n`, "utf8"), "manifest.export.json");
     zipFile.end();
 
-    const fileName = `${targetClientId}-pinned-images.zip`;
+    const fileName = `Chara2IMG-export-${formatArchiveTimestamp()}-${targetClientId}.zip`;
     const zipOutputStream = zipFile.outputStream as unknown as Readable;
     const responseBody = Readable.toWeb(zipOutputStream) as unknown as BodyInit;
 
@@ -581,7 +592,7 @@ export function registerPinnedImageRoutes(app: Hono): void {
       status: 200,
       headers: {
         "Content-Type": "application/zip",
-        "Content-Disposition": "attachment; filename=\"selected-clients-pinned-images.zip\"",
+        "Content-Disposition": `attachment; filename=\"Chara2IMG-export-${formatArchiveTimestamp()}-${clientIds.length}.zip\"`,
         "Cache-Control": "no-store"
       }
     });
