@@ -9,7 +9,7 @@ import {
   type RunpodJobStatus
 } from "../../../shared/contracts/jobs";
 
-export const JOB_POLL_INTERVAL_MS = 5000;
+export const JOB_POLL_INTERVAL_MS = 10000;
 export const JOB_OBSERVATION_TIMEOUT_MS = Number.POSITIVE_INFINITY;
 
 export function getJobAgeMs(submittedAt: string, now: number = Date.now()): number {

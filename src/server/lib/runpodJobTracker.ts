@@ -22,7 +22,7 @@ type PollRunpodJobResult =
     };
 
 const trackedJobs = new Map<string, TrackedRunpodJob>();
-const RUNPOD_TRACKER_POLL_INTERVAL_MS = Math.max(1_000, Number(process.env.RUNPOD_TRACKER_POLL_INTERVAL_MS ?? 5_000));
+const RUNPOD_TRACKER_POLL_INTERVAL_MS = Math.max(1_000, Number(process.env.RUNPOD_TRACKER_POLL_INTERVAL_MS ?? 10_000));
 let trackerTimer: NodeJS.Timeout | null = null;
 let trackerTickRunning = false;
 

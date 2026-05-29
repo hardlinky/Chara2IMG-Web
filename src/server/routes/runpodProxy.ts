@@ -85,10 +85,9 @@ export function registerRunpodProxyRoutes(app: Hono): void {
       const resolvedApiKey = resolveRunpodApiKey(parsed.data.apiKey);
       const cached = getCachedRunpodJobState(parsed.data.endpointId, parsed.data.id);
       if (cached) {
-        if (!cached.isTerminal) {
-          trackRunpodJob(parsed.data.endpointId, parsed.data.id, resolvedApiKey);
+        if (cached.isTerminal) {
+          return c.json(cached.data);
         }
-        return c.json(cached.data);
       }
 
       const polled = await pollRunpodJobNow(parsed.data.endpointId, parsed.data.id, resolvedApiKey);
@@ -122,11 +121,7 @@ export function registerRunpodProxyRoutes(app: Hono): void {
         try {
           const resolvedApiKey = resolveRunpodApiKey(parsed.data.apiKey);
           const cached = getCachedRunpodJobState(parsed.data.endpointId, id);
-          if (cached) {
-            if (!cached.isTerminal) {
-              trackRunpodJob(parsed.data.endpointId, id, resolvedApiKey);
-            }
-
+          if (cached?.isTerminal) {
             return {
               id,
               ok: true,
