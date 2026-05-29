@@ -49,6 +49,37 @@ export function resetStatusBatchPollingSupportForTests(): void {
   supportsStatusBatchPolling = null;
 }
 
+function buildPinnedWorkflowMetadata(job: RecentJobRecord): {
+  workflowFileName?: string;
+  workflowTemplate?: Record<string, unknown>;
+  workflowInputs?: Record<string, unknown>;
+  workflowJson?: Record<string, unknown>;
+} {
+  const submittedInput = job.provenance.submittedInput && typeof job.provenance.submittedInput === "object"
+    ? (job.provenance.submittedInput as Record<string, unknown>)
+    : null;
+  const workflowTemplateSource = submittedInput && submittedInput.workflow && typeof submittedInput.workflow === "object" && !Array.isArray(submittedInput.workflow)
+    ? (submittedInput.workflow as Record<string, unknown>)
+    : submittedInput;
+  const workflowInputsSource = submittedInput && submittedInput.workflow && typeof submittedInput.workflow === "object" && !Array.isArray(submittedInput.workflow)
+    ? Object.fromEntries(Object.entries(submittedInput).filter(([key]) => key !== "workflow"))
+    : {};
+  const workflowTemplate = workflowTemplateSource && typeof workflowTemplateSource === "object" && !Array.isArray(workflowTemplateSource)
+    ? sanitizeWorkflowForExport(workflowTemplateSource as Record<string, unknown>)
+    : undefined;
+  const workflowInputs = Object.keys(workflowInputsSource).length > 0
+    ? sanitizeWorkflowForExport(workflowInputsSource)
+    : undefined;
+  const workflowJson = workflowTemplate && workflowInputs ? { workflow: workflowTemplate, ...workflowInputs } : workflowTemplate;
+
+  return {
+    workflowFileName: job.provenance.workflowFileName,
+    workflowTemplate,
+    workflowInputs,
+    workflowJson
+  };
+}
+
 function isArchivedImageUrl(value: string): boolean {
   return value.startsWith("/api/pinned-images/") || /\/api\/pinned-images\//.test(value);
 }
@@ -529,32 +560,14 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
             }
 
             try {
-              const submittedInput = job.provenance.submittedInput && typeof job.provenance.submittedInput === "object"
-                ? (job.provenance.submittedInput as Record<string, unknown>)
-                : null;
-              const workflowTemplateSource = submittedInput && submittedInput.workflow && typeof submittedInput.workflow === "object" && !Array.isArray(submittedInput.workflow)
-                ? (submittedInput.workflow as Record<string, unknown>)
-                : submittedInput;
-              const workflowInputsSource = submittedInput && submittedInput.workflow && typeof submittedInput.workflow === "object" && !Array.isArray(submittedInput.workflow)
-                ? Object.fromEntries(Object.entries(submittedInput).filter(([key]) => key !== "workflow"))
-                : {};
-              const workflowTemplate = workflowTemplateSource && typeof workflowTemplateSource === "object" && !Array.isArray(workflowTemplateSource)
-                ? sanitizeWorkflowForExport(workflowTemplateSource as Record<string, unknown>)
-                : undefined;
-              const workflowInputs = Object.keys(workflowInputsSource).length > 0
-                ? sanitizeWorkflowForExport(workflowInputsSource)
-                : undefined;
-              const workflowJson = workflowTemplate && workflowInputs ? { workflow: workflowTemplate, ...workflowInputs } : workflowTemplate;
+              const workflowMetadata = buildPinnedWorkflowMetadata(job);
 
               const backup = await backupPinnedImageViaProxy({
                 jobId: job.jobId,
                 outputIndex,
                 dataUrl: image.dataUrl,
                 mimeType: image.mimeType,
-                workflowFileName: job.provenance.workflowFileName,
-                workflowTemplate,
-                workflowInputs,
-                workflowJson
+                ...workflowMetadata
               });
 
               await setRecentJobOutputPinned(job.jobId, outputIndex, true, job.pinnedAt ?? new Date().toISOString(), backup.imageUrl);
@@ -696,6 +709,35 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
 
   const togglePinnedImage = useCallback(async (jobId: string, outputIndex: number, pinned: boolean) => {
     const result = await toggleRecentJobOutputPinnedState(jobId, outputIndex, pinned);
+
+    if (result.ok) {
+      const job = await getRecentJob(jobId);
+      const targetImage = job?.lastResponse ? extractRunpodOutputImages(job.lastResponse)[outputIndex] : null;
+
+      if (pinned && targetImage && !isArchivedImageUrl(targetImage.dataUrl) && targetImage.dataUrl.startsWith("data:") && job) {
+        try {
+          const workflowMetadata = buildPinnedWorkflowMetadata(job);
+          const backup = await backupPinnedImageViaProxy({
+            jobId,
+            outputIndex,
+            dataUrl: targetImage.dataUrl,
+            mimeType: targetImage.mimeType,
+            ...workflowMetadata
+          });
+
+          await setRecentJobOutputPinned(jobId, outputIndex, true, new Date().toISOString(), backup.imageUrl);
+        } catch {
+          setError("Pinned image saved locally but archive backup failed. Retry in a few seconds.");
+        }
+      }
+
+      if (!pinned && targetImage && isArchivedImageUrl(targetImage.dataUrl)) {
+        await releasePinnedImageViaProxy({ imageUrl: targetImage.dataUrl, jobId, outputIndex }).catch(() => {
+          setError("Image unpinned locally but archive release failed.");
+        });
+      }
+    }
+
     await refreshRecentJobs();
     if (!result.ok) {
       setError(result.reason);

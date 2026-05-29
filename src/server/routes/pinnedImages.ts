@@ -475,7 +475,7 @@ export function registerPinnedImageRoutes(app: Hono): void {
       zippedEntries += 1;
 
       const workflowArchivePayload = buildWorkflowArchivePayload(entry);
-      if (workflowArchivePayload && entry.workflowFileName && entry.consumers.length > 0) {
+      if (workflowArchivePayload && entry.consumers.length > 0) {
         const consumer = parseConsumerKey(entry.consumers[0] ?? "");
         const workflowBase = sanitizeArchiveFileNamePart(entry.workflowFileName, "workflow");
         const workflowFileName = consumer
@@ -561,7 +561,7 @@ export function registerPinnedImageRoutes(app: Hono): void {
         includedByClient.set(clientId, (includedByClient.get(clientId) ?? 0) + 1);
 
         const workflowArchivePayload = buildWorkflowArchivePayload(entry);
-        if (workflowArchivePayload && entry.workflowFileName && entry.consumers.length > 0) {
+        if (workflowArchivePayload && entry.consumers.length > 0) {
           const consumer = parseConsumerKey(entry.consumers[0] ?? "");
           const workflowBase = sanitizeArchiveFileNamePart(entry.workflowFileName, "workflow");
           const workflowFileName = consumer
