@@ -246,7 +246,7 @@ button:focus-visible {
 
 .admin-selection-row {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 0.75rem;
   margin-top: 0.5rem;
   flex-wrap: nowrap;
@@ -262,9 +262,9 @@ button:focus-visible {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  align-self: center;
-  min-width: 2rem;
-  padding: 0.2rem 0.5rem;
+  align-self: flex-end;
+  min-width: 1.75rem;
+  padding: 0.15rem 0.4rem;
   border-radius: 999px;
   border: 1px solid var(--color-border);
   background: var(--color-surface-2);

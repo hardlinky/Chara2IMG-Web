@@ -33,9 +33,15 @@ if (headVersion && currentVersion !== headVersion) {
   process.exit(0);
 }
 
-execFileSync("npm", ["version", "patch", "--no-git-tag-version"], {
-  stdio: "inherit"
-});
+if (process.platform === "win32") {
+  execFileSync("cmd.exe", ["/d", "/s", "/c", "npm version patch --no-git-tag-version"], {
+    stdio: "inherit"
+  });
+} else {
+  execFileSync("npm", ["version", "patch", "--no-git-tag-version"], {
+    stdio: "inherit"
+  });
+}
 
 execFileSync("git", ["add", "package.json", "package-lock.json"], {
   stdio: "inherit"
