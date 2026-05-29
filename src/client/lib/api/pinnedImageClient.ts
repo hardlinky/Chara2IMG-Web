@@ -116,6 +116,12 @@ type PinnedArchivePayload = {
   archivedPinnedFileNames: string[];
 };
 
+type TemporaryArchiveBackupRef = {
+  jobId: string;
+  outputIndex: number;
+  imageUrl: string;
+};
+
 export function getOrCreatePinnedImageClientId(): string {
   if (typeof window === "undefined") {
     return "server-render";
@@ -399,6 +405,89 @@ async function collectPinnedArchivePayload(): Promise<PinnedArchivePayload> {
   };
 }
 
+function buildWorkflowJsonForArchiveItem(
+  item: TransientPinnedArchiveItem,
+  workflowsByFileName: Map<string, TransientPinnedArchiveWorkflow>
+): Record<string, unknown> | undefined {
+  const workflowTemplate = item.workflowTemplateFileName
+    ? workflowsByFileName.get(item.workflowTemplateFileName)?.workflowTemplate
+    : undefined;
+
+  if (item.workflowJson) {
+    return item.workflowJson;
+  }
+
+  if (!workflowTemplate) {
+    return undefined;
+  }
+
+  if (item.workflowInputs && Object.keys(item.workflowInputs).length > 0) {
+    return {
+      workflow: workflowTemplate,
+      ...item.workflowInputs
+    };
+  }
+
+  return workflowTemplate;
+}
+
+async function stageTransientPinnedItemsForArchive(
+  transientPinnedItems: TransientPinnedArchiveItem[],
+  transientWorkflows: TransientPinnedArchiveWorkflow[]
+): Promise<{ archivedFileNames: string[]; releaseRefs: TemporaryArchiveBackupRef[] }> {
+  if (transientPinnedItems.length === 0) {
+    return {
+      archivedFileNames: [],
+      releaseRefs: []
+    };
+  }
+
+  const workflowsByFileName = new Map(transientWorkflows.map((workflow) => [workflow.workflowFileName, workflow]));
+  const exportKey = Date.now().toString(36);
+  const archivedFileNames = new Set<string>();
+  const releaseRefs: TemporaryArchiveBackupRef[] = [];
+
+  for (let index = 0; index < transientPinnedItems.length; index += 1) {
+    const item = transientPinnedItems[index];
+    if (!item) {
+      continue;
+    }
+
+    const safeJobId = item.jobId.replace(/[^a-zA-Z0-9_-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "") || "job";
+    const backupJobId = `export-${exportKey}-${safeJobId}`;
+    const workflowJson = buildWorkflowJsonForArchiveItem(item, workflowsByFileName);
+
+    try {
+      const backup = await backupPinnedImageViaProxy({
+        jobId: backupJobId,
+        outputIndex: index,
+        dataUrl: item.dataUrl,
+        mimeType: item.mimeType,
+        workflowFileName: item.workflowTemplateFileName,
+        workflowJson
+      });
+
+      const fileName = parsePinnedImageFileNameFromUrl(backup.imageUrl);
+      if (fileName) {
+        archivedFileNames.add(fileName);
+      }
+
+      releaseRefs.push({
+        jobId: backupJobId,
+        outputIndex: index,
+        imageUrl: backup.imageUrl
+      });
+    } catch {
+      // Best-effort staging; skip failed items.
+    }
+  }
+
+  return {
+    archivedFileNames: [...archivedFileNames],
+    releaseRefs
+  };
+}
+
 export async function downloadPinnedImagesArchiveViaProxy(clientId?: string): Promise<void> {
   const currentClientId = getOrCreatePinnedImageClientId();
   const query = clientId ? `?clientId=${encodeURIComponent(clientId)}` : "";
@@ -406,6 +495,11 @@ export async function downloadPinnedImagesArchiveViaProxy(clientId?: string): Pr
   const pinnedArchivePayload = includeTransientForClient
     ? await collectPinnedArchivePayload()
     : { transientPinnedItems: [], transientWorkflows: [], archivedPinnedFileNames: [] };
+  const staged = includeTransientForClient
+    ? await stageTransientPinnedItemsForArchive(pinnedArchivePayload.transientPinnedItems, pinnedArchivePayload.transientWorkflows)
+    : { archivedFileNames: [], releaseRefs: [] as TemporaryArchiveBackupRef[] };
+  const archivedPinnedFileNames = [...new Set([...pinnedArchivePayload.archivedPinnedFileNames, ...staged.archivedFileNames])];
+
   let response = await fetch(`/api/pinned-images/archive${query}`, {
     method: "POST",
     headers: {
@@ -414,9 +508,7 @@ export async function downloadPinnedImagesArchiveViaProxy(clientId?: string): Pr
     },
     credentials: "include",
     body: JSON.stringify({
-      transientPinnedItems: pinnedArchivePayload.transientPinnedItems,
-      transientWorkflows: pinnedArchivePayload.transientWorkflows,
-      archivedPinnedFileNames: pinnedArchivePayload.archivedPinnedFileNames
+      archivedPinnedFileNames
     })
   });
 
@@ -431,6 +523,16 @@ export async function downloadPinnedImagesArchiveViaProxy(clientId?: string): Pr
   }
 
   if (!response.ok) {
+    await Promise.allSettled(
+      staged.releaseRefs.map((ref) =>
+        releasePinnedImageViaProxy({
+          jobId: ref.jobId,
+          outputIndex: ref.outputIndex,
+          imageUrl: ref.imageUrl
+        })
+      )
+    );
+
     const data = (await response.json().catch(() => null)) as { error?: string } | null;
     throw new ProxyRequestError(response.status, `Pinned image archive download failed (${response.status})`, data);
   }
@@ -447,11 +549,23 @@ export async function downloadPinnedImagesArchiveViaProxy(clientId?: string): Pr
   link.click();
   link.remove();
   URL.revokeObjectURL(objectUrl);
+
+  await Promise.allSettled(
+    staged.releaseRefs.map((ref) =>
+      releasePinnedImageViaProxy({
+        jobId: ref.jobId,
+        outputIndex: ref.outputIndex,
+        imageUrl: ref.imageUrl
+      })
+    )
+  );
 }
 
 export async function downloadPinnedImagesArchiveBatchViaProxy(clientIds: string[]): Promise<void> {
   const pinnedArchivePayload = await collectPinnedArchivePayload();
   const transientClientId = getOrCreatePinnedImageClientId();
+  const staged = await stageTransientPinnedItemsForArchive(pinnedArchivePayload.transientPinnedItems, pinnedArchivePayload.transientWorkflows);
+  const archivedPinnedFileNames = [...new Set([...pinnedArchivePayload.archivedPinnedFileNames, ...staged.archivedFileNames])];
   const response = await fetch("/api/pinned-images/archive-batch", {
     method: "POST",
     headers: {
@@ -461,9 +575,7 @@ export async function downloadPinnedImagesArchiveBatchViaProxy(clientIds: string
     body: JSON.stringify({
       clientIds,
       transientClientId,
-      transientPinnedItems: pinnedArchivePayload.transientPinnedItems,
-      transientWorkflows: pinnedArchivePayload.transientWorkflows,
-      archivedPinnedFileNames: pinnedArchivePayload.archivedPinnedFileNames
+      archivedPinnedFileNames
     })
   });
 
@@ -471,6 +583,16 @@ export async function downloadPinnedImagesArchiveBatchViaProxy(clientIds: string
   // restarts onto a build that includes /archive-batch. Fall back to the legacy
   // single-client archive endpoint so downloads still work.
   if (response.status === 404) {
+    await Promise.allSettled(
+      staged.releaseRefs.map((ref) =>
+        releasePinnedImageViaProxy({
+          jobId: ref.jobId,
+          outputIndex: ref.outputIndex,
+          imageUrl: ref.imageUrl
+        })
+      )
+    );
+
     for (const clientId of clientIds) {
       await downloadPinnedImagesArchiveViaProxy(clientId);
     }
@@ -478,6 +600,16 @@ export async function downloadPinnedImagesArchiveBatchViaProxy(clientIds: string
   }
 
   if (!response.ok) {
+    await Promise.allSettled(
+      staged.releaseRefs.map((ref) =>
+        releasePinnedImageViaProxy({
+          jobId: ref.jobId,
+          outputIndex: ref.outputIndex,
+          imageUrl: ref.imageUrl
+        })
+      )
+    );
+
     const data = (await response.json().catch(() => null)) as { error?: string } | null;
     throw new ProxyRequestError(response.status, `Pinned image archive batch download failed (${response.status})`, data);
   }
@@ -493,4 +625,14 @@ export async function downloadPinnedImagesArchiveBatchViaProxy(clientIds: string
   link.click();
   link.remove();
   URL.revokeObjectURL(objectUrl);
+
+  await Promise.allSettled(
+    staged.releaseRefs.map((ref) =>
+      releasePinnedImageViaProxy({
+        jobId: ref.jobId,
+        outputIndex: ref.outputIndex,
+        imageUrl: ref.imageUrl
+      })
+    )
+  );
 }
