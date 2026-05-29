@@ -202,7 +202,6 @@ export function App() {
     }
 
     let cancelled = false;
-    setStorageStatus("Storage: checking...");
 
     const browserStorageEstimatePromise =
       typeof navigator !== "undefined" && navigator.storage?.estimate
