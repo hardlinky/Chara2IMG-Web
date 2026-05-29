@@ -77,8 +77,9 @@ export function classifyTimeoutLifecycle(job: RecentJobRecord, now: number = Dat
 
 export function classifyKnownJob404Lifecycle(job: RecentJobRecord, now: number = Date.now()): RecentJobRecord["lifecycle"] {
   const finishedAt = new Date(now).toISOString();
+  const nextStatus = isActiveRunpodStatus(job.lifecycle.status) ? "TIMED_OUT" : normalizeRunpodStatus(job.lifecycle.status);
   return {
-    status: job.lifecycle.status,
+    status: nextStatus,
     isTerminal: true,
     terminalReason: "expired-or-not-found",
     lastCheckedAt: finishedAt,
