@@ -205,6 +205,24 @@ function parseTransientPinnedArchiveItems(payload: unknown): TransientPinnedArch
   return parsedItems;
 }
 
+function parseArchivedPinnedFileNames(payload: unknown): Set<string> | null {
+  if (!payload || typeof payload !== "object") {
+    return null;
+  }
+
+  const rawFileNames = (payload as { archivedPinnedFileNames?: unknown }).archivedPinnedFileNames;
+  if (!Array.isArray(rawFileNames)) {
+    return null;
+  }
+
+  const parsed = rawFileNames
+    .filter((value): value is string => typeof value === "string")
+    .map((value) => value.trim())
+    .filter((value) => /^[a-zA-Z0-9._-]+$/.test(value));
+
+  return new Set(parsed);
+}
+
 function computeWorkflowPayloadKey(jobId: string, payload: Record<string, unknown>): string {
   return `${jobId}:${createHash("sha256").update(JSON.stringify(payload)).digest("hex")}`;
 }
@@ -519,6 +537,7 @@ export function registerPinnedImageRoutes(app: Hono): void {
     const isAdmin = await hasAdminSession(c);
     const payload = await c.req.json().catch(() => null);
     const transientPinnedItems = parseTransientPinnedArchiveItems(payload);
+    const archivedPinnedFileNames = parseArchivedPinnedFileNames(payload);
 
     if (!isAdmin && requestedClientId && requestedClientId !== requestClientId) {
       return c.json({ ok: false, error: "Forbidden" }, 403);
@@ -534,6 +553,11 @@ export function registerPinnedImageRoutes(app: Hono): void {
     let zippedEntries = 0;
 
     for (const entry of entries) {
+      const shouldFilterByPinnedState = targetClientId === requestClientId && archivedPinnedFileNames !== null;
+      if (shouldFilterByPinnedState && !archivedPinnedFileNames.has(entry.fileName)) {
+        continue;
+      }
+
       const filePath = resolve(PINNED_IMAGES_DIR, entry.fileName);
       if (!filePath.startsWith(PINNED_IMAGES_DIR)) {
         missingFiles.push(entry.fileName);
@@ -649,6 +673,7 @@ export function registerPinnedImageRoutes(app: Hono): void {
     const clientIds = [...new Set(rawClientIds.filter((value): value is string => typeof value === "string").map((value) => sanitizeClientId(value)))];
     const transientClientId = typeof payload?.transientClientId === "string" ? sanitizeClientId(payload.transientClientId) : null;
     const transientPinnedItems = parseTransientPinnedArchiveItems(payload);
+    const archivedPinnedFileNames = parseArchivedPinnedFileNames(payload);
 
     if (clientIds.length === 0) {
       logServerWarning("Pinned archive batch rejected: empty clientIds", new Error("BadRequest"), {
@@ -667,6 +692,11 @@ export function registerPinnedImageRoutes(app: Hono): void {
     for (const clientId of clientIds) {
       const entries = await listPinnedImageEntriesForClient(clientId);
       for (const entry of entries) {
+        const shouldFilterByPinnedState = transientClientId === clientId && archivedPinnedFileNames !== null;
+        if (shouldFilterByPinnedState && !archivedPinnedFileNames.has(entry.fileName)) {
+          continue;
+        }
+
         const filePath = resolve(PINNED_IMAGES_DIR, entry.fileName);
         if (!filePath.startsWith(PINNED_IMAGES_DIR)) {
           missingFiles.push({ clientId, fileName: entry.fileName });

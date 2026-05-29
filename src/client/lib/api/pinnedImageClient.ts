@@ -105,6 +105,11 @@ type TransientPinnedArchiveItem = {
   workflowJson?: Record<string, unknown>;
 };
 
+type PinnedArchivePayload = {
+  transientPinnedItems: TransientPinnedArchiveItem[];
+  archivedPinnedFileNames: string[];
+};
+
 export function getOrCreatePinnedImageClientId(): string {
   if (typeof window === "undefined") {
     return "server-render";
@@ -268,6 +273,23 @@ function isArchivedImageUrl(value: string): boolean {
   return value.startsWith("/api/pinned-images/") || /\/api\/pinned-images\//.test(value);
 }
 
+function parsePinnedImageFileNameFromUrl(imageUrl: string): string | null {
+  const decoded = decodeURIComponent(imageUrl.trim());
+  const marker = "/api/pinned-images/";
+  const index = decoded.indexOf(marker);
+  if (index < 0) {
+    return null;
+  }
+
+  const suffix = decoded.slice(index + marker.length);
+  const fileName = suffix.split("?")[0]?.split("#")[0] ?? "";
+  if (!fileName || !/^[a-zA-Z0-9._-]+$/.test(fileName)) {
+    return null;
+  }
+
+  return fileName;
+}
+
 function buildPinnedWorkflowMetadata(job: RecentJobRecord): {
   workflowFileName?: string;
   workflowTemplate?: Record<string, unknown>;
@@ -299,9 +321,10 @@ function buildPinnedWorkflowMetadata(job: RecentJobRecord): {
   };
 }
 
-async function collectTransientPinnedArchiveItems(): Promise<TransientPinnedArchiveItem[]> {
+async function collectPinnedArchivePayload(): Promise<PinnedArchivePayload> {
   const jobs = await listRecentJobs();
-  const items: TransientPinnedArchiveItem[] = [];
+  const transientPinnedItems: TransientPinnedArchiveItem[] = [];
+  const archivedPinnedFileNames = new Set<string>();
 
   for (const job of jobs) {
     const response = job.lastResponse;
@@ -329,11 +352,19 @@ async function collectTransientPinnedArchiveItems(): Promise<TransientPinnedArch
         continue;
       }
 
-      if (isArchivedImageUrl(image.dataUrl) || !image.dataUrl.startsWith("data:")) {
+      if (isArchivedImageUrl(image.dataUrl)) {
+        const fileName = parsePinnedImageFileNameFromUrl(image.dataUrl);
+        if (fileName) {
+          archivedPinnedFileNames.add(fileName);
+        }
         continue;
       }
 
-      items.push({
+      if (!image.dataUrl.startsWith("data:")) {
+        continue;
+      }
+
+      transientPinnedItems.push({
         jobId: job.jobId,
         outputIndex,
         dataUrl: image.dataUrl,
@@ -343,14 +374,19 @@ async function collectTransientPinnedArchiveItems(): Promise<TransientPinnedArch
     }
   }
 
-  return items;
+  return {
+    transientPinnedItems,
+    archivedPinnedFileNames: [...archivedPinnedFileNames].sort((left, right) => left.localeCompare(right))
+  };
 }
 
 export async function downloadPinnedImagesArchiveViaProxy(clientId?: string): Promise<void> {
   const currentClientId = getOrCreatePinnedImageClientId();
   const query = clientId ? `?clientId=${encodeURIComponent(clientId)}` : "";
   const includeTransientForClient = !clientId || clientId === currentClientId;
-  const transientPinnedItems = includeTransientForClient ? await collectTransientPinnedArchiveItems() : [];
+  const pinnedArchivePayload = includeTransientForClient
+    ? await collectPinnedArchivePayload()
+    : { transientPinnedItems: [], archivedPinnedFileNames: [] };
   let response = await fetch(`/api/pinned-images/archive${query}`, {
     method: "POST",
     headers: {
@@ -359,7 +395,8 @@ export async function downloadPinnedImagesArchiveViaProxy(clientId?: string): Pr
     },
     credentials: "include",
     body: JSON.stringify({
-      transientPinnedItems
+      transientPinnedItems: pinnedArchivePayload.transientPinnedItems,
+      archivedPinnedFileNames: pinnedArchivePayload.archivedPinnedFileNames
     })
   });
 
@@ -393,7 +430,7 @@ export async function downloadPinnedImagesArchiveViaProxy(clientId?: string): Pr
 }
 
 export async function downloadPinnedImagesArchiveBatchViaProxy(clientIds: string[]): Promise<void> {
-  const transientPinnedItems = await collectTransientPinnedArchiveItems();
+  const pinnedArchivePayload = await collectPinnedArchivePayload();
   const transientClientId = getOrCreatePinnedImageClientId();
   const response = await fetch("/api/pinned-images/archive-batch", {
     method: "POST",
@@ -404,7 +441,8 @@ export async function downloadPinnedImagesArchiveBatchViaProxy(clientIds: string
     body: JSON.stringify({
       clientIds,
       transientClientId,
-      transientPinnedItems
+      transientPinnedItems: pinnedArchivePayload.transientPinnedItems,
+      archivedPinnedFileNames: pinnedArchivePayload.archivedPinnedFileNames
     })
   });
 
