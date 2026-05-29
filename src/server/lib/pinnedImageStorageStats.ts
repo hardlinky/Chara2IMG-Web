@@ -1,4 +1,4 @@
-import { mkdir, readFile, readdir, stat, statfs, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rm, stat, statfs, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -16,6 +16,7 @@ export const PINNED_IMAGES_DIR = (() => {
 
 const DEFAULT_PINNED_IMAGES_CAPACITY_BYTES = 10 * 1024 * 1024 * 1024;
 const MANIFEST_FILE_PATH = resolve(PINNED_IMAGES_DIR, "manifest.v1.json");
+const CLIENT_MANIFESTS_DIR = resolve(PINNED_IMAGES_DIR, "manifests");
 
 type ManifestEntry = {
   fileName: string;
@@ -32,11 +33,81 @@ type PinnedImagesManifest = {
   entries: ManifestEntry[];
 };
 
+type ClientManifestEntry = Omit<ManifestEntry, "clientId">;
+
+type ClientPinnedImagesManifest = {
+  version: 1;
+  clientId: string;
+  entries: ClientManifestEntry[];
+};
+
 function emptyManifest(): PinnedImagesManifest {
   return {
     version: 1,
     entries: []
   };
+}
+
+function getClientManifestFileName(clientId: string): string {
+  return `${sanitizeClientId(clientId)}.manifest.v1.json`;
+}
+
+function getClientManifestFilePath(clientId: string): string {
+  return resolve(CLIENT_MANIFESTS_DIR, getClientManifestFileName(clientId));
+}
+
+function isClientManifestFileName(fileName: string): boolean {
+  return /^[a-zA-Z0-9_-]+\.manifest\.v1\.json$/u.test(fileName);
+}
+
+function normalizeManifestEntries(entries: unknown[], fallbackClientId?: string): ManifestEntry[] {
+  return entries
+    .filter((entry): entry is ManifestEntry => {
+      if (!entry || typeof entry !== "object") {
+        return false;
+      }
+
+      const record = entry as Partial<ManifestEntry>;
+      const entryClientId = typeof record.clientId === "string" ? record.clientId : fallbackClientId;
+
+      return (
+        typeof record.fileName === "string" &&
+        typeof entryClientId === "string" &&
+        typeof record.contentHash === "string" &&
+        Number.isFinite(Number(record.sizeBytes)) &&
+        Number.isFinite(Number(record.refCount ?? 1)) &&
+        (!("consumers" in record) || Array.isArray((record as { consumers?: unknown }).consumers)) &&
+        typeof record.updatedAt === "string"
+      );
+    })
+    .map((entry) => ({
+      fileName: entry.fileName,
+      clientId: sanitizeClientId(entry.clientId ?? fallbackClientId),
+      contentHash: entry.contentHash,
+      sizeBytes: normalizeFiniteBytes(entry.sizeBytes),
+      refCount: Math.max(1, normalizeFiniteBytes(entry.refCount ?? 1)),
+      consumers: Array.isArray(entry.consumers)
+        ? [...new Set(entry.consumers.filter((consumer): consumer is string => typeof consumer === "string" && consumer.trim().length > 0))]
+        : [],
+      updatedAt: entry.updatedAt
+    }));
+}
+
+function dedupeManifestEntries(entries: ManifestEntry[]): ManifestEntry[] {
+  const byKey = new Map<string, ManifestEntry>();
+
+  for (const entry of entries) {
+    const key = `${sanitizeClientId(entry.clientId)}:${entry.fileName}`;
+    const existing = byKey.get(key);
+    if (!existing) {
+      byKey.set(key, entry);
+      continue;
+    }
+
+    byKey.set(key, Date.parse(entry.updatedAt) >= Date.parse(existing.updatedAt) ? entry : existing);
+  }
+
+  return [...byKey.values()];
 }
 
 function normalizeFiniteBytes(value: unknown): number {
@@ -54,8 +125,43 @@ export function sanitizeClientId(value: string | null | undefined): string {
 }
 
 async function readManifest(): Promise<PinnedImagesManifest> {
+  const perClientEntries: ManifestEntry[] = [];
+
   try {
     await mkdir(PINNED_IMAGES_DIR, { recursive: true });
+    await mkdir(CLIENT_MANIFESTS_DIR, { recursive: true });
+
+    const clientManifestFiles = await readdir(CLIENT_MANIFESTS_DIR);
+    for (const fileName of clientManifestFiles) {
+      if (!isClientManifestFileName(fileName)) {
+        continue;
+      }
+
+      try {
+        const raw = await readFile(resolve(CLIENT_MANIFESTS_DIR, fileName), "utf8");
+        const parsed = JSON.parse(raw) as Partial<ClientPinnedImagesManifest>;
+        const fallbackClientId = sanitizeClientId((parsed.clientId ?? fileName.split(".")[0]) as string);
+        if (parsed.version !== 1 || !Array.isArray(parsed.entries)) {
+          continue;
+        }
+
+        perClientEntries.push(...normalizeManifestEntries(parsed.entries, fallbackClientId));
+      } catch {
+        // Skip invalid client manifest files.
+      }
+    }
+  } catch {
+    return emptyManifest();
+  }
+
+  if (perClientEntries.length > 0) {
+    return {
+      version: 1,
+      entries: dedupeManifestEntries(perClientEntries)
+    };
+  }
+
+  try {
     const raw = await readFile(MANIFEST_FILE_PATH, "utf8");
     const parsed = JSON.parse(raw) as Partial<PinnedImagesManifest>;
 
@@ -65,30 +171,7 @@ async function readManifest(): Promise<PinnedImagesManifest> {
 
     return {
       version: 1,
-      entries: parsed.entries
-        .filter((entry): entry is ManifestEntry => {
-          return (
-            Boolean(entry) &&
-            typeof entry.fileName === "string" &&
-            typeof entry.clientId === "string" &&
-            typeof entry.contentHash === "string" &&
-            Number.isFinite(Number(entry.sizeBytes)) &&
-            Number.isFinite(Number(entry.refCount ?? 1)) &&
-            (!("consumers" in entry) || Array.isArray((entry as { consumers?: unknown }).consumers)) &&
-            typeof entry.updatedAt === "string"
-          );
-        })
-        .map((entry) => ({
-          fileName: entry.fileName,
-          clientId: sanitizeClientId(entry.clientId),
-          contentHash: entry.contentHash,
-          sizeBytes: normalizeFiniteBytes(entry.sizeBytes),
-          refCount: Math.max(1, normalizeFiniteBytes(entry.refCount ?? 1)),
-          consumers: Array.isArray(entry.consumers)
-            ? [...new Set(entry.consumers.filter((consumer): consumer is string => typeof consumer === "string" && consumer.trim().length > 0))]
-            : [],
-          updatedAt: entry.updatedAt
-        }))
+      entries: dedupeManifestEntries(normalizeManifestEntries(parsed.entries))
     };
   } catch {
     return emptyManifest();
@@ -97,7 +180,55 @@ async function readManifest(): Promise<PinnedImagesManifest> {
 
 async function writeManifest(manifest: PinnedImagesManifest): Promise<void> {
   await mkdir(PINNED_IMAGES_DIR, { recursive: true });
-  await writeFile(MANIFEST_FILE_PATH, JSON.stringify(manifest));
+  await mkdir(CLIENT_MANIFESTS_DIR, { recursive: true });
+
+  const groupedByClient = new Map<string, ClientManifestEntry[]>();
+  for (const entry of manifest.entries) {
+    const normalizedClientId = sanitizeClientId(entry.clientId);
+    const current = groupedByClient.get(normalizedClientId) ?? [];
+    current.push({
+      fileName: entry.fileName,
+      contentHash: entry.contentHash,
+      sizeBytes: normalizeFiniteBytes(entry.sizeBytes),
+      refCount: Math.max(1, normalizeFiniteBytes(entry.refCount ?? 1)),
+      consumers: Array.isArray(entry.consumers)
+        ? [...new Set(entry.consumers.filter((consumer): consumer is string => typeof consumer === "string" && consumer.trim().length > 0))]
+        : [],
+      updatedAt: entry.updatedAt
+    });
+    groupedByClient.set(normalizedClientId, current);
+  }
+
+  let existingManifestFiles: string[] = [];
+  try {
+    existingManifestFiles = await readdir(CLIENT_MANIFESTS_DIR);
+  } catch {
+    existingManifestFiles = [];
+  }
+
+  const nextManifestFiles = new Set<string>();
+  for (const [clientId, entries] of groupedByClient.entries()) {
+    const fileName = getClientManifestFileName(clientId);
+    nextManifestFiles.add(fileName);
+
+    const clientManifest: ClientPinnedImagesManifest = {
+      version: 1,
+      clientId,
+      entries: entries.sort((left, right) => left.fileName.localeCompare(right.fileName))
+    };
+
+    await writeFile(getClientManifestFilePath(clientId), `${JSON.stringify(clientManifest, null, 2)}\n`, "utf8");
+  }
+
+  for (const existingFile of existingManifestFiles) {
+    if (!isClientManifestFileName(existingFile) || nextManifestFiles.has(existingFile)) {
+      continue;
+    }
+
+    await rm(resolve(CLIENT_MANIFESTS_DIR, existingFile), { force: true });
+  }
+
+  await rm(MANIFEST_FILE_PATH, { force: true });
 }
 
 function getConfiguredPinnedImagesCapacityBytes(): number {
@@ -203,7 +334,7 @@ async function listOrphanedImageFiles(manifest: PinnedImagesManifest): Promise<A
   const orphans: Array<{ fileName: string; sizeBytes: number }> = [];
 
   for (const file of files) {
-    if (file === "manifest.v1.json") {
+    if (file === "manifest.v1.json" || file === "manifests") {
       continue;
     }
 
