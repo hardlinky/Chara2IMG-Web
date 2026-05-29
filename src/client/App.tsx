@@ -495,7 +495,8 @@ export function App() {
                 {updateStatus ? <span>{updateStatus}</span> : null}
               </div>
             </section>
-            {adminGranted ? <AdminTab enabled={true} /> : <AdminGate onGranted={setAdminGranted} />}
+            <AdminTab enabled={adminGranted} />
+            {!adminGranted ? <AdminGate onGranted={setAdminGranted} /> : null}
           </div>
         )
       }}

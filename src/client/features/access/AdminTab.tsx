@@ -8,6 +8,8 @@ import {
   type PinnedImageClientUsage
 } from "../../lib/api/pinnedImageClient";
 
+const CLIENT_PAGE_SIZE = 10;
+
 function formatBytes(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes < 0) {
     return "0 B";
@@ -32,23 +34,27 @@ type AdminTabProps = {
 
 export function AdminTab({ enabled }: AdminTabProps) {
   const [clients, setClients] = useState<PinnedImageClientUsage[]>([]);
-  const [selectedClientIds, setSelectedClientIds] = useState<string[]>([]);
-  const [manualClientIdsText, setManualClientIdsText] = useState("");
-  const [archiveTargetClientId, setArchiveTargetClientId] = useState("");
+  const [selectedClientIdsText, setSelectedClientIdsText] = useState("");
+  const [page, setPage] = useState(1);
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
   const currentClientId = getOrCreatePinnedImageClientId();
 
-  const manualClientIds = useMemo(
+  const selectedClientIds = useMemo(
     () =>
-      manualClientIdsText
+      selectedClientIdsText
         .split(/[\s,]+/)
         .map((value) => value.trim())
         .filter((value) => value.length > 0),
-    [manualClientIdsText]
+    [selectedClientIdsText]
   );
 
-  const keepClientIds = useMemo(() => [...new Set([...selectedClientIds, ...manualClientIds])], [manualClientIds, selectedClientIds]);
+  const keepClientIds = useMemo(() => [...new Set(selectedClientIds)], [selectedClientIds]);
+  const pageCount = Math.max(1, Math.ceil(clients.length / CLIENT_PAGE_SIZE));
+  const pagedClients = useMemo(
+    () => clients.slice((page - 1) * CLIENT_PAGE_SIZE, page * CLIENT_PAGE_SIZE),
+    [clients, page]
+  );
 
   async function loadClients(): Promise<void> {
     if (!enabled) {
@@ -61,7 +67,15 @@ export function AdminTab({ enabled }: AdminTabProps) {
     try {
       const nextClients = await fetchPinnedImageClientsViaProxy();
       setClients(nextClients);
-      setSelectedClientIds((previous) => previous.filter((clientId) => nextClients.some((entry) => entry.clientId === clientId)));
+      setSelectedClientIdsText((previous) => {
+        const previousIds = previous
+          .split(/[\s,]+/)
+          .map((value) => value.trim())
+          .filter((value) => value.length > 0);
+
+        const filtered = previousIds.filter((clientId) => nextClients.some((entry) => entry.clientId === clientId));
+        return filtered.join(" ");
+      });
     } catch {
       setStatus("Failed to load archived-image clients.");
     } finally {
@@ -73,16 +87,27 @@ export function AdminTab({ enabled }: AdminTabProps) {
     void loadClients();
   }, [enabled]);
 
+  useEffect(() => {
+    if (page > pageCount) {
+      setPage(pageCount);
+    }
+  }, [page, pageCount]);
+
   const selectedCount = keepClientIds.length;
   const totalBytes = useMemo(() => clients.reduce((sum, client) => sum + client.bytes, 0), [clients]);
 
   function toggleClient(clientId: string): void {
-    setSelectedClientIds((previous) => {
-      if (previous.includes(clientId)) {
-        return previous.filter((item) => item !== clientId);
+    setSelectedClientIdsText((previous) => {
+      const ids = previous
+        .split(/[\s,]+/)
+        .map((value) => value.trim())
+        .filter((value) => value.length > 0);
+
+      if (ids.includes(clientId)) {
+        return ids.filter((value) => value !== clientId).join(" ");
       }
 
-      return [...previous, clientId];
+      return [...ids, clientId].join(" ");
     });
   }
 
@@ -127,116 +152,110 @@ export function AdminTab({ enabled }: AdminTabProps) {
     }
   }
 
-  async function downloadOwnArchive(): Promise<void> {
+  async function downloadArchive(): Promise<void> {
     setLoading(true);
     setStatus("");
 
     try {
-      await downloadPinnedImagesArchiveViaProxy();
-      setStatus("Archive download started for current client.");
+      let targetClientId: string | undefined;
+      if (enabled) {
+        if (keepClientIds.length > 1) {
+          setStatus("Download supports one client at a time. Keep exactly one client ID selected for admin download.");
+          setLoading(false);
+          return;
+        }
+
+        targetClientId = keepClientIds[0];
+      }
+
+      await downloadPinnedImagesArchiveViaProxy(targetClientId);
+      setStatus(`Archive download started for ${targetClientId ?? currentClientId}.`);
     } catch {
-      setStatus("Failed to download archive for current client.");
+      setStatus(`Failed to download archive for ${(enabled ? keepClientIds[0] : undefined) ?? currentClientId}.`);
     } finally {
       setLoading(false);
     }
-  }
-
-  async function downloadArchiveForClient(): Promise<void> {
-    const trimmedClientId = archiveTargetClientId.trim();
-    if (!trimmedClientId) {
-      setStatus("Enter a client ID to download its archive.");
-      return;
-    }
-
-    setLoading(true);
-    setStatus("");
-
-    try {
-      await downloadPinnedImagesArchiveViaProxy(trimmedClientId);
-      setStatus(`Archive download started for ${trimmedClientId}.`);
-    } catch {
-      setStatus(`Failed to download archive for ${trimmedClientId}.`);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  if (!enabled) {
-    return (
-      <section className="setup-card">
-        <p>Unlock admin access to view archived-image client controls.</p>
-      </section>
-    );
   }
 
   return (
     <div className="section-stack">
       <section className="setup-card">
-        <h2>Archived Image Clients</h2>
-        <p>Pick clients to preserve. Prune removes archived images for every other client ID.</p>
-        <p>This list only shows client IDs that currently have archived entries on the server.</p>
+        <h2>{enabled ? "Archived Image Clients" : "Archive Download"}</h2>
         <p>{`Current browser client ID: ${currentClientId}`}</p>
-        <p>{`Clients: ${clients.length} | Total archive bytes: ${formatBytes(totalBytes)}`}</p>
-        <div className="field" style={{ display: "grid", gap: "0.5rem" }}>
-          {clients.length === 0 ? <p>No archived clients found.</p> : null}
-          {clients.map((client) => (
-            <label key={client.clientId} style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <input
-                type="checkbox"
-                checked={selectedClientIds.includes(client.clientId)}
-                onChange={() => toggleClient(client.clientId)}
-              />
-              <span>{`${client.clientId} (${formatBytes(client.bytes)}, ${client.entries} entries)`}</span>
-            </label>
-          ))}
-        </div>
-        <label className="field" htmlFor="manual-keep-client-ids" style={{ marginTop: "0.75rem" }}>
-          Keep additional client IDs (comma or space separated)
-          <input
-            className="input"
-            id="manual-keep-client-ids"
-            type="text"
-            value={manualClientIdsText}
-            onChange={(event) => setManualClientIdsText(event.target.value)}
-            placeholder="client-abc client-def"
-          />
-        </label>
-        <label className="field" htmlFor="archive-target-client-id" style={{ marginTop: "0.75rem" }}>
-          Download archive for client ID (admin)
-          <input
-            className="input"
-            id="archive-target-client-id"
-            type="text"
-            value={archiveTargetClientId}
-            onChange={(event) => setArchiveTargetClientId(event.target.value)}
-            placeholder="client-abc"
-          />
-        </label>
+        {enabled ? (
+          <p>Pick clients to preserve. Prune removes archived images for every other client ID.</p>
+        ) : (
+          <p>Download your archived/pinned images as a zip file.</p>
+        )}
+        {enabled ? <p>{`Clients: ${clients.length} | Total archive bytes: ${formatBytes(totalBytes)}`}</p> : null}
         <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.75rem", flexWrap: "wrap" }}>
-          <button className="btn btn-secondary" type="button" onClick={() => void loadClients()} disabled={loading}>
+          <button className="btn btn-secondary" type="button" onClick={() => void loadClients()} disabled={loading || !enabled}>
             Refresh Clients
           </button>
-          <button className="btn btn-secondary" type="button" onClick={() => void downloadOwnArchive()} disabled={loading}>
-            {loading ? "Working..." : "Download My Archive (.zip)"}
+          <button className="btn btn-secondary" type="button" onClick={() => void downloadArchive()} disabled={loading}>
+            {loading ? "Working..." : "Download .zip"}
           </button>
-          <button className="btn btn-secondary" type="button" onClick={() => void downloadArchiveForClient()} disabled={loading || archiveTargetClientId.trim().length === 0}>
-            {loading ? "Working..." : "Download Client Archive (.zip)"}
+          <button className="btn btn-secondary" type="button" onClick={() => void previewPruneToSelected()} disabled={loading || !enabled || selectedCount === 0}>
+            {loading ? "Working..." : "Prune (Dry Run)"}
           </button>
-          <button
-            className="btn btn-secondary"
-            type="button"
-            onClick={() => setManualClientIdsText((previous) => (previous.includes(currentClientId) ? previous : `${previous} ${currentClientId}`.trim()))}
-            disabled={loading}
-          >
-            Add Current Client ID
-          </button>
-          <button className="btn btn-secondary" type="button" onClick={() => void previewPruneToSelected()} disabled={loading || selectedCount === 0}>
-            {loading ? "Working..." : "Dry Run"}
-          </button>
-          <button className="btn btn-primary" type="button" onClick={() => void pruneToSelected()} disabled={loading || selectedCount === 0}>
-            {loading ? "Working..." : `Prune To ${selectedCount} Selected`}
+          <button className="btn btn-primary" type="button" onClick={() => void pruneToSelected()} disabled={loading || !enabled || selectedCount === 0}>
+            {loading ? "Working..." : "Prune"}
           </button>
         </div>
+
+        {enabled ? (
+          <>
+            <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
+              <label className="field" htmlFor="client-selection-ids" style={{ margin: 0, flex: "1 1 16rem" }}>
+                Client selection
+                <input
+                  className="input"
+                  id="client-selection-ids"
+                  type="text"
+                  value={selectedClientIdsText}
+                  onChange={(event) => setSelectedClientIdsText(event.target.value)}
+                  placeholder="client-abc client-def"
+                />
+              </label>
+              <span className="status-inline" data-tone="warning">{`Selected: ${selectedCount}`}</span>
+            </div>
+
+            <div className="field" style={{ display: "grid", gap: "0.4rem", marginTop: "0.75rem" }}>
+              {clients.length === 0 ? <p>No archived clients found.</p> : null}
+              {pagedClients.map((client) => {
+                const selected = keepClientIds.includes(client.clientId);
+                const isOwnClient = client.clientId === currentClientId;
+                return (
+                  <button
+                    key={client.clientId}
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => toggleClient(client.clientId)}
+                    style={{
+                      textAlign: "left",
+                      justifyContent: "flex-start",
+                      borderColor: selected ? "rgba(226, 137, 76, 0.8)" : undefined,
+                      background: isOwnClient ? "rgba(52, 94, 144, 0.28)" : undefined,
+                      color: isOwnClient ? "#d7ecff" : undefined
+                    }}
+                  >
+                    {`${client.clientId} (${formatBytes(client.bytes)}, ${client.entries} entries)`}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
+              <button className="btn btn-secondary" type="button" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page <= 1}>
+                Prev Page
+              </button>
+              <span>{`${page} / ${pageCount}`}</span>
+              <button className="btn btn-secondary" type="button" onClick={() => setPage((current) => Math.min(pageCount, current + 1))} disabled={page >= pageCount}>
+                Next Page
+              </button>
+            </div>
+          </>
+        ) : null}
       </section>
 
       {status ? (
