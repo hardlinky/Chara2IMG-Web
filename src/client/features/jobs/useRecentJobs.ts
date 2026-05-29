@@ -33,6 +33,8 @@ type UseRecentJobsOptions = {
 
 export const RECENT_JOB_PAGE_SIZE = 10;
 const OUTPUTS_IN_MEMORY_PER_JOB_LIMIT = 8;
+const ADAPTIVE_OFFLOAD_INTERVAL_MS = 60_000;
+const ADAPTIVE_OFFLOAD_LONG_TASK_P95_MS = 120;
 export const RECENT_JOB_STATUS_FILTERS = ["All", "IN_QUEUE", "IN_PROGRESS", "COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT"] as const;
 
 export type RecentJobStatusFilter = (typeof RECENT_JOB_STATUS_FILTERS)[number];
@@ -457,6 +459,8 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
   const [error, setError] = useState<string | null>(null);
   const [storageRefreshToken, setStorageRefreshToken] = useState(0);
   const lastReconcileSignatureRef = useRef<string>("");
+  const longTaskDurationsRef = useRef<number[]>([]);
+  const adaptiveOffloadRunningRef = useRef(false);
 
   const refreshRecentJobs = useCallback(async (resetPage: boolean = false) => {
     const nextJobs = await loadRecentJobs();
@@ -467,6 +471,96 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
     }
     return nextJobs;
   }, []);
+
+  const runAdaptiveOffload = useCallback(async (maxImagesToProcess: number) => {
+    if (maxImagesToProcess <= 0 || adaptiveOffloadRunningRef.current) {
+      return;
+    }
+
+    adaptiveOffloadRunningRef.current = true;
+    try {
+      const oldestFirstVisibleJobs = [...jobs]
+        .filter((job) => job.hiddenAt === null)
+        .sort((left, right) => left.submittedAt.localeCompare(right.submittedAt));
+
+      let processed = 0;
+
+      for (const job of oldestFirstVisibleJobs) {
+        if (processed >= maxImagesToProcess) {
+          break;
+        }
+
+        const hydrated = await getRecentJob(job.jobId);
+        const response = hydrated?.lastResponse;
+        if (!response) {
+          continue;
+        }
+
+        const extractedImages = extractRunpodOutputImages(response);
+        if (extractedImages.length === 0) {
+          continue;
+        }
+
+        const pinnedIndices = new Set(job.pinnedOutputIndices ?? []);
+        const allOutputsPinnedByLegacyFlag = Boolean(job.pinnedAt) && pinnedIndices.size === 0;
+
+        for (let outputIndex = extractedImages.length - 1; outputIndex >= 0; outputIndex -= 1) {
+          if (processed >= maxImagesToProcess) {
+            break;
+          }
+
+          const image = extractedImages[outputIndex];
+          if (!image) {
+            continue;
+          }
+
+          const isPinnedOutput = allOutputsPinnedByLegacyFlag || pinnedIndices.has(outputIndex);
+
+          if (isPinnedOutput) {
+            if (isArchivedImageUrl(image.dataUrl)) {
+              continue;
+            }
+
+            if (!image.dataUrl.startsWith("data:")) {
+              continue;
+            }
+
+            try {
+              const backup = await backupPinnedImageViaProxy({
+                jobId: job.jobId,
+                outputIndex,
+                dataUrl: image.dataUrl,
+                mimeType: image.mimeType
+              });
+
+              await setRecentJobOutputPinned(job.jobId, outputIndex, true, job.pinnedAt ?? new Date().toISOString(), backup.imageUrl);
+              processed += 1;
+            } catch {
+              // Adaptive offload is opportunistic; skip failures.
+            }
+
+            continue;
+          }
+
+          try {
+            await removeRecentJobOutputImageFromStorage(job.jobId, outputIndex);
+            if (isArchivedImageUrl(image.dataUrl)) {
+              await releasePinnedImageViaProxy({ imageUrl: image.dataUrl, jobId: job.jobId, outputIndex }).catch(() => undefined);
+            }
+            processed += 1;
+          } catch {
+            // Ignore individual offload failures.
+          }
+        }
+      }
+
+      if (processed > 0) {
+        await refreshRecentJobs();
+      }
+    } finally {
+      adaptiveOffloadRunningRef.current = false;
+    }
+  }, [jobs, refreshRecentJobs]);
 
   const pollNow = useCallback(async () => {
     setIsPolling(true);
@@ -577,34 +671,7 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
   }, [refreshRecentJobs]);
 
   const togglePinnedImage = useCallback(async (jobId: string, outputIndex: number, pinned: boolean) => {
-    let replacementDataUrl: string | undefined;
-
-    if (pinned) {
-      const job = await getRecentJob(jobId);
-      const response = job?.lastResponse;
-      if (!response) {
-        return { ok: false as const, reason: "Job output is not available to pin." };
-      }
-
-      const extractedImages = extractRunpodOutputImages(response);
-      const targetImage = extractedImages[outputIndex];
-      if (!targetImage) {
-        return { ok: false as const, reason: "Job output is not available to pin." };
-      }
-
-      if (targetImage.dataUrl.startsWith("data:")) {
-        const backup = await backupPinnedImageViaProxy({
-          jobId,
-          outputIndex,
-          dataUrl: targetImage.dataUrl,
-          mimeType: targetImage.mimeType
-        });
-
-        replacementDataUrl = backup.imageUrl;
-      }
-    }
-
-    const result = await toggleRecentJobOutputPinnedState(jobId, outputIndex, pinned, replacementDataUrl);
+    const result = await toggleRecentJobOutputPinnedState(jobId, outputIndex, pinned);
     await refreshRecentJobs();
     if (!result.ok) {
       setError(result.reason);
@@ -652,59 +719,6 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
   }, [refreshRecentJobs]);
 
   useEffect(() => {
-    let cancelled = false;
-
-    void (async () => {
-      let migratedAny = false;
-
-      for (const job of jobs) {
-        if (!job.pinnedOutputIndices || job.pinnedOutputIndices.length === 0) {
-          continue;
-        }
-
-        const hydrated = await getRecentJob(job.jobId);
-        const response = hydrated?.lastResponse;
-        if (!response) {
-          continue;
-        }
-
-        const extractedImages = extractRunpodOutputImages(response);
-
-        for (const outputIndex of job.pinnedOutputIndices) {
-          const targetImage = extractedImages[outputIndex];
-          if (!targetImage || !targetImage.dataUrl.startsWith("data:")) {
-            continue;
-          }
-
-          try {
-            const backup = await backupPinnedImageViaProxy({
-              jobId: job.jobId,
-              outputIndex,
-              dataUrl: targetImage.dataUrl,
-              mimeType: targetImage.mimeType
-            });
-
-            await setRecentJobOutputPinned(job.jobId, outputIndex, true, job.pinnedAt ?? new Date().toISOString(), backup.imageUrl);
-            migratedAny = true;
-          } catch {
-            if (!cancelled) {
-              setError(`Failed to migrate pinned image backup for ${job.jobId}.`);
-            }
-          }
-        }
-      }
-
-      if (migratedAny && !cancelled) {
-        await refreshRecentJobs();
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [jobs, refreshRecentJobs]);
-
-  useEffect(() => {
     const interval = window.setInterval(() => {
       void pollNow();
     }, JOB_POLL_INTERVAL_MS);
@@ -713,6 +727,98 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
       window.clearInterval(interval);
     };
   }, [pollNow]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (!("PerformanceObserver" in window)) {
+      return;
+    }
+
+    let observer: PerformanceObserver | null = null;
+
+    try {
+      observer = new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          if (typeof entry.duration !== "number" || !Number.isFinite(entry.duration)) {
+            continue;
+          }
+
+          longTaskDurationsRef.current.push(entry.duration);
+        }
+
+        if (longTaskDurationsRef.current.length > 60) {
+          longTaskDurationsRef.current = longTaskDurationsRef.current.slice(-60);
+        }
+      });
+
+      observer.observe({ entryTypes: ["longtask"] });
+    } catch {
+      observer = null;
+    }
+
+    return () => {
+      observer?.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    let cancelled = false;
+
+    const tick = async () => {
+      if (cancelled) {
+        return;
+      }
+
+      let usageRatio = 0;
+      if (navigator.storage?.estimate) {
+        try {
+          const estimate = await navigator.storage.estimate();
+          if (typeof estimate.usage === "number" && typeof estimate.quota === "number" && estimate.quota > 0) {
+            usageRatio = estimate.usage / estimate.quota;
+          }
+        } catch {
+          // Ignore estimate failures.
+        }
+      }
+
+      const durations = [...longTaskDurationsRef.current].sort((left, right) => left - right);
+      const p95Index = durations.length > 0 ? Math.min(durations.length - 1, Math.floor(durations.length * 0.95)) : -1;
+      const p95LongTaskMs = p95Index >= 0 ? durations[p95Index]! : 0;
+
+      let maxImagesToProcess = 0;
+      if (usageRatio >= 0.9) {
+        maxImagesToProcess = 20;
+      } else if (usageRatio >= 0.8) {
+        maxImagesToProcess = 12;
+      } else if (usageRatio >= 0.7) {
+        maxImagesToProcess = 6;
+      } else if (usageRatio >= 0.6 && p95LongTaskMs >= ADAPTIVE_OFFLOAD_LONG_TASK_P95_MS) {
+        maxImagesToProcess = 4;
+      }
+
+      if (maxImagesToProcess > 0) {
+        await runAdaptiveOffload(maxImagesToProcess);
+      }
+    };
+
+    const interval = window.setInterval(() => {
+      void tick();
+    }, ADAPTIVE_OFFLOAD_INTERVAL_MS);
+
+    void tick();
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [runAdaptiveOffload]);
 
   const visibleJobs = useMemo(() => jobs.filter((job) => job.hiddenAt === null).sort(sortNewestFirst), [jobs]);
   const pinnedVisibleCount = useMemo(() => visibleJobs.filter((job) => Boolean(job.pinnedAt) || Boolean(job.pinnedOutputIndices?.length)).length, [visibleJobs]);
