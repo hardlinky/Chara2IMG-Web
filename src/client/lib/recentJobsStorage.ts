@@ -527,48 +527,6 @@ export async function setRecentJobOutputPinned(
   return { ok: true };
 }
 
-export async function replaceRecentJobOutputImageUrl(
-  jobId: string,
-  outputIndex: number,
-  replacementDataUrl: string
-): Promise<{ ok: true } | { ok: false; reason: string }> {
-  const target = await db.table<StoredRecentJob, string>("jobs").get(jobId);
-  if (!target || target.hiddenAt !== null || outputIndex < 0) {
-    return { ok: false, reason: "Job output is not available." };
-  }
-
-  const sourceResponse = await loadHydratedLastResponse(jobId, target.lastResponse);
-  if (!sourceResponse) {
-    return { ok: false, reason: "Job response is not available." };
-  }
-
-  const extractedImages = extractRunpodOutputImages(sourceResponse);
-  const replacementTarget = extractedImages[outputIndex];
-  if (!replacementTarget) {
-    return { ok: false, reason: "Job output is not available." };
-  }
-
-  const tokens = parseSourcePath(replacementTarget.sourcePath);
-  if (!tokens) {
-    return { ok: false, reason: "Job output path is not editable." };
-  }
-
-  const clonedResponse = cloneResponseBody(sourceResponse);
-  const replaced = setValueAtPath(clonedResponse, tokens, replacementDataUrl);
-  if (!replaced) {
-    return { ok: false, reason: "Failed to replace job output URL." };
-  }
-
-  const compacted = compactResponsePayload(clonedResponse);
-  await db.table<StoredRecentJob, string>("jobs").update(jobId, {
-    lastResponse: compacted.compactedResponse,
-    outputImageCount: compacted.totalImageCount
-  });
-  await upsertJobArchive(jobId, compacted.fullResponse);
-
-  return { ok: true };
-}
-
 export async function toggleRecentJobOutputPinned(jobId: string, outputIndex: number, pinned: boolean): Promise<{ ok: true } | { ok: false; reason: string }> {
   return setRecentJobOutputPinned(jobId, outputIndex, pinned);
 }
