@@ -414,6 +414,9 @@ export function registerPinnedImageRoutes(app: Hono): void {
   app.post("/api/pinned-images/archive-batch", async (c) => {
     const isAdmin = await hasAdminSession(c);
     if (!isAdmin) {
+      logServerWarning("Pinned archive batch denied: admin session required", new Error("Forbidden"), {
+        path: "/api/pinned-images/archive-batch"
+      });
       return c.json({ ok: false, error: "Forbidden" }, 403);
     }
 
@@ -422,6 +425,10 @@ export function registerPinnedImageRoutes(app: Hono): void {
     const clientIds = [...new Set(rawClientIds.filter((value): value is string => typeof value === "string").map((value) => sanitizeClientId(value)))];
 
     if (clientIds.length === 0) {
+      logServerWarning("Pinned archive batch rejected: empty clientIds", new Error("BadRequest"), {
+        path: "/api/pinned-images/archive-batch",
+        receivedCount: rawClientIds.length
+      });
       return c.json({ ok: false, error: "Invalid archive batch request" }, 400);
     }
 

@@ -29,6 +29,33 @@ function formatBytes(bytes: number): string {
   return `${value.toFixed(decimals)} ${units[unitIndex]}`;
 }
 
+function describeProxyError(error: unknown): string {
+  if (!error || typeof error !== "object") {
+    return "Unknown error";
+  }
+
+  const status = (error as { status?: unknown }).status;
+  const data = (error as { data?: unknown }).data;
+  const message = (error as { message?: unknown }).message;
+  const backendError = data && typeof data === "object" && "error" in (data as Record<string, unknown>)
+    ? (data as Record<string, unknown>).error
+    : undefined;
+
+  if (status === 403) {
+    return "Forbidden (403). Admin session may be expired - unlock Admin again.";
+  }
+
+  if (typeof backendError === "string" && backendError.trim()) {
+    return typeof status === "number" ? `${backendError} (${status})` : backendError;
+  }
+
+  if (typeof message === "string" && message.trim()) {
+    return message;
+  }
+
+  return typeof status === "number" ? `Request failed (${status})` : "Request failed";
+}
+
 type AdminTabProps = {
   enabled: boolean;
 };
@@ -162,8 +189,12 @@ export function AdminTab({ enabled }: AdminTabProps) {
         await downloadPinnedImagesArchiveViaProxy();
         setStatus(`Archive download started for ${currentClientId}.`);
       }
-    } catch {
-      setStatus(enabled ? "Failed to download selected client archives." : `Failed to download archive for ${currentClientId}.`);
+    } catch (error) {
+      setStatus(
+        enabled
+          ? `Failed to download selected client archives: ${describeProxyError(error)}`
+          : `Failed to download archive for ${currentClientId}: ${describeProxyError(error)}`
+      );
     } finally {
       setLoading(false);
     }
