@@ -9,6 +9,25 @@ type SessionResponse = {
   invited: boolean;
 };
 
+function EyeIcon({ visible }: { visible: boolean }) {
+  if (visible) {
+    return (
+      <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false">
+        <path d="M3 3l18 18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        <path d="M10.6 10.6A3 3 0 0 0 12 15a3 3 0 0 0 1.4-.35" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        <path d="M9.5 5.2A10.7 10.7 0 0 1 12 5c6.5 0 10 7 10 7a17.7 17.7 0 0 1-3.7 4.5M6.2 7.2A18.3 18.3 0 0 0 2 12s3.5 7 10 7c1.3 0 2.5-.2 3.5-.6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false">
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" strokeWidth="2" />
+    </svg>
+  );
+}
+
 export function InviteGate(props: InviteGateProps) {
   const [invite, setInvite] = useState("");
   const [showInvite, setShowInvite] = useState(false);
@@ -85,21 +104,28 @@ export function InviteGate(props: InviteGateProps) {
       <form className="setup-form" onSubmit={(event) => void submitInvite(event)}>
         <label className="field" htmlFor="invite">
           Invite code
-        <input
-          className="input"
-          id="invite"
-          name="invite"
-          type={showInvite ? "text" : "password"}
-          value={invite}
-          onChange={(event) => setInvite(event.target.value)}
-          autoComplete="off"
-          required
-        />
+          <span className="password-input-wrap">
+            <input
+              className="input"
+              id="invite"
+              name="invite"
+              type={showInvite ? "text" : "password"}
+              value={invite}
+              onChange={(event) => setInvite(event.target.value)}
+              autoComplete="off"
+              required
+            />
+            <button
+              className="password-visibility-toggle"
+              type="button"
+              aria-label={showInvite ? "Hide password" : "Show password"}
+              title={showInvite ? "Hide password" : "Show password"}
+              onClick={() => setShowInvite((current) => !current)}
+            >
+              <EyeIcon visible={showInvite} />
+            </button>
+          </span>
         </label>
-
-        <button className="btn btn-secondary" type="button" onClick={() => setShowInvite((current) => !current)}>
-          {showInvite ? "Hide password" : "Show password"}
-        </button>
 
         <button className="btn btn-primary" type="submit" disabled={submitting}>
           {submitting ? "Verifying..." : "Verify Invite"}
