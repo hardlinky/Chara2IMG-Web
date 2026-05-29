@@ -216,7 +216,13 @@ export function App() {
       }
 
       const browserUsedBytes = typeof browserEstimate?.usage === "number" ? browserEstimate.usage : null;
+      const browserQuotaBytes = typeof browserEstimate?.quota === "number" ? browserEstimate.quota : null;
+      const browserUsagePercent =
+        browserUsedBytes !== null && browserQuotaBytes !== null && browserQuotaBytes > 0
+          ? Math.round((browserUsedBytes / browserQuotaBytes) * 100)
+          : null;
       const browserUsedLabel = browserUsedBytes !== null ? formatBytes(browserUsedBytes) : "unavailable";
+      const browserUsageSuffix = browserUsagePercent !== null ? ` (${browserUsagePercent}%)` : "";
 
       const hasServerStats = isSystemStorageStats(serverStatsResult);
       const serverUserUsedLabel = hasServerStats ? formatBytes(serverStatsResult.userUsedBytes) : "unavailable";
@@ -225,7 +231,7 @@ export function App() {
       const serverErrorLabel = hasServerStats ? "" : describeStorageStatsError(serverStatsResult);
 
       setStorageStatus(
-        `Storage: cache ${browserUsedLabel} | archive (you) ${serverUserUsedLabel} | archive (all) ${serverAllUsedLabel} | archive (cap) ${serverCapacityLabel}${serverErrorLabel}`
+        `Storage: cache ${browserUsedLabel}${browserUsageSuffix} | archive (you) ${serverUserUsedLabel} | archive (all) ${serverAllUsedLabel} | archive (cap) ${serverCapacityLabel}${serverErrorLabel}`
       );
     });
 
