@@ -7,6 +7,7 @@ type AdminGateProps = {
 
 export function AdminGate({ onGranted }: AdminGateProps) {
   const [key, setKey] = useState("");
+  const [showKey, setShowKey] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -57,13 +58,17 @@ export function AdminGate({ onGranted }: AdminGateProps) {
             className="input"
             id="admin-key"
             name="admin-key"
-            type="password"
+            type={showKey ? "text" : "password"}
             autoComplete="off"
             value={key}
             onChange={(event) => setKey(event.target.value)}
             required
           />
         </label>
+
+        <button className="btn btn-secondary" type="button" onClick={() => setShowKey((current) => !current)}>
+          {showKey ? "Hide password" : "Show password"}
+        </button>
 
         <button className="btn btn-primary" type="submit" disabled={submitting}>
           {submitting ? "Verifying..." : "Unlock Admin"}

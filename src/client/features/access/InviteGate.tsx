@@ -11,6 +11,7 @@ type SessionResponse = {
 
 export function InviteGate(props: InviteGateProps) {
   const [invite, setInvite] = useState("");
+  const [showInvite, setShowInvite] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -88,13 +89,17 @@ export function InviteGate(props: InviteGateProps) {
           className="input"
           id="invite"
           name="invite"
-          type="password"
+          type={showInvite ? "text" : "password"}
           value={invite}
           onChange={(event) => setInvite(event.target.value)}
           autoComplete="off"
           required
         />
         </label>
+
+        <button className="btn btn-secondary" type="button" onClick={() => setShowInvite((current) => !current)}>
+          {showInvite ? "Hide password" : "Show password"}
+        </button>
 
         <button className="btn btn-primary" type="submit" disabled={submitting}>
           {submitting ? "Verifying..." : "Verify Invite"}

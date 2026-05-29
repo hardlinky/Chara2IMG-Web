@@ -8,6 +8,7 @@ type RunpodKeySettingsProps = {
 export function RunpodKeySettings(props: RunpodKeySettingsProps) {
   const initialKey = useMemo(() => getRunpodKey(), []);
   const [apiKey, setApiKey] = useState(initialKey);
+  const [showApiKey, setShowApiKey] = useState(false);
   const [rememberOnThisBrowser, setRememberOnThisBrowser] = useState(Boolean(initialKey));
   const [savedMessage, setSavedMessage] = useState("");
 
@@ -39,13 +40,17 @@ export function RunpodKeySettings(props: RunpodKeySettingsProps) {
           className="input"
           id="runpod-api-key"
           name="runpod-api-key"
-          type="password"
+          type={showApiKey ? "text" : "password"}
           value={apiKey}
           onChange={(event) => setApiKey(event.target.value)}
           autoComplete="off"
           required
         />
         </label>
+
+        <button className="btn btn-secondary" type="button" onClick={() => setShowApiKey((current) => !current)}>
+          {showApiKey ? "Hide password" : "Show password"}
+        </button>
 
         <label htmlFor="remember-on-this-browser">
           <input

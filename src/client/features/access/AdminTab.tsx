@@ -189,9 +189,6 @@ export function AdminTab({ enabled }: AdminTabProps) {
         )}
         {enabled ? <p>{`Clients: ${clients.length} | Total archive bytes: ${formatBytes(totalBytes)}`}</p> : null}
         <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.75rem", flexWrap: "wrap" }}>
-          <button className="btn btn-secondary" type="button" onClick={() => void loadClients()} disabled={loading || !enabled}>
-            Refresh Clients
-          </button>
           <button className="btn btn-secondary" type="button" onClick={() => void downloadArchive()} disabled={loading}>
             {loading ? "Working..." : "Download .zip"}
           </button>
@@ -243,6 +240,12 @@ export function AdminTab({ enabled }: AdminTabProps) {
                   </button>
                 );
               })}
+            </div>
+
+            <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
+              <button className="btn btn-secondary" type="button" onClick={() => void loadClients()} disabled={loading}>
+                Refresh Clients
+              </button>
             </div>
 
             <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
