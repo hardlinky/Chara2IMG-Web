@@ -1,13 +1,16 @@
 import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
+import { Readable } from "node:stream";
 import type { Hono } from "hono";
-import { requireAdminSession, requireInvitedSession } from "../middleware/session";
+import { hasAdminSession, requireAdminSession, requireInvitedSession } from "../middleware/session";
+import yazl from "yazl";
 import {
   buildPinnedImageConsumerKey,
   findPinnedImageByFileName,
   findPinnedImageByHash,
   getEffectivePinnedImagesCapacityBytes,
+  listPinnedImageEntriesForClient,
   listPinnedImageClientUsage,
   PINNED_IMAGES_DIR,
   previewPrunePinnedImagesToClients,
@@ -329,6 +332,66 @@ export function registerPinnedImageRoutes(app: Hono): void {
       removedClients: preview.removedClients,
       orphanedFiles: preview.orphanedFiles,
       orphanedBytes: preview.orphanedBytes
+    });
+  });
+
+  app.use("/api/pinned-images/archive", requireInvitedSession);
+  app.get("/api/pinned-images/archive", async (c) => {
+    const requestClientId = getRequestClientId(c.req.raw, null);
+    const requestedClientId = c.req.query("clientId") ? sanitizeClientId(c.req.query("clientId")) : null;
+    const isAdmin = await hasAdminSession(c);
+
+    if (!isAdmin && requestedClientId && requestedClientId !== requestClientId) {
+      return c.json({ ok: false, error: "Forbidden" }, 403);
+    }
+
+    const targetClientId = isAdmin && requestedClientId ? requestedClientId : requestClientId;
+    const entries = await listPinnedImageEntriesForClient(targetClientId);
+
+    const zipFile = new yazl.ZipFile();
+    const missingFiles: string[] = [];
+    let zippedEntries = 0;
+
+    for (const entry of entries) {
+      const filePath = resolve(PINNED_IMAGES_DIR, entry.fileName);
+      if (!filePath.startsWith(PINNED_IMAGES_DIR)) {
+        missingFiles.push(entry.fileName);
+        continue;
+      }
+
+      try {
+        await readFile(filePath);
+      } catch {
+        missingFiles.push(entry.fileName);
+        continue;
+      }
+
+      zipFile.addFile(filePath, entry.fileName);
+      zippedEntries += 1;
+    }
+
+    const metadata = {
+      exportedAt: new Date().toISOString(),
+      clientId: targetClientId,
+      trackedEntries: entries.length,
+      zippedEntries,
+      missingTrackedFiles: missingFiles,
+      entries
+    };
+    zipFile.addBuffer(Buffer.from(`${JSON.stringify(metadata, null, 2)}\n`, "utf8"), "manifest.export.json");
+    zipFile.end();
+
+    const fileName = `${targetClientId}-pinned-images.zip`;
+    const zipOutputStream = zipFile.outputStream as unknown as Readable;
+    const responseBody = Readable.toWeb(zipOutputStream) as unknown as BodyInit;
+
+    return new Response(responseBody, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/zip",
+        "Content-Disposition": `attachment; filename=\"${fileName}\"`,
+        "Cache-Control": "no-store"
+      }
     });
   });
 

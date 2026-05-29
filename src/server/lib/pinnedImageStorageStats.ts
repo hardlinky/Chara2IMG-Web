@@ -389,6 +389,30 @@ export async function findPinnedImageByFileName(clientId: string, fileName: stri
   return manifest.entries.find((entry) => sanitizeClientId(entry.clientId) === normalizedClientId && entry.fileName === fileName) ?? null;
 }
 
+export async function listPinnedImageEntriesForClient(clientId: string): Promise<Array<{
+  fileName: string;
+  contentHash: string;
+  sizeBytes: number;
+  refCount: number;
+  consumers: string[];
+  updatedAt: string;
+}>> {
+  const manifest = await readManifest();
+  const normalizedClientId = sanitizeClientId(clientId);
+
+  return manifest.entries
+    .filter((entry) => sanitizeClientId(entry.clientId) === normalizedClientId)
+    .map((entry) => ({
+      fileName: entry.fileName,
+      contentHash: entry.contentHash,
+      sizeBytes: normalizeFiniteBytes(entry.sizeBytes),
+      refCount: Math.max(1, normalizeFiniteBytes(entry.refCount ?? 1)),
+      consumers: [...entry.consumers],
+      updatedAt: entry.updatedAt
+    }))
+    .sort((left, right) => left.fileName.localeCompare(right.fileName));
+}
+
 export async function releasePinnedImageReference(fileName: string, clientId: string, consumerKey: string): Promise<{ shouldDeleteFile: boolean }> {
   const manifest = await readManifest();
   const normalizedClientId = sanitizeClientId(clientId);

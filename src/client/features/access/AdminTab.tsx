@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  downloadPinnedImagesArchiveViaProxy,
   fetchPinnedImageClientsViaProxy,
   getOrCreatePinnedImageClientId,
   previewPrunePinnedImagesViaProxy,
@@ -33,6 +34,7 @@ export function AdminTab({ enabled }: AdminTabProps) {
   const [clients, setClients] = useState<PinnedImageClientUsage[]>([]);
   const [selectedClientIds, setSelectedClientIds] = useState<string[]>([]);
   const [manualClientIdsText, setManualClientIdsText] = useState("");
+  const [archiveTargetClientId, setArchiveTargetClientId] = useState("");
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
   const currentClientId = getOrCreatePinnedImageClientId();
@@ -125,6 +127,40 @@ export function AdminTab({ enabled }: AdminTabProps) {
     }
   }
 
+  async function downloadOwnArchive(): Promise<void> {
+    setLoading(true);
+    setStatus("");
+
+    try {
+      await downloadPinnedImagesArchiveViaProxy();
+      setStatus("Archive download started for current client.");
+    } catch {
+      setStatus("Failed to download archive for current client.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function downloadArchiveForClient(): Promise<void> {
+    const trimmedClientId = archiveTargetClientId.trim();
+    if (!trimmedClientId) {
+      setStatus("Enter a client ID to download its archive.");
+      return;
+    }
+
+    setLoading(true);
+    setStatus("");
+
+    try {
+      await downloadPinnedImagesArchiveViaProxy(trimmedClientId);
+      setStatus(`Archive download started for ${trimmedClientId}.`);
+    } catch {
+      setStatus(`Failed to download archive for ${trimmedClientId}.`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   if (!enabled) {
     return (
       <section className="setup-card">
@@ -165,9 +201,26 @@ export function AdminTab({ enabled }: AdminTabProps) {
             placeholder="client-abc client-def"
           />
         </label>
+        <label className="field" htmlFor="archive-target-client-id" style={{ marginTop: "0.75rem" }}>
+          Download archive for client ID (admin)
+          <input
+            className="input"
+            id="archive-target-client-id"
+            type="text"
+            value={archiveTargetClientId}
+            onChange={(event) => setArchiveTargetClientId(event.target.value)}
+            placeholder="client-abc"
+          />
+        </label>
         <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.75rem", flexWrap: "wrap" }}>
           <button className="btn btn-secondary" type="button" onClick={() => void loadClients()} disabled={loading}>
             Refresh Clients
+          </button>
+          <button className="btn btn-secondary" type="button" onClick={() => void downloadOwnArchive()} disabled={loading}>
+            {loading ? "Working..." : "Download My Archive (.zip)"}
+          </button>
+          <button className="btn btn-secondary" type="button" onClick={() => void downloadArchiveForClient()} disabled={loading || archiveTargetClientId.trim().length === 0}>
+            {loading ? "Working..." : "Download Client Archive (.zip)"}
           </button>
           <button
             className="btn btn-secondary"

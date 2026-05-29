@@ -231,3 +231,46 @@ export async function previewPrunePinnedImagesViaProxy(payload: PrunePinnedImage
 
   return data;
 }
+
+function parseDownloadFileName(contentDisposition: string | null, fallback: string): string {
+  if (!contentDisposition) {
+    return fallback;
+  }
+
+  const match = /filename\s*=\s*"?([^";]+)"?/i.exec(contentDisposition);
+  if (!match || !match[1]) {
+    return fallback;
+  }
+
+  return match[1].trim() || fallback;
+}
+
+export async function downloadPinnedImagesArchiveViaProxy(clientId?: string): Promise<void> {
+  const currentClientId = getOrCreatePinnedImageClientId();
+  const query = clientId ? `?clientId=${encodeURIComponent(clientId)}` : "";
+  const response = await fetch(`/api/pinned-images/archive${query}`, {
+    method: "GET",
+    credentials: "include",
+    headers: {
+      "x-chara2img-client-id": currentClientId
+    }
+  });
+
+  if (!response.ok) {
+    const data = (await response.json().catch(() => null)) as { error?: string } | null;
+    throw new ProxyRequestError(response.status, `Pinned image archive download failed (${response.status})`, data);
+  }
+
+  const blob = await response.blob();
+  const fallbackName = `${clientId ?? currentClientId}-pinned-images.zip`;
+  const fileName = parseDownloadFileName(response.headers.get("content-disposition"), fallbackName);
+
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = objectUrl;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(objectUrl);
+}
