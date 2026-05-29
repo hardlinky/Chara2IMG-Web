@@ -274,3 +274,31 @@ export async function downloadPinnedImagesArchiveViaProxy(clientId?: string): Pr
   link.remove();
   URL.revokeObjectURL(objectUrl);
 }
+
+export async function downloadPinnedImagesArchiveBatchViaProxy(clientIds: string[]): Promise<void> {
+  const response = await fetch("/api/pinned-images/archive-batch", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    credentials: "include",
+    body: JSON.stringify({ clientIds })
+  });
+
+  if (!response.ok) {
+    const data = (await response.json().catch(() => null)) as { error?: string } | null;
+    throw new ProxyRequestError(response.status, `Pinned image archive batch download failed (${response.status})`, data);
+  }
+
+  const blob = await response.blob();
+  const fileName = parseDownloadFileName(response.headers.get("content-disposition"), "selected-clients-pinned-images.zip");
+
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = objectUrl;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(objectUrl);
+}

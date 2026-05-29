@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  downloadPinnedImagesArchiveBatchViaProxy,
   downloadPinnedImagesArchiveViaProxy,
   fetchPinnedImageClientsViaProxy,
   getOrCreatePinnedImageClientId,
@@ -157,21 +158,21 @@ export function AdminTab({ enabled }: AdminTabProps) {
     setStatus("");
 
     try {
-      let targetClientId: string | undefined;
       if (enabled) {
-        if (keepClientIds.length > 1) {
-          setStatus("Download supports one client at a time. Keep exactly one client ID selected for admin download.");
+        if (keepClientIds.length === 0) {
+          setStatus("Select at least one client ID to download archives.");
           setLoading(false);
           return;
         }
 
-        targetClientId = keepClientIds[0];
+        await downloadPinnedImagesArchiveBatchViaProxy(keepClientIds);
+        setStatus(`Archive download started for ${keepClientIds.length} selected client(s).`);
+      } else {
+        await downloadPinnedImagesArchiveViaProxy();
+        setStatus(`Archive download started for ${currentClientId}.`);
       }
-
-      await downloadPinnedImagesArchiveViaProxy(targetClientId);
-      setStatus(`Archive download started for ${targetClientId ?? currentClientId}.`);
     } catch {
-      setStatus(`Failed to download archive for ${(enabled ? keepClientIds[0] : undefined) ?? currentClientId}.`);
+      setStatus(enabled ? "Failed to download selected client archives." : `Failed to download archive for ${currentClientId}.`);
     } finally {
       setLoading(false);
     }
@@ -188,17 +189,25 @@ export function AdminTab({ enabled }: AdminTabProps) {
           <p>Download your archived/pinned images as a zip file.</p>
         )}
         {enabled ? <p>{`Clients: ${clients.length} | Total archive bytes: ${formatBytes(totalBytes)}`}</p> : null}
-        <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.75rem", flexWrap: "wrap" }}>
-          <button className="btn btn-secondary" type="button" onClick={() => void downloadArchive()} disabled={loading}>
-            {loading ? "Working..." : "Download .zip"}
-          </button>
-          <button className="btn btn-secondary" type="button" onClick={() => void previewPruneToSelected()} disabled={loading || !enabled || selectedCount === 0}>
-            {loading ? "Working..." : "Prune (Dry Run)"}
-          </button>
-          <button className="btn btn-primary" type="button" onClick={() => void pruneToSelected()} disabled={loading || !enabled || selectedCount === 0}>
-            {loading ? "Working..." : "Prune"}
-          </button>
-        </div>
+        {enabled ? (
+          <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.75rem", flexWrap: "wrap" }}>
+            <button className="btn btn-secondary" type="button" onClick={() => void downloadArchive()} disabled={loading || selectedCount === 0}>
+              {loading ? "Working..." : "Download .zip"}
+            </button>
+            <button className="btn btn-secondary" type="button" onClick={() => void previewPruneToSelected()} disabled={loading || selectedCount === 0}>
+              {loading ? "Working..." : "Prune (Dry Run)"}
+            </button>
+            <button className="btn btn-primary" type="button" onClick={() => void pruneToSelected()} disabled={loading || selectedCount === 0}>
+              {loading ? "Working..." : "Prune"}
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.75rem", flexWrap: "wrap" }}>
+            <button className="btn btn-secondary" type="button" onClick={() => void downloadArchive()} disabled={loading}>
+              {loading ? "Working..." : "Download .zip"}
+            </button>
+          </div>
+        )}
 
         {enabled ? (
           <>

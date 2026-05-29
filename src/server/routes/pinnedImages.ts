@@ -410,6 +410,68 @@ export function registerPinnedImageRoutes(app: Hono): void {
     });
   });
 
+  app.use("/api/pinned-images/archive-batch", requireInvitedSession);
+  app.post("/api/pinned-images/archive-batch", async (c) => {
+    const isAdmin = await hasAdminSession(c);
+    if (!isAdmin) {
+      return c.json({ ok: false, error: "Forbidden" }, 403);
+    }
+
+    const payload = await c.req.json().catch(() => null) as { clientIds?: unknown } | null;
+    const rawClientIds = Array.isArray(payload?.clientIds) ? payload?.clientIds : [];
+    const clientIds = [...new Set(rawClientIds.filter((value): value is string => typeof value === "string").map((value) => sanitizeClientId(value)))];
+
+    if (clientIds.length === 0) {
+      return c.json({ ok: false, error: "Invalid archive batch request" }, 400);
+    }
+
+    const zipFile = new yazl.ZipFile();
+    const missingFiles: Array<{ clientId: string; fileName: string }> = [];
+    const includedByClient = new Map<string, number>();
+
+    for (const clientId of clientIds) {
+      const entries = await listPinnedImageEntriesForClient(clientId);
+      for (const entry of entries) {
+        const filePath = resolve(PINNED_IMAGES_DIR, entry.fileName);
+        if (!filePath.startsWith(PINNED_IMAGES_DIR)) {
+          missingFiles.push({ clientId, fileName: entry.fileName });
+          continue;
+        }
+
+        try {
+          await readFile(filePath);
+        } catch {
+          missingFiles.push({ clientId, fileName: entry.fileName });
+          continue;
+        }
+
+        zipFile.addFile(filePath, `${clientId}/${entry.fileName}`);
+        includedByClient.set(clientId, (includedByClient.get(clientId) ?? 0) + 1);
+      }
+    }
+
+    const metadata = {
+      exportedAt: new Date().toISOString(),
+      clientIds,
+      includedByClient: Object.fromEntries(includedByClient.entries()),
+      missingFiles
+    };
+    zipFile.addBuffer(Buffer.from(`${JSON.stringify(metadata, null, 2)}\n`, "utf8"), "manifest.export.json");
+    zipFile.end();
+
+    const zipOutputStream = zipFile.outputStream as unknown as Readable;
+    const responseBody = Readable.toWeb(zipOutputStream) as unknown as BodyInit;
+
+    return new Response(responseBody, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/zip",
+        "Content-Disposition": "attachment; filename=\"selected-clients-pinned-images.zip\"",
+        "Cache-Control": "no-store"
+      }
+    });
+  });
+
   app.use("/api/pinned-images/:fileName", requireInvitedSession);
   app.get("/api/pinned-images/:fileName", async (c) => {
     const rawFileName = c.req.param("fileName");
