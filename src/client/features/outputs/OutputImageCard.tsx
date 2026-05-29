@@ -106,7 +106,7 @@ export function OutputImageCard({
         <button type="button" className="outputs-image-tile" onClick={onOpen} aria-label={`Open ${imagePrefix} image ${imageLabel}`}>
           <img src={image.dataUrl} alt={`${imagePrefix} ${imageLabel}`} loading="lazy" onLoad={onImageLoad} />
         </button>
-        {badge ? <span className="outputs-count-badge">{badge}</span> : null}
+        {badge ? <span className="outputs-image-count-badge">{badge}</span> : null}
         {onTogglePin ? (
           <button
             type="button"
