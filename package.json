@@ -1,6 +1,6 @@
 {
   "name": "chara2img-web",
-  "version": "1.5.30",
+  "version": "1.5.31",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,6 +8,7 @@
     "dev:client": "vite build --watch",
     "dev:server": "tsx watch src/server/index.ts",
     "build": "vite build && tsc --noEmit",
+    "postinstall": "node scripts/setup-git-hooks.mjs",
     "start": "node --import tsx src/server/index.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
