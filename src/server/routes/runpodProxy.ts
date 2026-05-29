@@ -3,7 +3,8 @@ import { requireInvitedSession } from "../middleware/session";
 import { cancelRequestSchema, purgeQueueRequestSchema, retryRequestSchema, runRequestSchema, statusBatchRequestSchema, statusRequestSchema } from "../schemas/runpodProxy";
 import { forwardRunpodRequest } from "../lib/runpodClient";
 import { redactSecrets } from "../lib/redaction";
-import { getCachedRunpodJobState, removeUnknownRunpodJobStates, setCachedRunpodJobState } from "../lib/runpodJobStateStore";
+import { consumeSuccessfulRunpodJobState, getCachedRunpodJobState, removeUnknownRunpodJobStates, setCachedRunpodJobState } from "../lib/runpodJobStateStore";
+import { normalizeRunpodStatus } from "../../shared/contracts/jobs";
 
 function resolveRunpodApiKey(requestApiKey: string): string {
   const serverApiKey = process.env.RUNPOD_API_KEY?.trim();
@@ -81,6 +82,9 @@ export function registerRunpodProxyRoutes(app: Hono): void {
     try {
       const cached = getCachedRunpodJobState(parsed.data.endpointId, parsed.data.id);
       if (cached?.isTerminal) {
+        if (cached.status && normalizeRunpodStatus(cached.status) === "COMPLETED") {
+          consumeSuccessfulRunpodJobState(parsed.data.endpointId, parsed.data.id);
+        }
         return c.json(cached.data);
       }
 
@@ -123,6 +127,9 @@ export function registerRunpodProxyRoutes(app: Hono): void {
         try {
           const cached = getCachedRunpodJobState(parsed.data.endpointId, id);
           if (cached?.isTerminal) {
+            if (cached.status && normalizeRunpodStatus(cached.status) === "COMPLETED") {
+              consumeSuccessfulRunpodJobState(parsed.data.endpointId, id);
+            }
             return {
               id,
               ok: true,
