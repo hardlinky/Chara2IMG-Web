@@ -21,6 +21,7 @@ import {
   registerPinnedImageBackup,
   sanitizeClientId
 } from "../lib/pinnedImageStorageStats";
+import { logServerWarning } from "../lib/logger";
 import {
   backupPinnedImageRequestSchema,
   prunePinnedImagesRequestSchema,
@@ -177,8 +178,11 @@ export function registerPinnedImageRoutes(app: Hono): void {
 
     const releaseResult = await releasePinnedImageReference(fileName, clientId, consumerKey);
     if (releaseResult.shouldDeleteFile) {
-      await unlink(filePath).catch(() => {
-        // Ignore missing files during cleanup.
+      await unlink(filePath).catch((error) => {
+        logServerWarning("Failed to delete released pinned image file", error, {
+          fileName,
+          clientId
+        });
       });
     }
 
@@ -229,7 +233,13 @@ export function registerPinnedImageRoutes(app: Hono): void {
         continue;
       }
 
-      const bytes = await readFile(filePath).catch(() => null);
+      const bytes = await readFile(filePath).catch((error) => {
+        logServerWarning("Failed to read pinned image during reconcile backfill", error, {
+          fileName: ref.fileName,
+          clientId
+        });
+        return null;
+      });
       if (!bytes) {
         continue;
       }
@@ -256,8 +266,11 @@ export function registerPinnedImageRoutes(app: Hono): void {
           return;
         }
 
-        await unlink(filePath).catch(() => {
-          // Ignore missing files during cleanup.
+        await unlink(filePath).catch((error) => {
+          logServerWarning("Failed to delete reconciled stale pinned image file", error, {
+            fileName,
+            clientId
+          });
         });
       })
     );
@@ -296,8 +309,10 @@ export function registerPinnedImageRoutes(app: Hono): void {
           return;
         }
 
-        await unlink(filePath).catch(() => {
-          // Ignore missing files during cleanup.
+        await unlink(filePath).catch((error) => {
+          logServerWarning("Failed to delete pruned pinned image file", error, {
+            fileName
+          });
         });
       })
     );

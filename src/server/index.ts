@@ -9,11 +9,21 @@ import { registerRunpodProxyRoutes } from "./routes/runpodProxy";
 import { registerSystemRoutes } from "./routes/system";
 import { applySecurityMiddleware } from "./middleware/security";
 import { logAdminPasskey } from "./security/adminPasskey";
+import { logServerError } from "./lib/logger";
 
 const CLIENT_DIST_ROOT = "./dist/client";
 
 export function createServerApp(): Hono {
   const app = new Hono();
+
+  app.onError((error, c) => {
+    logServerError("Unhandled route error", error, {
+      method: c.req.method,
+      path: c.req.path
+    });
+
+    return c.json({ ok: false, error: "Internal server error" }, 500);
+  });
 
   app.get("/health", (c) => c.json({ ok: true }));
 
@@ -55,6 +65,14 @@ const isMainModule = process.argv[1] ? fileURLToPath(import.meta.url) === proces
 if (isMainModule) {
   const app = createServerApp();
   logAdminPasskey();
+
+  process.on("unhandledRejection", (reason) => {
+    logServerError("Unhandled promise rejection", reason);
+  });
+
+  process.on("uncaughtException", (error) => {
+    logServerError("Uncaught exception", error);
+  });
 
   serve({
     fetch: app.fetch,

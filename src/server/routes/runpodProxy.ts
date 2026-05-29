@@ -5,6 +5,7 @@ import { forwardRunpodRequest } from "../lib/runpodClient";
 import { pollRunpodJobNow, trackRunpodJob } from "../lib/runpodJobTracker";
 import { redactSecrets } from "../lib/redaction";
 import { getCachedRunpodJobState, setCachedRunpodJobState } from "../lib/runpodJobStateStore";
+import { logServerError, logServerWarning } from "../lib/logger";
 
 function resolveRunpodApiKey(requestApiKey: string): string {
   const serverApiKey = process.env.RUNPOD_API_KEY?.trim();
@@ -24,7 +25,9 @@ function toProxyResponse(response: Response, body: string): Response {
   });
 }
 
-function toSafeProxyError(error: unknown): { ok: false; error: string; details: unknown } {
+function toSafeProxyError(error: unknown, context: string, metadata?: Record<string, unknown>): { ok: false; error: string; details: unknown } {
+  logServerError(context, error, metadata);
+
   return {
     ok: false,
     error: "Runpod request failed",
@@ -62,14 +65,18 @@ export function registerRunpodProxyRoutes(app: Hono): void {
             setCachedRunpodJobState(parsed.data.endpointId, jobId, parsedBody);
             trackRunpodJob(parsed.data.endpointId, jobId, resolvedApiKey);
           }
-        } catch {
-          // Ignore non-JSON run responses for cache tracking.
+        } catch (error) {
+          logServerWarning("Runpod run response was not JSON", error, {
+            endpointId: parsed.data.endpointId
+          });
         }
       }
 
       return toProxyResponse(response, body);
     } catch (error) {
-      return c.json(toSafeProxyError(error), 502);
+      return c.json(toSafeProxyError(error, "Runpod run proxy failed", {
+        endpointId: parsed.data.endpointId
+      }), 502);
     }
   });
 
@@ -104,7 +111,10 @@ export function registerRunpodProxyRoutes(app: Hono): void {
         502
       );
     } catch (error) {
-      return c.json(toSafeProxyError(error), 502);
+      return c.json(toSafeProxyError(error, "Runpod status proxy failed", {
+        endpointId: parsed.data.endpointId,
+        jobId: parsed.data.id
+      }), 502);
     }
   });
 
@@ -151,6 +161,11 @@ export function registerRunpodProxyRoutes(app: Hono): void {
             source: "tracker"
           };
         } catch (error) {
+          logServerError("Runpod status-batch item failed", error, {
+            endpointId: parsed.data.endpointId,
+            jobId: id
+          });
+
           return {
             id,
             ok: false,
@@ -183,14 +198,20 @@ export function registerRunpodProxyRoutes(app: Hono): void {
       if (response.ok) {
         try {
           setCachedRunpodJobState(parsed.data.endpointId, parsed.data.id, JSON.parse(body));
-        } catch {
-          // Ignore non-JSON cancel payloads for cache tracking.
+        } catch (error) {
+          logServerWarning("Runpod cancel response was not JSON", error, {
+            endpointId: parsed.data.endpointId,
+            jobId: parsed.data.id
+          });
         }
       }
 
       return toProxyResponse(response, body);
     } catch (error) {
-      return c.json(toSafeProxyError(error), 502);
+      return c.json(toSafeProxyError(error, "Runpod cancel proxy failed", {
+        endpointId: parsed.data.endpointId,
+        jobId: parsed.data.id
+      }), 502);
     }
   });
 
@@ -215,14 +236,20 @@ export function registerRunpodProxyRoutes(app: Hono): void {
         try {
           setCachedRunpodJobState(parsed.data.endpointId, parsed.data.id, JSON.parse(body));
           trackRunpodJob(parsed.data.endpointId, parsed.data.id, resolveRunpodApiKey(parsed.data.apiKey));
-        } catch {
-          // Ignore non-JSON retry payloads for cache tracking.
+        } catch (error) {
+          logServerWarning("Runpod retry response was not JSON", error, {
+            endpointId: parsed.data.endpointId,
+            jobId: parsed.data.id
+          });
         }
       }
 
       return toProxyResponse(response, body);
     } catch (error) {
-      return c.json(toSafeProxyError(error), 502);
+      return c.json(toSafeProxyError(error, "Runpod retry proxy failed", {
+        endpointId: parsed.data.endpointId,
+        jobId: parsed.data.id
+      }), 502);
     }
   });
 
@@ -244,7 +271,9 @@ export function registerRunpodProxyRoutes(app: Hono): void {
 
       return toProxyResponse(response, await response.text());
     } catch (error) {
-      return c.json(toSafeProxyError(error), 502);
+      return c.json(toSafeProxyError(error, "Runpod purge-queue proxy failed", {
+        endpointId: parsed.data.endpointId
+      }), 502);
     }
   });
 }

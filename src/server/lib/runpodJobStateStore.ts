@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { isTerminalRunpodStatus, normalizeRunpodStatus } from "../../shared/contracts/jobs";
+import { logServerWarning } from "./logger";
 
 type RunpodJobStateRecord = {
   endpointId: string;
@@ -45,8 +46,10 @@ function persistSuccessfulStates(): void {
   if (records.length === 0) {
     try {
       rmSync(PERSISTED_STATE_FILE, { force: true });
-    } catch {
-      // Ignore cleanup failures.
+    } catch (error) {
+      logServerWarning("Failed to remove empty persisted Runpod state file", error, {
+        file: PERSISTED_STATE_FILE
+      });
     }
     return;
   }
@@ -101,8 +104,10 @@ function loadPersistedSuccessfulStates(): void {
       persistedSuccessfulStore.set(toStoreKey(next.endpointId, next.jobId), next);
       store.set(toStoreKey(next.endpointId, next.jobId), next);
     }
-  } catch {
-    // Ignore malformed cache file.
+  } catch (error) {
+    logServerWarning("Failed to load persisted Runpod completed states", error, {
+      file: PERSISTED_STATE_FILE
+    });
   }
 }
 
@@ -186,8 +191,10 @@ export function clearRunpodJobStateStore(): void {
 
   try {
     rmSync(PERSISTED_STATE_FILE, { force: true });
-  } catch {
-    // Ignore cleanup failures.
+  } catch (error) {
+    logServerWarning("Failed to clear persisted Runpod state file", error, {
+      file: PERSISTED_STATE_FILE
+    });
   }
 }
 

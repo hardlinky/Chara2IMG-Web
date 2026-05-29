@@ -1,5 +1,6 @@
 import { forwardRunpodRequest } from "./runpodClient";
 import { getCachedRunpodJobState, setCachedRunpodJobState } from "./runpodJobStateStore";
+import { logServerError, logServerWarning } from "./logger";
 
 type TrackedRunpodJob = {
   endpointId: string;
@@ -37,7 +38,10 @@ function parseJsonOrRaw(body: string): unknown {
 
   try {
     return JSON.parse(body);
-  } catch {
+  } catch (error) {
+    logServerWarning("Runpod tracker received non-JSON response", error, {
+      bodyPreview: body.slice(0, 200)
+    });
     return { raw: body };
   }
 }
@@ -95,6 +99,11 @@ async function pollTrackedJob(job: TrackedRunpodJob): Promise<PollRunpodJobResul
       data
     };
   } catch (error) {
+    logServerError("Runpod tracker poll failed", error, {
+      endpointId: job.endpointId,
+      jobId: job.jobId
+    });
+
     return {
       ok: false,
       error: error instanceof Error ? error.message : String(error)
