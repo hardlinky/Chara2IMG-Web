@@ -34,7 +34,9 @@ type UseRecentJobsOptions = {
 export const RECENT_JOB_PAGE_SIZE = 10;
 const OUTPUTS_IN_MEMORY_PER_JOB_LIMIT = 8;
 const ADAPTIVE_OFFLOAD_INTERVAL_MS = 60_000;
-const ADAPTIVE_OFFLOAD_LONG_TASK_P95_MS = 120;
+const ADAPTIVE_OFFLOAD_LIGHT_USAGE_BYTES = 200 * 1024 * 1024;
+const ADAPTIVE_OFFLOAD_MEDIUM_USAGE_BYTES = 250 * 1024 * 1024;
+const ADAPTIVE_OFFLOAD_AGGRESSIVE_USAGE_BYTES = 300 * 1024 * 1024;
 export const RECENT_JOB_STATUS_FILTERS = ["All", "IN_QUEUE", "IN_PROGRESS", "COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT"] as const;
 
 export type RecentJobStatusFilter = (typeof RECENT_JOB_STATUS_FILTERS)[number];
@@ -776,12 +778,12 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
         return;
       }
 
-      let usageRatio = 0;
+      let usageBytes = 0;
       if (navigator.storage?.estimate) {
         try {
           const estimate = await navigator.storage.estimate();
-          if (typeof estimate.usage === "number" && typeof estimate.quota === "number" && estimate.quota > 0) {
-            usageRatio = estimate.usage / estimate.quota;
+          if (typeof estimate.usage === "number" && estimate.usage > 0) {
+            usageBytes = estimate.usage;
           }
         } catch {
           // Ignore estimate failures.
@@ -793,14 +795,12 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
       const p95LongTaskMs = p95Index >= 0 ? durations[p95Index]! : 0;
 
       let maxImagesToProcess = 0;
-      if (usageRatio >= 0.9) {
+      if (usageBytes >= ADAPTIVE_OFFLOAD_AGGRESSIVE_USAGE_BYTES) {
         maxImagesToProcess = 20;
-      } else if (usageRatio >= 0.8) {
+      } else if (usageBytes >= ADAPTIVE_OFFLOAD_MEDIUM_USAGE_BYTES) {
         maxImagesToProcess = 12;
-      } else if (usageRatio >= 0.7) {
+      } else if (usageBytes >= ADAPTIVE_OFFLOAD_LIGHT_USAGE_BYTES) {
         maxImagesToProcess = 6;
-      } else if (usageRatio >= 0.6 && p95LongTaskMs >= ADAPTIVE_OFFLOAD_LONG_TASK_P95_MS) {
-        maxImagesToProcess = 4;
       }
 
       if (maxImagesToProcess > 0) {
