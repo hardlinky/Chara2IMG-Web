@@ -40,6 +40,30 @@ async function runCommand(name: string, command: string, args: string[]): Promis
   };
 }
 
+async function runCommandAllowFailure(name: string, command: string, args: string[]): Promise<CommandResult & { exitCode: number }> {
+  try {
+    const result = await runCommand(name, command, args);
+    return { ...result, exitCode: 0 };
+  } catch (error) {
+    if (error instanceof Error && "stdout" in error && "stderr" in error) {
+      const childProcessError = error as Error & { stdout?: unknown; stderr?: unknown; code?: unknown };
+      return {
+        name,
+        stdout: trimOutput(typeof childProcessError.stdout === "string" ? childProcessError.stdout : ""),
+        stderr: trimOutput(typeof childProcessError.stderr === "string" ? childProcessError.stderr : error.message),
+        exitCode: typeof childProcessError.code === "number" ? childProcessError.code : 1
+      };
+    }
+
+    return {
+      name,
+      stdout: "",
+      stderr: trimOutput(error instanceof Error ? error.message : String(error)),
+      exitCode: 1
+    };
+  }
+}
+
 function getDefaultEndpointId(): string | null {
   return process.env.RUNPOD_ENDPOINT_ID?.trim() || null;
 }
@@ -89,6 +113,15 @@ export function registerSystemRoutes(app: Hono): void {
       const before = await runCommand("git-rev-before", "git", ["rev-parse", "--short", "HEAD"]);
       results.push(before);
 
+      const status = await runCommand("git-status-before", "git", ["status", "--porcelain"]);
+      results.push(status);
+
+      const hadLocalChanges = status.stdout.length > 0;
+      if (hadLocalChanges) {
+        const stash = await runCommand("git-stash-save", "git", ["stash", "push", "--include-untracked", "--message", "self-update-autostash"]);
+        results.push(stash);
+      }
+
       const pull = await runCommand("git-pull", "git", ["pull", "--ff-only"]);
       results.push(pull);
 
@@ -97,6 +130,11 @@ export function registerSystemRoutes(app: Hono): void {
 
       const build = await runCommand("npm-build", "npm", ["run", "build"]);
       results.push(build);
+
+      if (status.stdout.length > 0) {
+        const stashPop = await runCommandAllowFailure("git-stash-pop", "git", ["stash", "pop"]);
+        results.push(stashPop);
+      }
 
       const after = await runCommand("git-rev-after", "git", ["rev-parse", "--short", "HEAD"]);
       results.push(after);
