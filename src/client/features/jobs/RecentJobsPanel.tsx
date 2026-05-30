@@ -297,6 +297,7 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
                     {completionMeta}
                   </time>
                 </div>
+                <span>Workflow: {job.provenance.workflowFileName ?? "Workflow unknown"}</span>
                 {workerId ? <span>Worker ID: {workerId}</span> : null}
                 <div className="jobs-status-row">
                   <span className="jobs-status-chip">Status: {job.lifecycle.status}</span>

@@ -21,6 +21,7 @@ function createJob(overrides: Partial<RecentJobRecord>): RecentJobRecord {
     },
     provenance: {
       templateFingerprint: "fp-1",
+      workflowFileName: "workflow-default.json",
       draftValues: {},
       submittedInput: {}
     },
@@ -55,6 +56,7 @@ describe("RecentJobsPanel", () => {
 
     expect(html).toContain("Recent Jobs");
     expect(html).toContain("job-123");
+    expect(html).toContain("Workflow: workflow-default.json");
     expect(html).toContain("Status: FAILED");
     expect(html).toContain("2h ago (10m 0s)");
     expect(html).toContain("Queue exceeded limits");
