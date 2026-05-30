@@ -6,6 +6,7 @@ import {
   clearRecentWorkflowTemplates,
   getActiveWorkflowTemplate,
   getRecentWorkflowTemplates,
+  removeRecentWorkflowTemplate,
   saveActiveWorkflowTemplate
 } from "../../src/client/lib/workflowStorage";
 
@@ -81,6 +82,21 @@ describe("workflowStorage", () => {
 
     expect(recentTemplates.map((template) => template.fingerprint)).toEqual([
       first.fingerprint,
+      second.fingerprint
+    ]);
+  });
+
+  it("removes a workflow from recents and keeps it removed", async () => {
+    const first = createTemplate("first");
+    const second = createTemplate("second");
+
+    await saveActiveWorkflowTemplate(first);
+    await saveActiveWorkflowTemplate(second);
+    await removeRecentWorkflowTemplate(first.fingerprint);
+
+    const recentTemplates = await getRecentWorkflowTemplates();
+
+    expect(recentTemplates.map((template) => template.fingerprint)).toEqual([
       second.fingerprint
     ]);
   });

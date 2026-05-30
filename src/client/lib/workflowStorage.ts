@@ -89,3 +89,7 @@ export async function getRecentWorkflowTemplates(limit = RECENT_WORKFLOW_LIMIT):
 export async function clearRecentWorkflowTemplates(): Promise<void> {
   await db.table<StoredRecentWorkflowTemplate, string>("recentTemplates").clear();
 }
+
+export async function removeRecentWorkflowTemplate(fingerprint: string): Promise<void> {
+  await db.table<StoredRecentWorkflowTemplate, string>("recentTemplates").delete(fingerprint);
+}

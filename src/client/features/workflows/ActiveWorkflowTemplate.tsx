@@ -7,6 +7,7 @@ type ActiveWorkflowTemplateProps = {
   error: string | null;
   onClear: () => void;
   onSwitchTemplate: (template: WorkflowTemplateRecord) => void;
+  onRemoveRecentTemplate: (fingerprint: string) => void;
 };
 
 export function ActiveWorkflowTemplate({
@@ -15,7 +16,8 @@ export function ActiveWorkflowTemplate({
   isLoading,
   error,
   onClear,
-  onSwitchTemplate
+  onSwitchTemplate,
+  onRemoveRecentTemplate
 }: ActiveWorkflowTemplateProps) {
   if (isLoading) {
     return (
@@ -62,18 +64,28 @@ export function ActiveWorkflowTemplate({
       {recentTemplates.length > 1 ? (
         <div className="setup-meta">
           <h3>Recent Workflows</h3>
-          <div className="setup-actions">
+          <div className="setup-stack">
             {recentTemplates
               .filter((template) => template.fingerprint !== activeTemplate.fingerprint)
               .map((template) => (
-                <button
-                  key={template.fingerprint}
-                  className="btn btn-secondary"
-                  type="button"
-                  onClick={() => onSwitchTemplate(template)}
-                >
-                  {template.displayName}
-                </button>
+                <div key={template.fingerprint} className="recent-workflow-item">
+                  <button
+                    className="btn btn-secondary recent-workflow-switch-btn"
+                    type="button"
+                    onClick={() => onSwitchTemplate(template)}
+                  >
+                    {template.displayName}
+                  </button>
+                  <button
+                    className="btn btn-destructive"
+                    type="button"
+                    onClick={() => onRemoveRecentTemplate(template.fingerprint)}
+                    aria-label={`Remove ${template.displayName} from recent workflows`}
+                    title={`Remove ${template.displayName} from recent workflows`}
+                  >
+                    Remove
+                  </button>
+                </div>
               ))}
           </div>
         </div>

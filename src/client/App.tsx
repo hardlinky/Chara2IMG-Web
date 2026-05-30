@@ -184,7 +184,7 @@ export function App() {
 
   const currentClientId = getOrCreatePinnedImageClientId();
 
-  const { activeTemplate, recentTemplates, isLoading, error, persistTemplate, clearTemplate } = useActiveWorkflowTemplate();
+  const { activeTemplate, recentTemplates, isLoading, error, persistTemplate, clearTemplate, removeRecentTemplate } = useActiveWorkflowTemplate();
 
   const effectiveRunpodKey = hasServerRunpodApiKey ? SERVER_MANAGED_RUNPOD_KEY : runpodKey;
 
@@ -520,6 +520,9 @@ export function App() {
               error={error}
               onSwitchTemplate={(template) => {
                 void persistTemplate(template);
+              }}
+              onRemoveRecentTemplate={(fingerprint) => {
+                void removeRecentTemplate(fingerprint);
               }}
               onClear={() => {
                 void clearTemplate();

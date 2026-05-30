@@ -4,6 +4,7 @@ import {
   clearActiveWorkflowTemplate,
   getActiveWorkflowTemplate,
   getRecentWorkflowTemplates,
+  removeRecentWorkflowTemplate,
   saveActiveWorkflowTemplate
 } from "../../lib/workflowStorage";
 
@@ -60,12 +61,18 @@ export function useActiveWorkflowTemplate() {
     setError(null);
   }, []);
 
+  const removeRecentTemplate = useCallback(async (fingerprint: string) => {
+    await removeRecentWorkflowTemplate(fingerprint);
+    setRecentTemplates((current) => current.filter((template) => template.fingerprint !== fingerprint));
+  }, []);
+
   return {
     activeTemplate,
     recentTemplates,
     isLoading,
     error,
     persistTemplate,
-    clearTemplate
+    clearTemplate,
+    removeRecentTemplate
   };
 }
