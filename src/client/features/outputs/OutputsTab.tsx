@@ -52,6 +52,24 @@ function getGalleryClassName(density: (typeof OUTPUT_DENSITIES)[number]): string
   return `outputs-gallery outputs-gallery-${density}`;
 }
 
+export function resolveSelectedJobCluster(
+  selectedJobId: string | null,
+  clusters: RecentJobOutputCluster[],
+  hydratedJobClusters: Record<string, RecentJobOutputCluster>,
+  gallerySelectedCluster: RecentJobOutputCluster | null
+): RecentJobOutputCluster | null {
+  if (!selectedJobId) {
+    return gallerySelectedCluster;
+  }
+
+  const liveCluster = clusters.find((cluster) => cluster.jobId === selectedJobId) ?? null;
+  if (liveCluster) {
+    return liveCluster;
+  }
+
+  return hydratedJobClusters[selectedJobId] ?? gallerySelectedCluster;
+}
+
 export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs, onRemoveOutputImage, onExportWorkflow, onToggleOutputPinned, canPinMore = true, onLoadOutputCluster }: OutputsTabProps) {
   const gallery = useOutputGallery(clusters);
   const [galleryMode, setGalleryMode] = useState<OutputsGalleryMode>(() => getStoredOutputsViewMode());
@@ -155,9 +173,7 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
   const pagedAllOutputImages = useMemo(() => allOutputImages.slice(pageStart, pageEnd), [allOutputImages, pageEnd, pageStart]);
 
   const selectedJobId = gallery.view.mode === "job" ? gallery.view.jobId : null;
-  const selectedJobCluster = selectedJobId
-    ? hydratedJobClusters[selectedJobId] ?? gallery.selectedCluster
-    : gallery.selectedCluster;
+  const selectedJobCluster = resolveSelectedJobCluster(selectedJobId, clusters, hydratedJobClusters, gallery.selectedCluster);
 
   useEffect(() => {
     setGalleryPage(1);

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { OutputsTab } from "../../src/client/features/outputs/OutputsTab";
+import { OutputsTab, resolveSelectedJobCluster } from "../../src/client/features/outputs/OutputsTab";
 import type { RecentJobOutputCluster } from "../../src/shared/contracts/jobs";
 
 const tinyPngDataUrl =
@@ -43,6 +43,57 @@ function createCluster(overrides: Partial<RecentJobOutputCluster>): RecentJobOut
 }
 
 describe("OutputsTab", () => {
+  it("prefers live job clusters over hydrated cache while in job view", () => {
+    const liveCluster = createCluster({
+      jobId: "job-1",
+      outputs: [
+        {
+          dataUrl: tinyPngDataUrl,
+          mimeType: "image/png",
+          sourcePath: "$.output.images[0].image",
+          outputIndex: 0,
+          isPinned: true
+        }
+      ]
+    });
+    const hydratedCluster = createCluster({
+      jobId: "job-1",
+      outputs: [
+        {
+          dataUrl: tinyPngDataUrl,
+          mimeType: "image/png",
+          sourcePath: "$.output.images[0].image",
+          outputIndex: 0,
+          isPinned: false
+        }
+      ]
+    });
+
+    const resolved = resolveSelectedJobCluster("job-1", [liveCluster], { "job-1": hydratedCluster }, hydratedCluster);
+
+    expect(resolved?.outputs[0]?.isPinned).toBe(true);
+  });
+
+  it("falls back to hydrated cache only when live cluster is unavailable", () => {
+    const hydratedCluster = createCluster({
+      jobId: "job-404",
+      outputs: [
+        {
+          dataUrl: tinyPngDataUrl,
+          mimeType: "image/png",
+          sourcePath: "$.output.images[0].image",
+          outputIndex: 0,
+          isPinned: true
+        }
+      ]
+    });
+
+    const resolved = resolveSelectedJobCluster("job-404", [], { "job-404": hydratedCluster }, null);
+
+    expect(resolved?.jobId).toBe("job-404");
+    expect(resolved?.outputs[0]?.isPinned).toBe(true);
+  });
+
   it("renders outputs tab shell with density control and collapsed cards", () => {
     const html = renderToStaticMarkup(
       <OutputsTab
