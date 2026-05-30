@@ -2,16 +2,20 @@ import type { WorkflowTemplateRecord } from "../../../shared/contracts/workflow"
 
 type ActiveWorkflowTemplateProps = {
   activeTemplate: WorkflowTemplateRecord | null;
+  recentTemplates: WorkflowTemplateRecord[];
   isLoading: boolean;
   error: string | null;
   onClear: () => void;
+  onSwitchTemplate: (template: WorkflowTemplateRecord) => void;
 };
 
 export function ActiveWorkflowTemplate({
   activeTemplate,
+  recentTemplates,
   isLoading,
   error,
-  onClear
+  onClear,
+  onSwitchTemplate
 }: ActiveWorkflowTemplateProps) {
   if (isLoading) {
     return (
@@ -55,6 +59,25 @@ export function ActiveWorkflowTemplate({
           Clear active template
         </button>
       </div>
+      {recentTemplates.length > 1 ? (
+        <div className="setup-meta">
+          <h3>Recent Workflows</h3>
+          <div className="setup-actions">
+            {recentTemplates
+              .filter((template) => template.fingerprint !== activeTemplate.fingerprint)
+              .map((template) => (
+                <button
+                  key={template.fingerprint}
+                  className="btn btn-secondary"
+                  type="button"
+                  onClick={() => onSwitchTemplate(template)}
+                >
+                  {template.displayName}
+                </button>
+              ))}
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

@@ -3,7 +3,9 @@ import { beforeEach, describe, expect, it } from "vitest";
 import type { WorkflowTemplateRecord } from "../../src/shared/contracts/workflow";
 import {
   clearActiveWorkflowTemplate,
+  clearRecentWorkflowTemplates,
   getActiveWorkflowTemplate,
+  getRecentWorkflowTemplates,
   saveActiveWorkflowTemplate
 } from "../../src/client/lib/workflowStorage";
 
@@ -33,6 +35,7 @@ function createTemplate(seed: string): WorkflowTemplateRecord {
 describe("workflowStorage", () => {
   beforeEach(async () => {
     await clearActiveWorkflowTemplate();
+    await clearRecentWorkflowTemplates();
   });
 
   it("stores and restores the active workflow template with full fidelity", async () => {
@@ -49,5 +52,36 @@ describe("workflowStorage", () => {
     const restoredTemplate = await getActiveWorkflowTemplate();
 
     expect(restoredTemplate).toBeNull();
+  });
+
+  it("keeps recent workflow templates in newest-first order", async () => {
+    const first = createTemplate("first");
+    const second = createTemplate("second");
+
+    await saveActiveWorkflowTemplate(first);
+    await saveActiveWorkflowTemplate(second);
+
+    const recentTemplates = await getRecentWorkflowTemplates();
+
+    expect(recentTemplates.map((template) => template.fingerprint)).toEqual([
+      second.fingerprint,
+      first.fingerprint
+    ]);
+  });
+
+  it("moves an existing workflow to the top instead of duplicating it", async () => {
+    const first = createTemplate("first");
+    const second = createTemplate("second");
+
+    await saveActiveWorkflowTemplate(first);
+    await saveActiveWorkflowTemplate(second);
+    await saveActiveWorkflowTemplate(first);
+
+    const recentTemplates = await getRecentWorkflowTemplates();
+
+    expect(recentTemplates.map((template) => template.fingerprint)).toEqual([
+      first.fingerprint,
+      second.fingerprint
+    ]);
   });
 });

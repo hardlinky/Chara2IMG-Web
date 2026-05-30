@@ -3,11 +3,13 @@ import type { WorkflowTemplateRecord } from "../../../shared/contracts/workflow"
 import {
   clearActiveWorkflowTemplate,
   getActiveWorkflowTemplate,
+  getRecentWorkflowTemplates,
   saveActiveWorkflowTemplate
 } from "../../lib/workflowStorage";
 
 export function useActiveWorkflowTemplate() {
   const [activeTemplate, setActiveTemplate] = useState<WorkflowTemplateRecord | null>(null);
+  const [recentTemplates, setRecentTemplates] = useState<WorkflowTemplateRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -16,10 +18,14 @@ export function useActiveWorkflowTemplate() {
 
     async function loadActiveTemplate() {
       try {
-        const storedTemplate = await getActiveWorkflowTemplate();
+        const [storedTemplate, storedRecents] = await Promise.all([
+          getActiveWorkflowTemplate(),
+          getRecentWorkflowTemplates()
+        ]);
 
         if (mounted) {
           setActiveTemplate(storedTemplate);
+          setRecentTemplates(storedRecents);
         }
       } catch (loadError) {
         if (mounted) {
@@ -42,7 +48,9 @@ export function useActiveWorkflowTemplate() {
 
   const persistTemplate = useCallback(async (template: WorkflowTemplateRecord) => {
     await saveActiveWorkflowTemplate(template);
+    const recents = await getRecentWorkflowTemplates();
     setActiveTemplate(template);
+    setRecentTemplates(recents);
     setError(null);
   }, []);
 
@@ -54,6 +62,7 @@ export function useActiveWorkflowTemplate() {
 
   return {
     activeTemplate,
+    recentTemplates,
     isLoading,
     error,
     persistTemplate,
