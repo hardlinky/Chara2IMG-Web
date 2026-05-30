@@ -59,6 +59,171 @@ export type ExternalDraftApplyResult =
       reason: string;
     };
 
+export type ImportedWorkflowInputsApplyResult =
+  | {
+      ok: true;
+      draftValues: DynamicInputDraftValues;
+      matchedControls: number;
+      selectedCategories: string[];
+    }
+  | {
+      ok: false;
+      reason: string;
+    };
+
+function normalizeCategory(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function normalizeControlName(value: string): string {
+  return value.trim().toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").replace(/\s+/g, " ").trim();
+}
+
+function isCompatibleKind(left: DynamicInputControl["kind"], right: DynamicInputControl["kind"]): boolean {
+  if (left === right) {
+    return true;
+  }
+
+  return (left === "text" && right === "multiline") || (left === "multiline" && right === "text");
+}
+
+function isMeaningfulImportedValue(value: DynamicInputValue): boolean {
+  if (value === null) {
+    return false;
+  }
+
+  if (typeof value === "string") {
+    return value.trim().length > 0;
+  }
+
+  if (typeof value === "number") {
+    return Number.isFinite(value);
+  }
+
+  if (typeof value === "boolean") {
+    return true;
+  }
+
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  if ("dataUrl" in value) {
+    return typeof value.dataUrl === "string" && value.dataUrl.trim().length > 0;
+  }
+
+  if ("width" in value && "height" in value) {
+    return Number.isFinite(Number(value.width)) && Number.isFinite(Number(value.height));
+  }
+
+  if ("enabled" in value && "loraName" in value && "strength" in value) {
+    return typeof value.loraName === "string" && value.loraName.trim().length > 0 && Number.isFinite(Number(value.strength));
+  }
+
+  return false;
+}
+
+function getWorkflowSource(rawJson: unknown): unknown {
+  if (!rawJson || typeof rawJson !== "object" || Array.isArray(rawJson)) {
+    return rawJson;
+  }
+
+  const record = rawJson as Record<string, unknown>;
+  const nestedWorkflow = record.workflow;
+  if (nestedWorkflow && typeof nestedWorkflow === "object" && !Array.isArray(nestedWorkflow)) {
+    return nestedWorkflow;
+  }
+
+  return rawJson;
+}
+
+function scoreControlMatch(source: DynamicInputControl, target: DynamicInputControl): number {
+  if (!isCompatibleKind(source.kind, target.kind)) {
+    return -1;
+  }
+
+  let score = source.kind === target.kind ? 30 : 22;
+  const sourceName = normalizeControlName(source.name);
+  const targetName = normalizeControlName(target.name);
+
+  if (sourceName && sourceName === targetName) {
+    score += 40;
+  }
+
+  if (normalizeCategory(source.category) === normalizeCategory(target.category)) {
+    score += 10;
+  }
+
+  if (source.source.valuePath[0] && target.source.valuePath[0] && source.source.valuePath[0] === target.source.valuePath[0]) {
+    score += 8;
+  }
+
+  if (source.fullTitle === target.fullTitle) {
+    score += 5;
+  }
+
+  return score;
+}
+
+function buildImportedWorkflowDraftValues(args: {
+  currentControls: DynamicInputControl[];
+  currentDraftValues: DynamicInputDraftValues;
+  sourceControls: DynamicInputControl[];
+  selectedCategories: string[];
+}): {
+  draftValues: DynamicInputDraftValues;
+  matchedControls: number;
+} {
+  const selectedCategorySet = new Set(args.selectedCategories.map(normalizeCategory));
+  const selectedSourceControls = args.sourceControls.filter((control) => selectedCategorySet.has(normalizeCategory(control.category)));
+
+  const nextDraftValues: DynamicInputDraftValues = {
+    ...args.currentDraftValues
+  };
+  const usedTargetControlIds = new Set<string>();
+  let matchedControls = 0;
+
+  for (const sourceControl of selectedSourceControls) {
+    const sourceValue = sourceControl.defaultValue;
+    if (!isMeaningfulImportedValue(sourceValue)) {
+      continue;
+    }
+
+    let bestTarget: DynamicInputControl | null = null;
+    let bestScore = -1;
+
+    for (const targetControl of args.currentControls) {
+      if (usedTargetControlIds.has(targetControl.id)) {
+        continue;
+      }
+
+      const score = scoreControlMatch(sourceControl, targetControl);
+      if (score > bestScore) {
+        bestTarget = targetControl;
+        bestScore = score;
+      }
+    }
+
+    if (!bestTarget || bestScore < 0) {
+      continue;
+    }
+
+    const validation = validateInlineControl(bestTarget, sourceValue);
+    if (!validation.valid) {
+      continue;
+    }
+
+    nextDraftValues[bestTarget.id] = sourceValue;
+    usedTargetControlIds.add(bestTarget.id);
+    matchedControls += 1;
+  }
+
+  return {
+    draftValues: nextDraftValues,
+    matchedControls
+  };
+}
+
 export function applyExternalDraftValues(args: {
   currentTemplateFingerprint: string;
   sourceTemplateFingerprint: string;
@@ -78,6 +243,44 @@ export function applyExternalDraftValues(args: {
       ...buildDefaultDraftValues(args.controls),
       ...args.externalDraftValues
     }
+  };
+}
+
+export function applyImportedWorkflowInputs(args: {
+  sourceWorkflowRawJson: unknown;
+  selectedCategories: string[];
+  currentDraftValues: DynamicInputDraftValues;
+  currentControls: DynamicInputControl[];
+}): ImportedWorkflowInputsApplyResult {
+  if (args.selectedCategories.length === 0) {
+    return {
+      ok: false,
+      reason: "Select at least one input category to import."
+    };
+  }
+
+  const sourceWorkflow = getWorkflowSource(args.sourceWorkflowRawJson);
+  const sourceDerivation = deriveInputControls(sourceWorkflow);
+
+  if (sourceDerivation.controls.length === 0) {
+    return {
+      ok: false,
+      reason: "No importable inputs were found in the source workflow."
+    };
+  }
+
+  const imported = buildImportedWorkflowDraftValues({
+    currentControls: args.currentControls,
+    currentDraftValues: args.currentDraftValues,
+    sourceControls: sourceDerivation.controls,
+    selectedCategories: args.selectedCategories
+  });
+
+  return {
+    ok: true,
+    draftValues: imported.draftValues,
+    matchedControls: imported.matchedControls,
+    selectedCategories: [...args.selectedCategories]
   };
 }
 
@@ -453,6 +656,51 @@ export function useDynamicInputEditor(activeTemplate: WorkflowTemplateRecord | n
     [activeTemplate, derivation.controls]
   );
 
+  const applyImportedWorkflowInputsToDraft = useCallback(
+    async (sourceWorkflowRawJson: unknown, selectedCategories: string[]) => {
+      if (!activeTemplate) {
+        return {
+          ok: false as const,
+          reason: "No active template loaded."
+        };
+      }
+
+      const result = applyImportedWorkflowInputs({
+        sourceWorkflowRawJson,
+        selectedCategories,
+        currentDraftValues: draftValues,
+        currentControls: derivation.controls
+      });
+
+      if (!result.ok) {
+        return result;
+      }
+
+      const nextDraftValues = result.draftValues;
+      const nextInlineErrors = derivation.controls.reduce<Record<string, string>>((accumulator, control) => {
+        const validation = validateInlineControl(control, nextDraftValues[control.id] ?? control.defaultValue);
+        if (!validation.valid) {
+          accumulator[control.id] = validation.errors[0]?.message ?? "Invalid value.";
+        }
+        return accumulator;
+      }, {});
+
+      setDraftValues(nextDraftValues);
+      setInlineErrorsByControlId(nextInlineErrors);
+      setRunBlockingMessage(null);
+      setLastSuccessfulRunDraft(nextDraftValues);
+      await saveInputDraftValues(activeTemplate.fingerprint, nextDraftValues);
+
+      return {
+        ok: true as const,
+        draftValues: nextDraftValues,
+        matchedControls: result.matchedControls,
+        selectedCategories: result.selectedCategories
+      };
+    },
+    [activeTemplate, derivation.controls, draftValues]
+  );
+
   const attemptRun = useCallback((): RunAttemptResult => {
     if (!activeTemplate) {
       return {
@@ -532,6 +780,7 @@ export function useDynamicInputEditor(activeTemplate: WorkflowTemplateRecord | n
     setColumnsSplitRatio,
     resetToTemplateDefaults,
     applyExternalDraft,
+    applyImportedWorkflowInputs: applyImportedWorkflowInputsToDraft,
     attemptRun,
     hasDraftDiffFromTemplate: hasDraftDiffFromDefaults(derivation.controls, draftValues)
   };

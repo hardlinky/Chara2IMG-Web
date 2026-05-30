@@ -142,6 +142,21 @@ export function App() {
       sourceTemplateFingerprint: string,
       externalDraftValues: DynamicInputDraftValues
     ) => Promise<{ ok: true; draftValues: DynamicInputDraftValues } | { ok: false; reason: string }>;
+    applyImportedWorkflowInputs: (
+      sourceWorkflowRawJson: unknown,
+      selectedCategories: string[]
+    ) => Promise<
+      | {
+          ok: true;
+          draftValues: DynamicInputDraftValues;
+          matchedControls: number;
+          selectedCategories: string[];
+        }
+      | {
+          ok: false;
+          reason: string;
+        }
+    >;
   } | null>(null);
   const currentClientId = getOrCreatePinnedImageClientId();
 
@@ -292,6 +307,43 @@ export function App() {
     }
 
     setJobActionError("");
+    setActiveTab("input");
+  }
+
+  async function onImportInputs(sourceWorkflowRawJson: unknown, selectedCategories: string[]): Promise<
+    | {
+        ok: true;
+        draftValues: DynamicInputDraftValues;
+        matchedControls: number;
+        selectedCategories: string[];
+      }
+    | {
+        ok: false;
+        reason: string;
+      }
+  > {
+    if (!activeTemplate) {
+      return {
+        ok: false,
+        reason: "Load a workflow template before importing inputs."
+      };
+    }
+
+    if (!editorApi) {
+      return {
+        ok: false,
+        reason: "Input editor is not ready yet."
+      };
+    }
+
+    const result = await editorApi.applyImportedWorkflowInputs(sourceWorkflowRawJson, selectedCategories);
+    if (!result.ok) {
+      return result;
+    }
+
+    setActiveTab("input");
+
+    return result;
   }
 
   async function onUpdateApp(): Promise<void> {
@@ -396,7 +448,7 @@ export function App() {
                 onChange={(event) => updateEndpointId(event.target.value)}
               />
             </section>
-            <WorkflowImport onImported={persistTemplate} currentTemplate={activeTemplate} />
+            <WorkflowImport onImported={persistTemplate} onImportInputs={onImportInputs} currentTemplate={activeTemplate} />
             <ActiveWorkflowTemplate
               activeTemplate={activeTemplate}
               isLoading={isLoading}

@@ -40,6 +40,60 @@
   font-size: var(--font-size-sm);
 }
 
+.workflow-import-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: rgba(10, 12, 15, 0.72);
+  backdrop-filter: blur(6px);
+}
+
+.workflow-import-dialog-card {
+  width: min(720px, 100%);
+  max-height: min(80dvh, 760px);
+  overflow: auto;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.workflow-import-category-list {
+  display: grid;
+  gap: var(--space-2);
+  max-height: 36vh;
+  overflow: auto;
+  padding-right: var(--space-1);
+}
+
+.workflow-import-category-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  background: rgba(18, 23, 28, 0.7);
+}
+
+.workflow-import-category-item input {
+  margin: 0;
+}
+
+.workflow-import-category-count {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.workflow-import-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
 .input-warnings,
 .input-error,
 .input-status {

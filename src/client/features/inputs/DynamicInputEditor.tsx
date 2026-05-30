@@ -942,6 +942,15 @@ type DynamicInputEditorProps = {
       ok: false;
       reason: string;
     }>;
+    applyImportedWorkflowInputs: (sourceWorkflowRawJson: unknown, selectedCategories: string[]) => Promise<{
+      ok: true;
+      draftValues: DynamicInputDraftValues;
+      matchedControls: number;
+      selectedCategories: string[];
+    } | {
+      ok: false;
+      reason: string;
+    }>;
   }) => void;
 };
 
@@ -950,9 +959,10 @@ export function DynamicInputEditor(props: DynamicInputEditorProps) {
 
   useEffect(() => {
     props.onEditorReady?.({
-      applyExternalDraftValues: editor.applyExternalDraft
+      applyExternalDraftValues: editor.applyExternalDraft,
+      applyImportedWorkflowInputs: editor.applyImportedWorkflowInputs
     });
-  }, [editor.applyExternalDraft, props.onEditorReady]);
+  }, [editor.applyExternalDraft, editor.applyImportedWorkflowInputs, props.onEditorReady]);
 
   function onRun(): void {
     const result = editor.attemptRun();
