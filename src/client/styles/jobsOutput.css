@@ -203,6 +203,20 @@
 .outputs-job-view {
   width: 100%;
   min-width: 0;
+  overflow-x: clip;
+}
+
+.outputs-lightbox,
+.outputs-image-grid {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: clip;
+}
+
+.outputs-image-grid > * {
+  max-width: 100%;
+  min-width: 0;
 }
 
 .outputs-job-actions-row-1 {
@@ -289,6 +303,7 @@
   font-size: 0.75rem;
   color: var(--color-text-muted);
   overflow: hidden;
+  min-width: 0;
 }
 
 .outputs-image-caption-label {
