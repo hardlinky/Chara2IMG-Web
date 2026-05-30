@@ -22,6 +22,7 @@ import { getRunpodKey } from "./lib/runpodKeyStorage";
 import { sanitizeWorkflowForExport } from "./lib/workflowExport";
 import type { DynamicInputDraftValues } from "../shared/contracts/inputs";
 import type { SystemStorageStats } from "./lib/api/runpodProxyClient";
+import { deriveInputControls } from "../shared/workflow/deriveInputControls";
 
 const APP_ACTIVE_TAB_STORAGE_KEY = "chara2imgActiveTab";
 
@@ -53,6 +54,20 @@ function sanitizeFileNamePart(value: string): string {
   return sanitized || "workflow";
 }
 
+
+function normalizeWorkflowSource(rawJson: unknown): unknown {
+  if (!rawJson || typeof rawJson !== "object" || Array.isArray(rawJson)) {
+    return rawJson;
+  }
+
+  const record = rawJson as Record<string, unknown>;
+  const nestedWorkflow = record.workflow;
+  if (nestedWorkflow && typeof nestedWorkflow === "object" && !Array.isArray(nestedWorkflow)) {
+    return nestedWorkflow;
+  }
+
+  return rawJson;
+}
 function formatBytes(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes < 0) {
     return "0 B";
@@ -158,6 +173,15 @@ export function App() {
         }
     >;
   } | null>(null);
+  const [pendingJobInputImport, setPendingJobInputImport] = useState<{
+    jobId: string;
+    sourceTemplateName: string;
+    sourceWorkflowRawJson: unknown;
+    categories: Array<{ category: string; controlCount: number }>;
+  } | null>(null);
+  const [selectedJobInputCategories, setSelectedJobInputCategories] = useState<string[]>([]);
+  const [isImportingJobInputs, setIsImportingJobInputs] = useState(false);
+
   const currentClientId = getOrCreatePinnedImageClientId();
 
   const { activeTemplate, isLoading, error, persistTemplate, clearTemplate } = useActiveWorkflowTemplate();
@@ -295,19 +319,58 @@ export function App() {
       return;
     }
 
+    const sourceWorkflowRawJson = normalizeWorkflowSource(job.provenance.submittedInput);
+    const derivation = deriveInputControls(sourceWorkflowRawJson);
+    const categories = derivation.sections.map((section) => ({
+      category: section.category,
+      controlCount: section.controlIds.length
+    }));
+
+    if (categories.length === 0) {
+      setJobActionError("No importable input categories were found in that job.");
+      return;
+    }
+
+    setPendingJobInputImport({
+      jobId,
+      sourceTemplateName: job.provenance.workflowFileName ?? jobId,
+      sourceWorkflowRawJson,
+      categories
+    });
+    setSelectedJobInputCategories(categories.map((entry) => entry.category));
+    setJobActionError("");
+  }
+
+  async function confirmJobInputImport(): Promise<void> {
+    if (!pendingJobInputImport) {
+      return;
+    }
+
+    if (!activeTemplate) {
+      setJobActionError("Load a workflow template before importing inputs.");
+      return;
+    }
+
     if (!editorApi) {
       setJobActionError("Input editor is not ready yet.");
       return;
     }
 
-    const result = await editorApi.applyExternalDraftValues(job.provenance.templateFingerprint, job.provenance.draftValues);
-    if (!result.ok) {
-      setJobActionError(result.reason);
-      return;
-    }
+    setIsImportingJobInputs(true);
+    try {
+      const result = await editorApi.applyImportedWorkflowInputs(pendingJobInputImport.sourceWorkflowRawJson, selectedJobInputCategories);
+      if (!result.ok) {
+        setJobActionError(result.reason);
+        return;
+      }
 
-    setJobActionError("");
-    setActiveTab("input");
+      setJobActionError("");
+      setPendingJobInputImport(null);
+      setSelectedJobInputCategories([]);
+      setActiveTab("input");
+    } finally {
+      setIsImportingJobInputs(false);
+    }
   }
 
   async function onImportInputs(sourceWorkflowRawJson: unknown, selectedCategories: string[]): Promise<
@@ -405,6 +468,7 @@ export function App() {
   }
 
   return (
+    <>
     <AppShell
       tabs={appTabs}
       activeTab={activeTab}
@@ -553,5 +617,56 @@ export function App() {
         )
       }}
     />
+      {pendingJobInputImport ? (
+        <div className="workflow-import-dialog" role="dialog" aria-modal="true" aria-label="Import inputs from job dialog">
+          <div className="workflow-import-dialog-card card">
+            <h2>Import Inputs from {pendingJobInputImport.sourceTemplateName}</h2>
+            <p>Select the source categories to map into the currently loaded Inputs tab.</p>
+            <div className="workflow-import-category-list">
+              {pendingJobInputImport.categories.map((entry) => {
+                const checked = selectedJobInputCategories.includes(entry.category);
+                return (
+                  <label key={entry.category} className="workflow-import-category-item">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={(event) => {
+                        const nextChecked = event.target.checked;
+                        setSelectedJobInputCategories((current) => {
+                          const currentSet = new Set(current);
+                          if (nextChecked) {
+                            currentSet.add(entry.category);
+                          } else {
+                            currentSet.delete(entry.category);
+                          }
+                          return pendingJobInputImport.categories.map((categoryEntry) => categoryEntry.category).filter((category) => currentSet.has(category));
+                        });
+                      }}
+                    />
+                    <span>{entry.category}</span>
+                    <span className="workflow-import-category-count">{entry.controlCount}</span>
+                  </label>
+                );
+              })}
+            </div>
+            <div className="workflow-import-dialog-actions">
+              <button className="btn btn-secondary" type="button" onClick={() => setSelectedJobInputCategories(pendingJobInputImport.categories.map((entry) => entry.category))}>
+                Select all
+              </button>
+              <button className="btn btn-secondary" type="button" onClick={() => setSelectedJobInputCategories([])}>
+                Select none
+              </button>
+              <button className="btn btn-secondary" type="button" onClick={() => setPendingJobInputImport(null)}>
+                Cancel
+              </button>
+              <button className="btn btn-primary" type="button" onClick={() => void confirmJobInputImport()} disabled={isImportingJobInputs || selectedJobInputCategories.length === 0}>
+                {isImportingJobInputs ? "Importing..." : "Import selected"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+    </>
   );
 }
