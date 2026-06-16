@@ -41,6 +41,8 @@ const cluster: RecentJobOutputCluster = {
 };
 
 describe("JobOutputsView", () => {
+  const displayJobId = formatOutputJobId(cluster.jobId);
+
   it("renders a shortened display job id in the provenance line", () => {
     const html = renderToStaticMarkup(
       <JobOutputsView
@@ -53,7 +55,7 @@ describe("JobOutputsView", () => {
       />
     );
 
-    expect(html).toContain(formatOutputJobId(cluster.jobId));
+    expect(html).toContain(displayJobId);
     expect(html).not.toContain(`${cluster.jobId} |`);
   });
 
@@ -122,8 +124,8 @@ describe("JobOutputsView", () => {
     );
 
     expect(html).toContain("outputs-image-bottom-actions");
-    expect(html).toContain("Download job-1 image 1");
-    expect(html).toContain("Export workflow for job-1");
-    expect(html).toContain("Load inputs from job-1");
+    expect(html).toContain(`Download ${displayJobId} image 1`);
+    expect(html).toContain(`Export workflow for ${displayJobId}`);
+    expect(html).toContain(`Load inputs from ${displayJobId}`);
   });
 });

@@ -113,7 +113,7 @@ describe("OutputsTab", () => {
     expect(html).toContain("Density");
     expect(html).toContain(`${displayJobId} #1`);
     expect(html).toContain("2 images");
-    expect(html).toContain("View job outputs for job-123");
+    expect(html).toContain(`View job outputs for ${displayJobId}`);
     expect(html).toContain("Page 1 / 1");
     expect(html).not.toContain("Remove outputs");
   });

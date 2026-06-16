@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
+import { formatOutputJobId } from "../../src/client/features/outputs/formatOutputJobId";
 import { OutputLightbox } from "../../src/client/features/outputs/OutputLightbox";
 
 vi.mock("react-photoswipe-gallery", async () => {
@@ -35,9 +36,11 @@ const sampleImages = [
 
 describe("OutputLightbox", () => {
   it("renders only visible job-scoped image tiles when paginating", () => {
+    const displayJobId = formatOutputJobId("job-1");
     const html = renderToStaticMarkup(
       <OutputLightbox
         imagePrefix="job-1"
+        displayPrefix={displayJobId}
         maxVisible={1}
         images={sampleImages}
       />
@@ -45,21 +48,23 @@ describe("OutputLightbox", () => {
 
     expect(html).toContain("outputs-image-grid");
     expect(html).toContain("outputs-lightbox");
-    expect(html).toContain("Open job-1 image 1");
-    expect(html).not.toContain("Open job-1 image 2");
+    expect(html).toContain(`Open ${displayJobId} image 1`);
+    expect(html).not.toContain(`Open ${displayJobId} image 2`);
   });
 
   it("renders remove buttons when onRemoveImage is provided", () => {
+    const displayJobId = formatOutputJobId("job-1");
     const html = renderToStaticMarkup(
       <OutputLightbox
         imagePrefix="job-1"
+        displayPrefix={displayJobId}
         images={sampleImages}
         onRemoveImage={() => undefined}
       />
     );
 
-    expect(html).toContain("Remove job-1 image 1");
-    expect(html).toContain("Remove job-1 image 2");
+    expect(html).toContain(`Remove ${displayJobId} image 1`);
+    expect(html).toContain(`Remove ${displayJobId} image 2`);
     expect(html).toContain("outputs-image-remove-btn");
   });
 
@@ -75,9 +80,11 @@ describe("OutputLightbox", () => {
   });
 
   it("renders bottom icon action buttons when load/export handlers are provided", () => {
+    const displayJobId = formatOutputJobId("job-1");
     const html = renderToStaticMarkup(
       <OutputLightbox
         imagePrefix="job-1"
+        displayPrefix={displayJobId}
         images={sampleImages}
         onExportWorkflow={() => undefined}
         onLoadInputs={() => undefined}
@@ -85,8 +92,8 @@ describe("OutputLightbox", () => {
     );
 
     expect(html).toContain("outputs-image-bottom-actions");
-    expect(html).toContain("Download job-1 image 1");
-    expect(html).toContain("Export workflow for job-1");
-    expect(html).toContain("Load inputs from job-1");
+    expect(html).toContain(`Download ${displayJobId} image 1`);
+    expect(html).toContain(`Export workflow for ${displayJobId}`);
+    expect(html).toContain(`Load inputs from ${displayJobId}`);
   });
 });

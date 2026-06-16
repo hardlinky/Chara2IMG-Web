@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { RecentJobRecord } from "../../../shared/contracts/jobs";
+import { formatOutputJobId } from "../outputs/formatOutputJobId";
 import { JOB_POLL_INTERVAL_MS } from "./jobStatus";
 import type { RecentJobStatusFilter } from "./useRecentJobs";
 import "../../styles/jobsOutput.css";
@@ -277,6 +278,7 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
       {props.jobs.length > 0 ? (
         <ul className="jobs-list">
           {props.jobs.map((job) => {
+            const displayJobId = formatOutputJobId(job.jobId);
             const isPinnedJob = Boolean(job.pinnedAt) || Boolean(job.pinnedOutputIndices?.length);
             const executionTime = formatExecutionTime(job, now);
             const failureSnippet = formatFailureSnippet(job);
@@ -290,7 +292,7 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
               <li key={job.jobId} className="jobs-card">
                 <div className="jobs-card-meta">
                   <strong className="jobs-card-id">
-                    <span>{job.jobId}</span>
+                    <span>{displayJobId}</span>
                     {isPinnedJob ? <span className="jobs-card-pinned-icon" aria-label="Pinned job" title="Pinned job">📌</span> : null}
                   </strong>
                   <time dateTime={completionTimestamp} title={timestampTooltip}>
@@ -346,13 +348,13 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
                   <button className="btn btn-primary" type="button" onClick={() => props.onRerun(job.jobId)}>
                     Rerun
                   </button>
-                  <div className="jobs-icon-actions" aria-label={`Quick actions for ${job.jobId}`}>
+                  <div className="jobs-icon-actions" aria-label={`Quick actions for ${displayJobId}`}>
                     <button
                       className="jobs-icon-btn"
                       type="button"
                       onClick={() => props.onLoadInputs(job.jobId)}
-                      aria-label={`Load inputs from ${job.jobId}`}
-                      title={`Load inputs from ${job.jobId}`}
+                      aria-label={`Load inputs from ${displayJobId}`}
+                      title={`Load inputs from ${displayJobId}`}
                     >
                       <LoadInputsIcon />
                     </button>
@@ -362,8 +364,8 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
                         className="jobs-icon-btn"
                         type="button"
                         onClick={() => props.onExportWorkflow(job.jobId)}
-                        aria-label={`Export workflow for ${job.jobId}`}
-                        title={`Export workflow for ${job.jobId}`}
+                        aria-label={`Export workflow for ${displayJobId}`}
+                        title={`Export workflow for ${displayJobId}`}
                       >
                         <ExportWorkflowIcon />
                       </button>
@@ -372,8 +374,8 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
                           className="jobs-icon-btn"
                           type="button"
                           onClick={() => props.onViewOutputs?.(job.jobId)}
-                          aria-label={`View outputs for ${job.jobId}`}
-                          title={`View outputs for ${job.jobId}`}
+                          aria-label={`View outputs for ${displayJobId}`}
+                          title={`View outputs for ${displayJobId}`}
                         >
                           <ViewOutputsIcon />
                         </button>

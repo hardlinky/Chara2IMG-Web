@@ -74,7 +74,7 @@ export function OutputLightbox({
               thumbnail={image.dataUrl}
               width={String(dimensions.width)}
               height={String(dimensions.height)}
-              caption={`${imagePrefix} #${index + 1}`}
+              caption={`${displayPrefix} #${index + 1}`}
             >
               {({ ref, open }) => (
                 <div ref={ref as never}>

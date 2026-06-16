@@ -105,15 +105,15 @@ export function OutputImageCard({
   return (
     <div className={`outputs-image-tile-wrapper ${maxVisible ? "" : "outputs-image-tile-hidden"}`.trim()}>
       <div className="outputs-image-media">
-        <button type="button" className="outputs-image-tile" onClick={onOpen} aria-label={`Open ${imagePrefix} image ${imageLabel}`}>
-          <img src={image.dataUrl} alt={`${imagePrefix} ${imageLabel}`} loading="lazy" onLoad={onImageLoad} />
+        <button type="button" className="outputs-image-tile" onClick={onOpen} aria-label={`Open ${displayPrefix} image ${imageLabel}`}>
+          <img src={image.dataUrl} alt={`${displayPrefix} ${imageLabel}`} loading="lazy" onLoad={onImageLoad} />
         </button>
         {onTogglePin ? (
           <button
             type="button"
             className={`outputs-image-pin-btn ${image.isPinned ? "is-active" : ""}`.trim()}
-            aria-label={image.isPinned ? `Unpin ${imagePrefix} image ${imageLabel}` : `Pin ${imagePrefix} image ${imageLabel}`}
-            title={image.isPinned ? `Unpin ${imagePrefix} image ${imageLabel}` : `Pin ${imagePrefix} image ${imageLabel}`}
+            aria-label={image.isPinned ? `Unpin ${displayPrefix} image ${imageLabel}` : `Pin ${displayPrefix} image ${imageLabel}`}
+            title={image.isPinned ? `Unpin ${displayPrefix} image ${imageLabel}` : `Pin ${displayPrefix} image ${imageLabel}`}
             disabled={!image.isPinned && !canPinMore}
             onClick={onTogglePin}
           >
@@ -121,13 +121,13 @@ export function OutputImageCard({
           </button>
         ) : null}
         {showBottomActions ? (
-          <div className="outputs-image-bottom-actions" aria-label={`Actions for ${imagePrefix} image ${imageLabel}`}>
+          <div className="outputs-image-bottom-actions" aria-label={`Actions for ${displayPrefix} image ${imageLabel}`}>
             <button
               type="button"
               className="outputs-image-action-btn"
-              aria-label={`Download ${imagePrefix} image ${imageLabel}`}
-              title={`Download ${imagePrefix} image ${imageLabel}`}
-              onClick={() => triggerDownload(image, imagePrefix, imageLabel)}
+              aria-label={`Download ${displayPrefix} image ${imageLabel}`}
+              title={`Download ${displayPrefix} image ${imageLabel}`}
+              onClick={() => triggerDownload(image, displayPrefix, imageLabel)}
             >
               <DownloadIcon />
             </button>
@@ -135,8 +135,8 @@ export function OutputImageCard({
               <button
                 type="button"
                 className="outputs-image-action-btn"
-                aria-label={`View job outputs for ${imagePrefix}`}
-                title={`View job outputs for ${imagePrefix}`}
+                aria-label={`View job outputs for ${displayPrefix}`}
+                title={`View job outputs for ${displayPrefix}`}
                 onClick={onViewJobOutputs}
               >
                 <ViewJobOutputsIcon />
@@ -146,8 +146,8 @@ export function OutputImageCard({
               <button
                 type="button"
                 className="outputs-image-action-btn"
-                aria-label={`Export workflow for ${imagePrefix}`}
-                title={`Export workflow for ${imagePrefix}`}
+                aria-label={`Export workflow for ${displayPrefix}`}
+                title={`Export workflow for ${displayPrefix}`}
                 onClick={onExportWorkflow}
               >
                 <ExportIcon />
@@ -157,8 +157,8 @@ export function OutputImageCard({
               <button
                 type="button"
                 className="outputs-image-action-btn"
-                aria-label={`Load inputs from ${imagePrefix}`}
-                title={`Load inputs from ${imagePrefix}`}
+                aria-label={`Load inputs from ${displayPrefix}`}
+                title={`Load inputs from ${displayPrefix}`}
                 onClick={onLoadInputs}
               >
                 <LoadInputsIcon />
@@ -170,8 +170,8 @@ export function OutputImageCard({
           <button
             type="button"
             className="outputs-image-remove-btn"
-            aria-label={`Remove ${imagePrefix} image ${imageLabel}`}
-            title={`Remove ${imagePrefix} image ${imageLabel}`}
+            aria-label={`Remove ${displayPrefix} image ${imageLabel}`}
+            title={`Remove ${displayPrefix} image ${imageLabel}`}
             onClick={onRemoveImage}
           >
             ✕

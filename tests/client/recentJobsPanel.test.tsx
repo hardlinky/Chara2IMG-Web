@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { RecentJobRecord } from "../../src/shared/contracts/jobs";
+import { formatOutputJobId } from "../../src/client/features/outputs/formatOutputJobId";
 import { RecentJobsPanel } from "../../src/client/features/jobs/RecentJobsPanel";
 
 function createJob(overrides: Partial<RecentJobRecord>): RecentJobRecord {
@@ -33,6 +34,7 @@ function createJob(overrides: Partial<RecentJobRecord>): RecentJobRecord {
 
 describe("RecentJobsPanel", () => {
   it("renders the required compact list controls and row content", () => {
+    const displayJobId = formatOutputJobId("job-123");
     const html = renderToStaticMarkup(
       <RecentJobsPanel
         jobs={[createJob({ jobId: "job-123" })]}
@@ -55,7 +57,7 @@ describe("RecentJobsPanel", () => {
     );
 
     expect(html).toContain("Recent Jobs");
-    expect(html).toContain("job-123");
+  expect(html).toContain(displayJobId);
     expect(html).toContain("Workflow: workflow-default.json");
     expect(html).toContain("Status: FAILED");
     expect(html).toContain("2h ago (10m 0s)");
@@ -63,8 +65,8 @@ describe("RecentJobsPanel", () => {
     expect(html).not.toContain("Execution time: 0h 10m 0s");
     expect(html).toContain("Prev");
     expect(html).toContain("Next");
-    expect(html).toContain("Load inputs from job-123");
-    expect(html).not.toContain("Export workflow for job-123");
+    expect(html).toContain(`Load inputs from ${displayJobId}`);
+    expect(html).not.toContain(`Export workflow for ${displayJobId}`);
     expect(html).not.toContain("Restore");
   });
 
@@ -143,6 +145,7 @@ describe("RecentJobsPanel", () => {
   });
 
   it("shows export quick action only on completed jobs", () => {
+    const displayJobId = formatOutputJobId("job-completed");
     const html = renderToStaticMarkup(
       <RecentJobsPanel
         jobs={[
@@ -178,7 +181,7 @@ describe("RecentJobsPanel", () => {
       />
     );
 
-    expect(html).toContain("Export workflow for job-completed");
+    expect(html).toContain(`Export workflow for ${displayJobId}`);
   });
 
   it("renders the exact empty state text when there are no visible jobs", () => {

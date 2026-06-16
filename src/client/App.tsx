@@ -10,6 +10,7 @@ import { formatSubmittedAtRelative } from "./features/jobs/jobStatus";
 import { RecentJobsPanel } from "./features/jobs/RecentJobsPanel";
 import { useRecentJobs } from "./features/jobs/useRecentJobs";
 import { OutputsTab } from "./features/outputs/OutputsTab";
+import { formatOutputJobId } from "./features/outputs/formatOutputJobId";
 import { ActiveWorkflowTemplate } from "./features/workflows/ActiveWorkflowTemplate";
 import { WorkflowImport } from "./features/workflows/WorkflowImport";
 import { useActiveWorkflowTemplate } from "./features/workflows/useActiveWorkflowTemplate";
@@ -451,7 +452,7 @@ export function App() {
 
     const sanitizedWorkflowPayload = sanitizeWorkflowForExport(workflowPayload);
     const fileBase = sanitizeFileNamePart(job.provenance.workflowFileName ?? "workflow").replace(/\.json$/i, "");
-    const fileName = `${fileBase}-${sanitizeFileNamePart(job.jobId)}-populated.json`;
+    const fileName = `${fileBase}-${sanitizeFileNamePart(formatOutputJobId(job.jobId))}-populated.json`;
     const blob = new Blob([JSON.stringify(sanitizedWorkflowPayload, null, 2)], { type: "application/json" });
     const objectUrl = URL.createObjectURL(blob);
     const link = document.createElement("a");
