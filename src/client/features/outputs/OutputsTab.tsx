@@ -1,6 +1,7 @@
 import { type SyntheticEvent, useEffect, useMemo, useState } from "react";
 import { Gallery, Item } from "react-photoswipe-gallery";
 import type { RecentJobOutputCluster } from "../../../shared/contracts/jobs";
+import { formatOutputJobId } from "./formatOutputJobId";
 import { JobOutputsView } from "./JobOutputsView";
 import { OutputImageCard } from "./OutputImageCard";
 import { OUTPUT_DENSITIES, type OutputDensity, useOutputGallery } from "./useOutputGallery";
@@ -323,6 +324,7 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
               (() => {
                 const dimensionKey = getImageDimensionKey(cluster.jobId, cluster.representative.outputIndex);
                 const dimensions = imageDimensions[dimensionKey] ?? { width: 1024, height: 1024 };
+                const displayJobId = formatOutputJobId(cluster.jobId);
 
                 return (
               <article key={cluster.jobId} className="outputs-cluster-card">
@@ -338,6 +340,7 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
                       <OutputImageCard
                         image={cluster.representative}
                         imagePrefix={cluster.jobId}
+                        displayPrefix={displayJobId}
                         imageLabel="1"
                         onOpen={open}
                         onImageLoad={(event) => handleImageLoad(cluster.jobId, cluster.representative.outputIndex, event)}
@@ -375,6 +378,7 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
               (() => {
                 const dimensionKey = getImageDimensionKey(outputImage.jobId, outputImage.outputIndex);
                 const dimensions = imageDimensions[dimensionKey] ?? { width: 1024, height: 1024 };
+                const displayJobId = formatOutputJobId(outputImage.jobId);
 
                 return (
               <article key={`${outputImage.jobId}-${outputImage.outputIndex}`} className="outputs-cluster-card">
@@ -390,6 +394,7 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
                       <OutputImageCard
                         image={outputImage}
                         imagePrefix={outputImage.jobId}
+                        displayPrefix={displayJobId}
                         imageLabel={`${outputImage.outputIndex + 1}`}
                         onOpen={open}
                         onImageLoad={(event) => handleImageLoad(outputImage.jobId, outputImage.outputIndex, event)}

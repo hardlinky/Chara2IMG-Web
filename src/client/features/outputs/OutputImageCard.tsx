@@ -4,6 +4,7 @@ import type { RecentJobOutputImage } from "../../../shared/contracts/jobs";
 type OutputImageCardProps = {
   image: RecentJobOutputImage;
   imagePrefix: string;
+  displayPrefix?: string;
   imageLabel: string;
   onOpen: MouseEventHandler<HTMLButtonElement>;
   onImageLoad?: (event: SyntheticEvent<HTMLImageElement>) => void;
@@ -84,6 +85,7 @@ function ArchivedSourceIcon() {
 export function OutputImageCard({
   image,
   imagePrefix,
+  displayPrefix = imagePrefix,
   imageLabel,
   onOpen,
   onImageLoad,
@@ -177,7 +179,7 @@ export function OutputImageCard({
         ) : null}
       </div>
       <div className="outputs-image-caption-row">
-        <span className="outputs-image-caption-label">{`${imagePrefix} #${imageLabel}`}</span>
+        <span className="outputs-image-caption-label">{`${displayPrefix} #${imageLabel}`}</span>
         <span className="outputs-image-source-chip" title={isArchived ? "Loaded from server backup" : "Loaded from browser cache"}>
           {isArchived ? <ArchivedSourceIcon /> : <CachedSourceIcon />}
           <span>{storageSourceLabel}</span>

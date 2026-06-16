@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
+import { formatOutputJobId } from "../../src/client/features/outputs/formatOutputJobId";
 import { JobOutputsView } from "../../src/client/features/outputs/JobOutputsView";
 import type { RecentJobOutputCluster } from "../../src/shared/contracts/jobs";
 
@@ -40,6 +41,22 @@ const cluster: RecentJobOutputCluster = {
 };
 
 describe("JobOutputsView", () => {
+  it("renders a shortened display job id in the provenance line", () => {
+    const html = renderToStaticMarkup(
+      <JobOutputsView
+        cluster={cluster}
+        onBack={() => undefined}
+        onRerun={() => undefined}
+        onLoadInputs={() => undefined}
+        onRemoveImage={() => undefined}
+        onRemoveAllOutputs={() => undefined}
+      />
+    );
+
+    expect(html).toContain(formatOutputJobId(cluster.jobId));
+    expect(html).not.toContain(`${cluster.jobId} |`);
+  });
+
   it("renders previous and next job buttons in the navigation row and disables previous when unavailable", () => {
     const html = renderToStaticMarkup(
       <JobOutputsView

@@ -7,6 +7,7 @@ import { OutputImageCard } from "./OutputImageCard";
 type OutputLightboxProps = {
   images: RecentJobOutputImage[];
   imagePrefix: string;
+  displayPrefix?: string;
   maxVisible?: number;
   onRemoveImage?: (outputIndex: number) => void;
   onTogglePinnedImage?: (outputIndex: number, pinned: boolean) => void;
@@ -18,6 +19,7 @@ type OutputLightboxProps = {
 export function OutputLightbox({
   images,
   imagePrefix,
+  displayPrefix = imagePrefix,
   maxVisible = images.length,
   onRemoveImage,
   onTogglePinnedImage,
@@ -79,6 +81,7 @@ export function OutputLightbox({
                   <OutputImageCard
                     image={image}
                     imagePrefix={imagePrefix}
+                    displayPrefix={displayPrefix}
                     imageLabel={`${index + 1}`}
                     onOpen={open}
                     onImageLoad={(event) => handleImageLoad(index, event)}

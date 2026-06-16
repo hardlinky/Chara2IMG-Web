@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import type { RecentJobOutputCluster } from "../../../shared/contracts/jobs";
+import { formatOutputJobId } from "./formatOutputJobId";
 import { OutputLightbox } from "./OutputLightbox";
 
 type JobOutputsViewProps = {
@@ -47,6 +48,7 @@ function toRelativeTimestamp(isoValue: string | null): string {
 
 export function JobOutputsView({ cluster, onBack, onPreviousJob, onNextJob, onRerun, onLoadInputs, onRemoveImage, onRemoveAllOutputs, onExportWorkflow, onTogglePinnedImage, canPinMore = true }: JobOutputsViewProps) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const displayJobId = formatOutputJobId(cluster.jobId);
 
   const visibleImages = useMemo(() => cluster.outputs.slice(0, visibleCount), [cluster.outputs, visibleCount]);
 
@@ -88,12 +90,13 @@ export function JobOutputsView({ cluster, onBack, onPreviousJob, onNextJob, onRe
       </div>
 
       <p className="outputs-provenance-line">
-        {cluster.jobId} | {toRelativeTimestamp(cluster.finishedAt ?? cluster.submittedAt)} | {cluster.workflowFileName ?? "Workflow unknown"}
+        {displayJobId} | {toRelativeTimestamp(cluster.finishedAt ?? cluster.submittedAt)} | {cluster.workflowFileName ?? "Workflow unknown"}
       </p>
 
       <OutputLightbox
         images={cluster.outputs}
         imagePrefix={cluster.jobId}
+        displayPrefix={displayJobId}
         maxVisible={visibleCount}
         onRemoveImage={onRemoveImage}
         onTogglePinnedImage={onTogglePinnedImage}

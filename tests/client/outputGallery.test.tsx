@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
+import { formatOutputJobId } from "../../src/client/features/outputs/formatOutputJobId";
 import { OutputsTab, resolveSelectedJobCluster } from "../../src/client/features/outputs/OutputsTab";
 import type { RecentJobOutputCluster } from "../../src/shared/contracts/jobs";
 
@@ -95,6 +96,7 @@ describe("OutputsTab", () => {
   });
 
   it("renders outputs tab shell with density control and collapsed cards", () => {
+    const displayJobId = formatOutputJobId("job-123");
     const html = renderToStaticMarkup(
       <OutputsTab
         clusters={[createCluster({ jobId: "job-123" })]}
@@ -109,7 +111,7 @@ describe("OutputsTab", () => {
     expect(html).toContain("View");
     expect(html).toContain("Jobs");
     expect(html).toContain("Density");
-    expect(html).toContain("job-123");
+    expect(html).toContain(`${displayJobId} #1`);
     expect(html).toContain("2 images");
     expect(html).toContain("View job outputs for job-123");
     expect(html).toContain("Page 1 / 1");
