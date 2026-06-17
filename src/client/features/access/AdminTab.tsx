@@ -12,7 +12,7 @@ import {
   purgeMissingClientPinnedImagesViaProxy,
   type PinnedImageClientUsage
 } from "../../lib/api/pinnedImageClient";
-import { listVisibleRecentJobs, removeRecentJobOutputImage as removeRecentJobOutputImageFromStorage } from "../../lib/recentJobsStorage";
+import { listVisibleRecentJobs, removeRecentJobOutputImage as removeRecentJobOutputImageFromStorage, getRecentJob } from "../../lib/recentJobsStorage";
 import { extractRunpodOutputImages } from "../../lib/runpodOutputImage";
 
 const CLIENT_PAGE_SIZE = 10;
@@ -237,9 +237,10 @@ export function AdminTab({ enabled }: AdminTabProps) {
       let removed = 0;
 
       for (const job of jobs) {
-        const pinnedIndices = new Set(job.pinnedOutputIndices ?? []);
+        const hydrated = await getRecentJob(job.jobId);
+        const pinnedIndices = new Set(hydrated?.pinnedOutputIndices ?? job.pinnedOutputIndices ?? []);
         const allPinnedByLegacy = Boolean(job.pinnedAt) && pinnedIndices.size === 0;
-        const response = job.lastResponse;
+        const response = hydrated?.lastResponse ?? job.lastResponse;
         if (!response) {
           continue;
         }
