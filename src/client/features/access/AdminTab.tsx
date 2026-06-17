@@ -109,6 +109,9 @@ export function AdminTab({ enabled }: AdminTabProps) {
 
     try {
       const nextClients = await fetchPinnedImageClientsViaProxy();
+      if (!nextClients.some((c) => c.clientId === nativeClientId)) {
+        nextClients.unshift({ clientId: nativeClientId, bytes: 0, entries: 0 });
+      }
       setClients(nextClients);
       setSelectedClientIdsText((previous) => {
         const previousIds = previous
