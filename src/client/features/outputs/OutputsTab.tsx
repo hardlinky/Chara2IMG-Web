@@ -10,7 +10,7 @@ import "../../styles/jobsOutput.css";
 
 type OutputsGalleryMode = "per-job" | "all-images";
 type OutputsPinFilter = "all" | "pinned" | "unpinned" | "cached" | "archived";
-const MOBILE_OUTPUT_DENSITIES: readonly OutputDensity[] = ["compact", "balanced"];
+const MOBILE_OUTPUT_DENSITIES: readonly OutputDensity[] = ["compact", "balanced", "comfortable"];
 const GALLERY_PAGE_SIZE = 10;
 const OUTPUTS_PIN_FILTER_STORAGE_KEY = "chara2imgOutputsPinFilter";
 const OUTPUTS_VIEW_MODE_STORAGE_KEY = "chara2imgOutputsViewMode";
