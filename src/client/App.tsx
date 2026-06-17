@@ -340,6 +340,7 @@ export function App() {
     });
     setSelectedJobInputCategories(categories.map((entry) => entry.category));
     setJobActionError("");
+    setActiveTab("input");
   }
 
   async function confirmJobInputImport(): Promise<void> {
@@ -513,26 +514,32 @@ export function App() {
                 onChange={(event) => updateEndpointId(event.target.value)}
               />
             </section>
-            <WorkflowImport onImported={persistTemplate} onImportInputs={onImportInputs} currentTemplate={activeTemplate} />
-            <ActiveWorkflowTemplate
-              activeTemplate={activeTemplate}
-              recentTemplates={recentTemplates}
-              isLoading={isLoading}
-              error={error}
-              onSwitchTemplate={(template) => {
-                void persistTemplate(template);
-              }}
-              onRemoveRecentTemplate={(fingerprint) => {
-                void removeRecentTemplate(fingerprint);
-              }}
-              onClear={() => {
-                void clearTemplate();
-              }}
-            />
+            {/* Workflow import and recent-workflow controls moved to Input tab */}
           </div>
         ),
         input: (
           <div className="section-stack">
+            <details className="workflow-controls" aria-label="Workflow controls" >
+              <summary>Workflow controls</summary>
+              <div style={{ padding: "0.5rem 0" }}>
+                <WorkflowImport onImported={persistTemplate} onImportInputs={onImportInputs} currentTemplate={activeTemplate} />
+                <ActiveWorkflowTemplate
+                  activeTemplate={activeTemplate}
+                  recentTemplates={recentTemplates}
+                  isLoading={isLoading}
+                  error={error}
+                  onSwitchTemplate={(template) => {
+                    void persistTemplate(template);
+                  }}
+                  onRemoveRecentTemplate={(fingerprint) => {
+                    void removeRecentTemplate(fingerprint);
+                  }}
+                  onClear={() => {
+                    void clearTemplate();
+                  }}
+                />
+              </div>
+            </details>
             <p>Workflow template loaded: {activeTemplate ? "Yes" : "No"}</p>
             {activeTemplate ? (
               <DynamicInputEditor
