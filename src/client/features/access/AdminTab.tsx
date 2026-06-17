@@ -12,6 +12,9 @@ import {
   purgeMissingClientPinnedImagesViaProxy,
   type PinnedImageClientUsage
 } from "../../lib/api/pinnedImageClient";
+import { listVisibleRecentJobs } from "../../lib/recentJobsStorage";
+import { toggleRecentJobOutputPinnedState } from "../jobs/useRecentJobs";
+import { extractRunpodOutputImages } from "../../lib/runpodOutputImage";
 
 const CLIENT_PAGE_SIZE = 10;
 
@@ -219,6 +222,62 @@ export function AdminTab({ enabled }: AdminTabProps) {
     }
   }
 
+  async function removeBrokenArchives(): Promise<void> {
+    const confirmed = window.confirm("Scan all pinned archived images and unpin any that return 404 (unavailable)? This may take a moment.");
+    if (!confirmed) {
+      setStatus("Cancelled.");
+      return;
+    }
+
+    setLoading(true);
+    setStatus("Scanning archived images...");
+
+    try {
+      const jobs = await listVisibleRecentJobs();
+      let checked = 0;
+      let removed = 0;
+
+      for (const job of jobs) {
+        const pinnedIndices = new Set(job.pinnedOutputIndices ?? []);
+        const allPinnedByLegacy = Boolean(job.pinnedAt) && pinnedIndices.size === 0;
+        const response = job.lastResponse;
+        if (!response) {
+          continue;
+        }
+
+        const images = extractRunpodOutputImages(response);
+        for (let outputIndex = 0; outputIndex < images.length; outputIndex += 1) {
+          const image = images[outputIndex];
+          if (!image) {
+            continue;
+          }
+
+          const isPinned = allPinnedByLegacy || pinnedIndices.has(outputIndex);
+          if (!isPinned || !image.dataUrl.startsWith("/api/pinned-images/")) {
+            continue;
+          }
+
+          checked += 1;
+          try {
+            const res = await fetch(image.dataUrl, { method: "HEAD", credentials: "include" });
+            if (res.status === 404) {
+              await toggleRecentJobOutputPinnedState(job.jobId, outputIndex, false);
+              removed += 1;
+            }
+          } catch {
+            // Network error — skip.
+          }
+        }
+      }
+
+      setStatus(`Done. Checked: ${checked}, removed: ${removed} broken archived images.`);
+    } catch (error) {
+      setStatus(`Failed: ${describeProxyError(error)}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function downloadArchive(): Promise<void> {
     setLoading(true);
     setStatus("");
@@ -283,6 +342,9 @@ export function AdminTab({ enabled }: AdminTabProps) {
           <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.75rem", flexWrap: "wrap" }}>
             <button className="btn btn-secondary" type="button" onClick={() => void downloadArchive()} disabled={loading}>
               {loading ? "Working..." : "Download .zip"}
+            </button>
+            <button className="btn btn-destructive" type="button" onClick={() => void removeBrokenArchives()} disabled={loading}>
+              {loading ? "Working..." : "Remove Unavailable"}
             </button>
             <button className="btn btn-destructive" type="button" onClick={() => void purgeMissing()} disabled={loading}>
               {loading ? "Working..." : "Purge Missing"}
