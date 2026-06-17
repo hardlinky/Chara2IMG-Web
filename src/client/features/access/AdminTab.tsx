@@ -12,8 +12,7 @@ import {
   purgeMissingClientPinnedImagesViaProxy,
   type PinnedImageClientUsage
 } from "../../lib/api/pinnedImageClient";
-import { listVisibleRecentJobs } from "../../lib/recentJobsStorage";
-import { toggleRecentJobOutputPinnedState } from "../jobs/useRecentJobs";
+import { listVisibleRecentJobs, removeRecentJobOutputImage as removeRecentJobOutputImageFromStorage } from "../../lib/recentJobsStorage";
 import { extractRunpodOutputImages } from "../../lib/runpodOutputImage";
 
 const CLIENT_PAGE_SIZE = 10;
@@ -261,7 +260,7 @@ export function AdminTab({ enabled }: AdminTabProps) {
           try {
             const res = await fetch(image.dataUrl, { method: "HEAD", credentials: "include" });
             if (res.status === 404) {
-              await toggleRecentJobOutputPinnedState(job.jobId, outputIndex, false);
+              await removeRecentJobOutputImageFromStorage(job.jobId, outputIndex);
               removed += 1;
             }
           } catch {
