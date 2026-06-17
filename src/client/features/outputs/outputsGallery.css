@@ -381,4 +381,11 @@
   .outputs-gallery-compact .outputs-cluster-card {
     --base-height: 220px;
   }
+
+  .outputs-gallery-comfortable .outputs-cluster-card {
+    flex-basis: 100%;
+    max-width: 100%;
+    aspect-ratio: var(--image-aspect, 1);
+    height: auto;
+  }
 }
