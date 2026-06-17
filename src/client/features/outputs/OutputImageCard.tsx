@@ -186,6 +186,11 @@ export function OutputImageCard({
         </span>
         {badge ? <span className="outputs-image-source-chip outputs-image-counter-chip">{badge}</span> : null}
       </div>
+      {isArchived ? (
+        <div style={{ fontSize: "10px", wordBreak: "break-all", color: "var(--color-text-muted, #888)", padding: "2px 4px" }}>
+          {image.dataUrl}
+        </div>
+      ) : null}
     </div>
   );
 }
