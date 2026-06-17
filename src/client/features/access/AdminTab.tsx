@@ -6,6 +6,7 @@ import {
   getOrCreatePinnedImageClientId,
   previewPrunePinnedImagesViaProxy,
   prunePinnedImagesViaProxy,
+  purgeMissingPinnedImagesViaProxy,
   type PinnedImageClientUsage
 } from "../../lib/api/pinnedImageClient";
 
@@ -171,6 +172,31 @@ export function AdminTab({ enabled }: AdminTabProps) {
     }
   }
 
+  async function purgeMissing(): Promise<void> {
+    if (!enabled) {
+      return;
+    }
+
+    const confirmed = window.confirm("Remove all manifest entries whose image files are missing from server storage? This clears stale records from prior container runs.");
+    if (!confirmed) {
+      setStatus("Purge cancelled.");
+      return;
+    }
+
+    setLoading(true);
+    setStatus("");
+
+    try {
+      const result = await purgeMissingPinnedImagesViaProxy();
+      setStatus(`Purged missing images. Removed entries: ${result.removedEntries} of ${result.checkedEntries} checked.`);
+      await loadClients();
+    } catch (error) {
+      setStatus(`Purge missing failed: ${describeProxyError(error)}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function downloadArchive(): Promise<void> {
     setLoading(true);
     setStatus("");
@@ -218,6 +244,9 @@ export function AdminTab({ enabled }: AdminTabProps) {
             </button>
             <button className="btn btn-primary" type="button" onClick={() => void pruneToSelected()} disabled={loading || selectedCount === 0}>
               {loading ? "Working..." : "Prune"}
+            </button>
+            <button className="btn btn-destructive" type="button" onClick={() => void purgeMissing()} disabled={loading}>
+              {loading ? "Working..." : "Purge Missing"}
             </button>
           </div>
         ) : (

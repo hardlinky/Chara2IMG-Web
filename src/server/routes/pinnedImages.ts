@@ -15,6 +15,7 @@ import {
   PINNED_IMAGES_DIR,
   previewPrunePinnedImagesToClients,
   prunePinnedImagesToClients,
+  purgeMissingPinnedImages,
   reconcilePinnedImageConsumersForClient,
   releasePinnedImageReference,
   getTrackedPinnedStorageUsageBytes,
@@ -888,6 +889,16 @@ export function registerPinnedImageRoutes(app: Hono): void {
         "Content-Disposition": `attachment; filename=\"Chara2IMG-export-${formatArchiveTimestamp()}-${clientIds.length}.zip\"`,
         "Cache-Control": "no-store"
       }
+    });
+  });
+
+  app.use("/api/pinned-images/purge-missing", requireAdminSession);
+  app.post("/api/pinned-images/purge-missing", async (c) => {
+    const result = await purgeMissingPinnedImages();
+    return c.json({
+      ok: true,
+      removedEntries: result.removedEntries,
+      checkedEntries: result.checkedEntries
     });
   });
 

@@ -426,6 +426,36 @@ async function listOrphanedImageFiles(manifest: PinnedImagesManifest): Promise<A
   return orphans;
 }
 
+export async function purgeMissingPinnedImages(): Promise<{ removedEntries: number; checkedEntries: number }> {
+  const manifest = await readManifest();
+  const nextEntries: ManifestEntry[] = [];
+  let removedEntries = 0;
+
+  await Promise.all(
+    manifest.entries.map(async (entry) => {
+      const filePath = resolve(PINNED_IMAGES_DIR, entry.fileName);
+      if (!filePath.startsWith(PINNED_IMAGES_DIR)) {
+        removedEntries += 1;
+        return;
+      }
+
+      try {
+        await stat(filePath);
+        nextEntries.push(entry);
+      } catch {
+        removedEntries += 1;
+      }
+    })
+  );
+
+  if (removedEntries > 0) {
+    manifest.entries = nextEntries;
+    await writeManifest(manifest);
+  }
+
+  return { removedEntries, checkedEntries: nextEntries.length + removedEntries };
+}
+
 export async function findPinnedImageByFileName(clientId: string, fileName: string): Promise<ManifestEntry | null> {
   const manifest = await readManifest();
   const normalizedClientId = sanitizeClientId(clientId);
