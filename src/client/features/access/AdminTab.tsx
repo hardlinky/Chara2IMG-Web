@@ -7,6 +7,7 @@ import {
   previewPrunePinnedImagesViaProxy,
   prunePinnedImagesViaProxy,
   purgeMissingPinnedImagesViaProxy,
+  purgeMissingClientPinnedImagesViaProxy,
   type PinnedImageClientUsage
 } from "../../lib/api/pinnedImageClient";
 
@@ -173,11 +174,11 @@ export function AdminTab({ enabled }: AdminTabProps) {
   }
 
   async function purgeMissing(): Promise<void> {
-    if (!enabled) {
-      return;
-    }
-
-    const confirmed = window.confirm("Remove all manifest entries whose image files are missing from server storage? This clears stale records from prior container runs.");
+    const confirmed = window.confirm(
+      enabled
+        ? "Remove all manifest entries whose image files are missing from server storage? This clears stale records from prior container runs."
+        : "Remove your archived image records that no longer exist on the server? This clears stale entries from prior container runs."
+    );
     if (!confirmed) {
       setStatus("Purge cancelled.");
       return;
@@ -187,9 +188,13 @@ export function AdminTab({ enabled }: AdminTabProps) {
     setStatus("");
 
     try {
-      const result = await purgeMissingPinnedImagesViaProxy();
+      const result = enabled
+        ? await purgeMissingPinnedImagesViaProxy()
+        : await purgeMissingClientPinnedImagesViaProxy();
       setStatus(`Purged missing images. Removed entries: ${result.removedEntries} of ${result.checkedEntries} checked.`);
-      await loadClients();
+      if (enabled) {
+        await loadClients();
+      }
     } catch (error) {
       setStatus(`Purge missing failed: ${describeProxyError(error)}`);
     } finally {
@@ -253,6 +258,9 @@ export function AdminTab({ enabled }: AdminTabProps) {
           <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.75rem", flexWrap: "wrap" }}>
             <button className="btn btn-secondary" type="button" onClick={() => void downloadArchive()} disabled={loading}>
               {loading ? "Working..." : "Download .zip"}
+            </button>
+            <button className="btn btn-destructive" type="button" onClick={() => void purgeMissing()} disabled={loading}>
+              {loading ? "Working..." : "Purge Missing"}
             </button>
           </div>
         )}

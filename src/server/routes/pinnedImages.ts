@@ -16,6 +16,7 @@ import {
   previewPrunePinnedImagesToClients,
   prunePinnedImagesToClients,
   purgeMissingPinnedImages,
+  purgeMissingPinnedImagesForClient,
   reconcilePinnedImageConsumersForClient,
   releasePinnedImageReference,
   getTrackedPinnedStorageUsageBytes,
@@ -895,6 +896,17 @@ export function registerPinnedImageRoutes(app: Hono): void {
   app.use("/api/pinned-images/purge-missing", requireAdminSession);
   app.post("/api/pinned-images/purge-missing", async (c) => {
     const result = await purgeMissingPinnedImages();
+    return c.json({
+      ok: true,
+      removedEntries: result.removedEntries,
+      checkedEntries: result.checkedEntries
+    });
+  });
+
+  app.use("/api/pinned-images/purge-missing-for-client", requireInvitedSession);
+  app.post("/api/pinned-images/purge-missing-for-client", async (c) => {
+    const clientId = getRequestClientId(c.req.raw);
+    const result = await purgeMissingPinnedImagesForClient(clientId);
     return c.json({
       ok: true,
       removedEntries: result.removedEntries,

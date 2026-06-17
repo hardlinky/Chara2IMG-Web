@@ -142,6 +142,20 @@ export async function purgeMissingPinnedImagesViaProxy(): Promise<PurgeMissingPi
   return data;
 }
 
+export async function purgeMissingClientPinnedImagesViaProxy(): Promise<PurgeMissingPinnedImagesResponse> {
+  const response = await fetch("/api/pinned-images/purge-missing-for-client", {
+    method: "POST",
+    credentials: "include"
+  });
+
+  const data = (await response.json().catch(() => null)) as PurgeMissingPinnedImagesResponse | { error?: string } | null;
+  if (!response.ok || !data || !("ok" in data)) {
+    throw new ProxyRequestError(response.status, `Purge missing pinned images failed (${response.status})`, data);
+  }
+
+  return data;
+}
+
 export function getOrCreatePinnedImageClientId(): string {
   if (typeof window === "undefined") {
     return "server-render";
