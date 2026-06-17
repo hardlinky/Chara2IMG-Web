@@ -10,9 +10,9 @@ export const PINNED_IMAGES_DIR = (() => {
     return resolve(PROJECT_ROOT, configured);
   }
 
-  // Default to a sibling directory of the project root so the data survives
+  // Default to a persistent directory outside the repo so the data survives
   // git clone re-deployments (which do `rm -rf <repo>` before cloning).
-  return resolve(PROJECT_ROOT, "../pinned-images");
+  return resolve(PROJECT_ROOT, "../chara2img/pinned-images");
 })();
 
 const DEFAULT_PINNED_IMAGES_CAPACITY_BYTES = 10 * 1024 * 1024 * 1024;
