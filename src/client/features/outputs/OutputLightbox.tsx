@@ -66,6 +66,7 @@ export function OutputLightbox({
       <div className="outputs-lightbox outputs-image-grid">
         {visibleImages.map((image, index) => {
           const dimensions = imageDimensions[index] ?? { width: 1024, height: 1024 };
+          const aspectRatio = dimensions.width / dimensions.height;
 
           return (
             <Item
@@ -77,7 +78,11 @@ export function OutputLightbox({
               caption={`${displayPrefix} #${index + 1}`}
             >
               {({ ref, open }) => (
-                <div ref={ref as never}>
+                <div 
+                  ref={ref as never} 
+                  className="outputs-image-grid-item"
+                  style={{ "--image-aspect": aspectRatio } as React.CSSProperties}
+                >
                   <OutputImageCard
                     image={image}
                     imagePrefix={imagePrefix}

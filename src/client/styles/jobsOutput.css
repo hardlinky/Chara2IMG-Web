@@ -215,9 +215,34 @@
 }
 
 .outputs-image-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--space-3);
+}
+
+.outputs-image-grid::after {
+  content: "";
+  flex-grow: 999999;
+}
+
+.outputs-image-grid-item {
+  --base-height: 280px;
+  flex-grow: var(--image-aspect, 1);
+  flex-shrink: 1;
+  flex-basis: calc(var(--base-height) * var(--image-aspect, 1));
+  display: flex;
+  flex-direction: column;
+}
+
+.outputs-image-grid-item .outputs-image-tile-wrapper,
+.outputs-image-grid-item .outputs-image-media,
+.outputs-image-grid-item .outputs-image-tile {
+  height: 100%;
+}
+
+.outputs-image-grid-item .outputs-image-tile img {
+  height: 100%;
+  object-fit: cover;
 }
 
 .outputs-image-grid > * {

@@ -326,8 +326,14 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
                 const dimensions = imageDimensions[dimensionKey] ?? { width: 1024, height: 1024 };
                 const displayJobId = formatOutputJobId(cluster.jobId);
 
+                const aspectRatio = dimensions.width / dimensions.height;
+
                 return (
-              <article key={cluster.jobId} className="outputs-cluster-card">
+              <article 
+                key={cluster.jobId} 
+                className="outputs-cluster-card"
+                style={{ "--image-aspect": aspectRatio } as React.CSSProperties}
+              >
                 <Item
                   original={cluster.representative.dataUrl}
                   thumbnail={cluster.representative.dataUrl}
@@ -380,8 +386,14 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
                 const dimensions = imageDimensions[dimensionKey] ?? { width: 1024, height: 1024 };
                 const displayJobId = formatOutputJobId(outputImage.jobId);
 
+                const aspectRatio = dimensions.width / dimensions.height;
+
                 return (
-              <article key={`${outputImage.jobId}-${outputImage.outputIndex}`} className="outputs-cluster-card">
+              <article 
+                key={`${outputImage.jobId}-${outputImage.outputIndex}`} 
+                className="outputs-cluster-card"
+                style={{ "--image-aspect": aspectRatio } as React.CSSProperties}
+              >
                 <Item
                   original={outputImage.dataUrl}
                   thumbnail={outputImage.dataUrl}
