@@ -239,7 +239,6 @@ export function AdminTab({ enabled }: AdminTabProps) {
       for (const job of jobs) {
         const hydrated = await getRecentJob(job.jobId);
         const pinnedIndices = new Set(hydrated?.pinnedOutputIndices ?? job.pinnedOutputIndices ?? []);
-        const allPinnedByLegacy = Boolean(job.pinnedAt) && pinnedIndices.size === 0;
         const response = hydrated?.lastResponse ?? job.lastResponse;
         if (!response) {
           continue;
@@ -252,8 +251,7 @@ export function AdminTab({ enabled }: AdminTabProps) {
             continue;
           }
 
-          const isPinned = allPinnedByLegacy || pinnedIndices.has(outputIndex);
-          if (!isPinned || !image.dataUrl.startsWith("/api/pinned-images/")) {
+          if (!image.dataUrl.startsWith("/api/pinned-images/")) {
             continue;
           }
 
