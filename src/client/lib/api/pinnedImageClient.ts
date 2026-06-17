@@ -143,9 +143,12 @@ export async function purgeMissingPinnedImagesViaProxy(): Promise<PurgeMissingPi
 }
 
 export async function purgeMissingClientPinnedImagesViaProxy(): Promise<PurgeMissingPinnedImagesResponse> {
+  const clientId = getOrCreatePinnedImageClientId();
   const response = await fetch("/api/pinned-images/purge-missing-for-client", {
     method: "POST",
-    credentials: "include"
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ clientId })
   });
 
   const data = (await response.json().catch(() => null)) as PurgeMissingPinnedImagesResponse | { error?: string } | null;

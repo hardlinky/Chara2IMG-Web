@@ -905,7 +905,8 @@ export function registerPinnedImageRoutes(app: Hono): void {
 
   app.use("/api/pinned-images/purge-missing-for-client", requireInvitedSession);
   app.post("/api/pinned-images/purge-missing-for-client", async (c) => {
-    const clientId = getRequestClientId(c.req.raw);
+    const payload = await c.req.json().catch(() => null);
+    const clientId = getRequestClientId(c.req.raw, payload && typeof payload === "object" && typeof (payload as Record<string, unknown>).clientId === "string" ? (payload as Record<string, unknown>).clientId as string : null);
     const result = await purgeMissingPinnedImagesForClient(clientId);
     return c.json({
       ok: true,
