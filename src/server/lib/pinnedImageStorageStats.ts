@@ -1,5 +1,4 @@
 import { mkdir, readFile, readdir, rm, stat, statfs, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -11,7 +10,9 @@ export const PINNED_IMAGES_DIR = (() => {
     return resolve(PROJECT_ROOT, configured);
   }
 
-  return resolve(tmpdir(), "chara2img", "pinned-images");
+  // Default to a sibling directory of the project root so the data survives
+  // git clone re-deployments (which do `rm -rf <repo>` before cloning).
+  return resolve(PROJECT_ROOT, "../pinned-images");
 })();
 
 const DEFAULT_PINNED_IMAGES_CAPACITY_BYTES = 10 * 1024 * 1024 * 1024;

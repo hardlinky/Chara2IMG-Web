@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { MouseEventHandler, ReactNode, SyntheticEvent } from "react";
 import type { RecentJobOutputImage } from "../../../shared/contracts/jobs";
 
@@ -101,12 +102,17 @@ export function OutputImageCard({
   const showBottomActions = Boolean(onExportWorkflow || onLoadInputs || onViewJobOutputs);
   const isArchived = isServerBackedImageUrl(image.dataUrl);
   const storageSourceLabel = isArchived ? "Archived" : "Cached";
+  const [imgBroken, setImgBroken] = useState(false);
 
   return (
     <div className={`outputs-image-tile-wrapper ${maxVisible ? "" : "outputs-image-tile-hidden"}`.trim()}>
       <div className="outputs-image-media">
         <button type="button" className="outputs-image-tile" onClick={onOpen} aria-label={`Open ${displayPrefix} image ${imageLabel}`}>
-          <img src={image.dataUrl} alt={`${displayPrefix} ${imageLabel}`} loading="lazy" onLoad={onImageLoad} />
+          {imgBroken ? (
+            <div className="outputs-image-broken" aria-label={`Image ${imageLabel} unavailable`}>⚠ Not available</div>
+          ) : (
+            <img src={image.dataUrl} alt={`${displayPrefix} ${imageLabel}`} loading="lazy" onLoad={onImageLoad} onError={() => setImgBroken(true)} />
+          )}
         </button>
         {onTogglePin ? (
           <button
@@ -186,11 +192,7 @@ export function OutputImageCard({
         </span>
         {badge ? <span className="outputs-image-source-chip outputs-image-counter-chip">{badge}</span> : null}
       </div>
-      {isArchived ? (
-        <div style={{ fontSize: "10px", wordBreak: "break-all", color: "var(--color-text-muted, #888)", padding: "2px 4px" }}>
-          {image.dataUrl}
-        </div>
-      ) : null}
+
     </div>
   );
 }

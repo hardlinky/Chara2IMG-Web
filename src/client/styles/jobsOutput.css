@@ -295,6 +295,19 @@
   border-radius: var(--radius-md);
 }
 
+.outputs-image-broken {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised, #2a2a2a);
+  color: var(--color-text-muted, #888);
+  font-size: var(--text-sm);
+  gap: var(--space-1);
+}
+
 .outputs-image-caption-row {
   display: flex;
   align-items: center;
