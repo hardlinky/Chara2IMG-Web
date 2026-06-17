@@ -159,9 +159,24 @@ export async function purgeMissingClientPinnedImagesViaProxy(): Promise<PurgeMis
   return data;
 }
 
+// In-memory override — never persisted, cleared on page refresh.
+let _clientIdOverride: string | null = null;
+
+export function setClientIdOverride(clientId: string | null): void {
+  _clientIdOverride = clientId ? clientId.trim() || null : null;
+}
+
+export function getClientIdOverride(): string | null {
+  return _clientIdOverride;
+}
+
 export function getOrCreatePinnedImageClientId(): string {
   if (typeof window === "undefined") {
     return "server-render";
+  }
+
+  if (_clientIdOverride) {
+    return _clientIdOverride;
   }
 
   const existing = window.localStorage.getItem(PINNED_IMAGE_CLIENT_ID_STORAGE_KEY);

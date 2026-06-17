@@ -4,6 +4,8 @@ import {
   downloadPinnedImagesArchiveViaProxy,
   fetchPinnedImageClientsViaProxy,
   getOrCreatePinnedImageClientId,
+  getClientIdOverride,
+  setClientIdOverride,
   previewPrunePinnedImagesViaProxy,
   prunePinnedImagesViaProxy,
   purgeMissingPinnedImagesViaProxy,
@@ -68,7 +70,16 @@ export function AdminTab({ enabled }: AdminTabProps) {
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
-  const currentClientId = getOrCreatePinnedImageClientId();
+  const [impersonatedClientId, setImpersonatedClientId] = useState<string | null>(getClientIdOverride);
+  const nativeClientId = useState(() => {
+    // Snapshot the real client ID before any override is applied.
+    const prev = getClientIdOverride();
+    setClientIdOverride(null);
+    const id = getOrCreatePinnedImageClientId();
+    setClientIdOverride(prev);
+    return id;
+  })[0];
+  const currentClientId = impersonatedClientId ?? nativeClientId;
 
   const selectedClientIds = useMemo(
     () =>
@@ -139,6 +150,12 @@ export function AdminTab({ enabled }: AdminTabProps) {
 
       return [...ids, clientId].join(" ");
     });
+  }
+
+  function applyImpersonation(clientId: string | null): void {
+    setClientIdOverride(clientId);
+    setImpersonatedClientId(clientId);
+    setStatus(clientId ? `Now acting as: ${clientId}` : "Restored native client ID.");
   }
 
   async function pruneToSelected(): Promise<void> {
@@ -235,7 +252,15 @@ export function AdminTab({ enabled }: AdminTabProps) {
     <div className="section-stack">
       <section className="setup-card">
         <h2>{enabled ? "Archived Image Clients" : "Archive Download"}</h2>
-        <p>{`Current browser client ID: ${currentClientId}`}</p>
+        <p>{`Native client ID: ${nativeClientId}`}</p>
+        {impersonatedClientId ? (
+          <p style={{ color: "var(--color-warning, #e2894c)" }}>
+            {`Acting as: ${impersonatedClientId} `}
+            <button className="btn btn-secondary" type="button" style={{ fontSize: "var(--text-xs)", padding: "2px 8px" }} onClick={() => applyImpersonation(null)}>
+              Reset
+            </button>
+          </p>
+        ) : null}
         {enabled ? (
           <p>Pick clients to preserve. Prune removes archived images for every other client ID.</p>
         ) : (
@@ -267,6 +292,25 @@ export function AdminTab({ enabled }: AdminTabProps) {
 
         {enabled ? (
           <>
+            <div className="admin-selection-row" style={{ marginTop: "0.75rem" }}>
+              <label className="field admin-selection-field" htmlFor="act-as-client-id">
+                Act as client ID
+                <input
+                  className="input"
+                  id="act-as-client-id"
+                  type="text"
+                  value={impersonatedClientId ?? ""}
+                  onChange={(event) => applyImpersonation(event.target.value || null)}
+                  placeholder={nativeClientId}
+                />
+              </label>
+              {impersonatedClientId ? (
+                <button className="btn btn-secondary" type="button" onClick={() => applyImpersonation(null)} style={{ alignSelf: "flex-end" }}>
+                  Reset
+                </button>
+              ) : null}
+            </div>
+
             <div className="admin-selection-row">
               <label className="field admin-selection-field" htmlFor="client-selection-ids">
                 Client selection
@@ -293,6 +337,7 @@ export function AdminTab({ enabled }: AdminTabProps) {
                     type="button"
                     className="btn btn-secondary"
                     onClick={() => toggleClient(client.clientId)}
+                    onDoubleClick={() => applyImpersonation(client.clientId)}
                     style={{
                       textAlign: "left",
                       justifyContent: "flex-start",
