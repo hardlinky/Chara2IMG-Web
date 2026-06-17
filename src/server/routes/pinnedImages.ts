@@ -356,9 +356,11 @@ export function registerPinnedImageRoutes(app: Hono): void {
 
     const clientId = getRequestClientId(c.req.raw, parsed.data.clientId ?? null);
     const consumerKey = buildPinnedImageConsumerKey(clientId, parsed.data.jobId, parsed.data.outputIndex);
-    const workflowMetadata = parsed.data.workflowJson
+    const workflowMetadata = parsed.data.workflowJson || parsed.data.workflowTemplate
       ? {
           workflowFileName: parsed.data.workflowFileName,
+          workflowTemplate: parsed.data.workflowTemplate,
+          workflowInputs: parsed.data.workflowInputs,
           workflowJson: parsed.data.workflowJson
         }
       : undefined;

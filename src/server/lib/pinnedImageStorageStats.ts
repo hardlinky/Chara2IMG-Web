@@ -99,6 +99,12 @@ function normalizeManifestEntries(entries: unknown[], fallbackClientId?: string)
         typeof (entry as { workflowFileName?: unknown }).workflowFileName === "string"
           ? sanitizeWorkflowFileName((entry as { workflowFileName?: unknown }).workflowFileName as string)
           : undefined,
+      workflowTemplate: isWorkflowJson((entry as { workflowTemplate?: unknown }).workflowTemplate)
+        ? (entry as { workflowTemplate: Record<string, unknown> }).workflowTemplate
+        : undefined,
+      workflowInputs: isWorkflowJson((entry as { workflowInputs?: unknown }).workflowInputs)
+        ? (entry as { workflowInputs: Record<string, unknown> }).workflowInputs
+        : undefined,
       workflowJson: isWorkflowJson((entry as { workflowJson?: unknown }).workflowJson)
         ? (entry as { workflowJson: Record<string, unknown> }).workflowJson
         : undefined
@@ -333,7 +339,12 @@ export async function registerPinnedImageBackup(
   sizeBytes: number,
   contentHash: string,
   consumerKey: string,
-  workflowMetadata?: { workflowFileName?: string; workflowJson?: Record<string, unknown> }
+  workflowMetadata?: {
+    workflowFileName?: string;
+    workflowTemplate?: Record<string, unknown>;
+    workflowInputs?: Record<string, unknown>;
+    workflowJson?: Record<string, unknown>;
+  }
 ): Promise<void> {
   const manifest = await readManifest();
   const normalizedClientId = sanitizeClientId(clientId);
@@ -343,6 +354,8 @@ export async function registerPinnedImageBackup(
   const workflowFileName = typeof workflowMetadata?.workflowFileName === "string"
     ? sanitizeWorkflowFileName(workflowMetadata.workflowFileName)
     : undefined;
+  const workflowTemplate = normalizeWorkflowJson(workflowMetadata?.workflowTemplate);
+  const workflowInputs = normalizeWorkflowJson(workflowMetadata?.workflowInputs);
   const workflowJson = normalizeWorkflowJson(workflowMetadata?.workflowJson);
 
   const existingIndex = manifest.entries.findIndex((entry) => entry.fileName === fileName);
@@ -355,6 +368,8 @@ export async function registerPinnedImageBackup(
     consumers: [normalizedConsumer],
     updatedAt: now,
     workflowFileName,
+    workflowTemplate,
+    workflowInputs,
     workflowJson
   };
 
@@ -373,6 +388,8 @@ export async function registerPinnedImageBackup(
       consumers: nextConsumers,
       updatedAt: now,
       workflowFileName: workflowFileName ?? existing.workflowFileName,
+      workflowTemplate: workflowTemplate ?? existing.workflowTemplate,
+      workflowInputs: workflowInputs ?? existing.workflowInputs,
       workflowJson: workflowJson ?? existing.workflowJson
     };
   } else {
@@ -525,6 +542,8 @@ export async function listPinnedImageEntriesForClient(clientId: string): Promise
       consumers: [...entry.consumers],
       updatedAt: entry.updatedAt,
       workflowFileName: entry.workflowFileName,
+      workflowTemplate: entry.workflowTemplate,
+      workflowInputs: entry.workflowInputs,
       workflowJson: entry.workflowJson
     }))
     .sort((left, right) => left.fileName.localeCompare(right.fileName));
