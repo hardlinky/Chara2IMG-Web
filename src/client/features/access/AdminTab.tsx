@@ -431,22 +431,6 @@ export function AdminTab({ enabled }: AdminTabProps) {
               </button>
             </div>
 
-            <hr style={{ margin: "1rem 0", borderColor: "var(--color-border, rgba(255,255,255,0.1))" }} />
-
-            <h3 style={{ marginBottom: "0.5rem" }}>Job Sync</h3>
-            <p style={{ fontSize: "var(--text-sm)", marginBottom: "0.75rem" }}>
-              If your recent jobs are missing, use this to re-upload them from browser storage to the server.
-            </p>
-            <button
-              className="btn btn-secondary"
-              type="button"
-              onClick={() => {
-                window.localStorage.removeItem("chara2imgRecentJobsMigratedToServer");
-                window.location.reload();
-              }}
-            >
-              Re-sync jobs from browser
-            </button>
           </>
         ) : null}
       </section>
@@ -457,6 +441,22 @@ export function AdminTab({ enabled }: AdminTabProps) {
         </p>
       ) : null}
 
+      <section className="setup-card">
+        <h2>Job Sync</h2>
+        <p style={{ fontSize: "var(--text-sm)", marginBottom: "0.75rem" }}>
+          If your recent jobs are missing, use this to re-upload them from browser storage to the server.
+        </p>
+        <button
+          className="btn btn-secondary"
+          type="button"
+          onClick={() => {
+            window.localStorage.removeItem("chara2imgRecentJobsMigratedToServer");
+            window.location.reload();
+          }}
+        >
+          Re-sync jobs from browser
+        </button>
+      </section>
     </div>
   );
 }
