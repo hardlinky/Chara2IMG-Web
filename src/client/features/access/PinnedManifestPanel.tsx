@@ -72,14 +72,24 @@ export function PinnedManifestPanel() {
     try {
       const mimeMatch = /^data:(image\/[a-z]+);/.exec(entry.imageUrl);
       const mimeType = (mimeMatch?.[1] ?? "image/png") as "image/png" | "image/jpeg" | "image/webp" | "image/gif";
-      await backupPinnedImageViaProxy({
+      const result = await backupPinnedImageViaProxy({
         jobId: entry.jobId,
         outputIndex: entry.outputIndex,
         dataUrl: entry.imageUrl,
         mimeType,
         workflowFileName: entry.workflowFileName,
       });
+      // Update the job record to use the new server URL so reconcile
+      // doesn't immediately see the data: URL as a stale/backfilled ref.
+      await setRecentJobOutputPinned(
+        entry.jobId,
+        entry.outputIndex,
+        true,
+        entry.pinnedAt ?? new Date().toISOString(),
+        result.imageUrl
+      );
       setStatus(`Uploaded ${entry.jobId}:${entry.outputIndex} to server.`);
+      loadClient();
       await loadServer();
     } catch {
       setStatus(`Upload failed for ${entry.jobId}:${entry.outputIndex}.`);
