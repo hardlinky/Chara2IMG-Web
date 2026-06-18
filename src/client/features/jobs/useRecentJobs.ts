@@ -6,6 +6,7 @@ import { cancelViaProxy, statusBatchViaProxy, statusViaProxy } from "../../lib/a
 import { submitRunAndPersistRecentJob } from "../../lib/jobSubmission";
 import { projectRecentJobOutputClusters } from "../../lib/jobOutputProjection";
 import { extractRunpodOutputImages } from "../../lib/runpodOutputImage";
+import { syncClientManifestFromJobs } from "../../lib/clientPinnedManifest";
 import {
   startRecentJobsImageCompactionMigration,
   deleteRecentJob,
@@ -520,6 +521,7 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
     const nextJobs = await loadRecentJobs();
     setJobs(nextJobs);
     setJobsLoadedOnce(true);
+    syncClientManifestFromJobs(nextJobs);
     setStorageRefreshToken((current) => current + 1);
     if (resetPage) {
       setPageState(1);

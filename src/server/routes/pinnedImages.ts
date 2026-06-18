@@ -919,6 +919,13 @@ export function registerPinnedImageRoutes(app: Hono): void {
     return c.json({ ok: true, rebuilt: result.rebuilt });
   });
 
+  app.use("/api/pinned-images/my-entries", requireInvitedSession);
+  app.get("/api/pinned-images/my-entries", async (c) => {
+    const clientId = getRequestClientId(c.req.raw, null);
+    const entries = await listPinnedImageEntriesForClient(clientId);
+    return c.json({ ok: true, clientId, entries });
+  });
+
   app.use("/api/pinned-images/purge-missing-for-client", requireInvitedSession);
   app.post("/api/pinned-images/purge-missing-for-client", async (c) => {
     const payload = await c.req.json().catch(() => null);

@@ -171,6 +171,26 @@ export async function rebuildPinnedManifestViaProxy(): Promise<{ ok: true; rebui
   return data as { ok: true; rebuilt: number };
 }
 
+export type ServerManifestEntry = {
+  fileName: string;
+  contentHash: string;
+  sizeBytes: number;
+  consumers: string[];
+  updatedAt: string;
+  workflowFileName?: string;
+};
+
+export async function fetchMyServerManifestEntries(): Promise<{ clientId: string; entries: ServerManifestEntry[] }> {
+  const response = await fetch("/api/pinned-images/my-entries", {
+    credentials: "include"
+  });
+  const data = (await response.json().catch(() => null)) as { ok: true; clientId: string; entries: ServerManifestEntry[] } | null;
+  if (!response.ok || !data || !("ok" in data)) {
+    throw new ProxyRequestError(response.status, `Failed to fetch server manifest (${response.status})`, data);
+  }
+  return { clientId: data.clientId, entries: data.entries };
+}
+
 // In-memory override — never persisted, cleared on page refresh.
 let _clientIdOverride: string | null = null;
 

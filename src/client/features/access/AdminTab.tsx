@@ -15,6 +15,7 @@ import {
 } from "../../lib/api/pinnedImageClient";
 import { listVisibleRecentJobs, removeRecentJobOutputImage as removeRecentJobOutputImageFromStorage, getRecentJob, restorePinsFromManifest } from "../../lib/api/recentJobsClient";
 import { extractRunpodOutputImages } from "../../lib/runpodOutputImage";
+import { PinnedManifestPanel } from "./PinnedManifestPanel";
 
 const CLIENT_PAGE_SIZE = 10;
 
@@ -500,6 +501,8 @@ export function AdminTab({ enabled }: AdminTabProps) {
           </button>
         </div>
       </section>
+
+      <PinnedManifestPanel />
     </div>
   );
 }
