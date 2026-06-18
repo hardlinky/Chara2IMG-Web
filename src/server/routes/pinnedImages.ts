@@ -488,11 +488,15 @@ export function registerPinnedImageRoutes(app: Hono): void {
         continue;
       }
 
-      const bytes = await readFile(filePath).catch((error) => {
-        logServerWarning("Failed to read pinned image during reconcile backfill", error, {
-          fileName: ref.fileName,
-          clientId
-        });
+      const bytes = await readFile(filePath).catch((error: unknown) => {
+        // ENOENT is expected — file was deleted, skip silently
+        const code = (error as { code?: string }).code;
+        if (code !== "ENOENT") {
+          logServerWarning("Failed to read pinned image during reconcile backfill", error, {
+            fileName: ref.fileName,
+            clientId
+          });
+        }
         return null;
       });
       if (!bytes) {
