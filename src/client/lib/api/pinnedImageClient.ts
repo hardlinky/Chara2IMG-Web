@@ -1,6 +1,6 @@
 import { ProxyRequestError } from "./runpodProxyClient";
 import type { RecentJobRecord } from "../../../shared/contracts/jobs";
-import { listRecentJobs } from "../recentJobsStorage";
+import { listRecentJobs } from "./recentJobsClient";
 import { extractRunpodOutputImages } from "../runpodOutputImage";
 import { sanitizeWorkflowForExport } from "../workflowExport";
 

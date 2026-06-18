@@ -1,7 +1,7 @@
 import type { RecentJobRecord, RecentJobSubmissionInput } from "../../shared/contracts/jobs";
 import { isActiveRunpodStatus, isTerminalRunpodStatus, normalizeRunpodStatus, toTerminalReason, type RecentJobProvenance } from "../../shared/contracts/jobs";
 import { runViaProxy, type RunpodRunResponse } from "./api/runpodProxyClient";
-import { upsertRecentJob } from "./recentJobsStorage";
+import { upsertRecentJob } from "./api/recentJobsClient";
 import type { DynamicInputDraftValues } from "../../shared/contracts/inputs";
 
 export type RunSubmissionSnapshot = {

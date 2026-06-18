@@ -12,7 +12,7 @@ import {
   purgeMissingClientPinnedImagesViaProxy,
   type PinnedImageClientUsage
 } from "../../lib/api/pinnedImageClient";
-import { listVisibleRecentJobs, removeRecentJobOutputImage as removeRecentJobOutputImageFromStorage, getRecentJob } from "../../lib/recentJobsStorage";
+import { listVisibleRecentJobs, removeRecentJobOutputImage as removeRecentJobOutputImageFromStorage, getRecentJob } from "../../lib/api/recentJobsClient";
 import { extractRunpodOutputImages } from "../../lib/runpodOutputImage";
 
 const CLIENT_PAGE_SIZE = 10;

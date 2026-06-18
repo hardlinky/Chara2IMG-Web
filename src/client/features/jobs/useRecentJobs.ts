@@ -15,7 +15,7 @@ import {
   removeRecentJobOutputImage as removeRecentJobOutputImageFromStorage,
   setRecentJobOutputPinned,
   updateRecentJobLifecycle
-} from "../../lib/recentJobsStorage";
+} from "../../lib/api/recentJobsClient";
 import {
   JOB_POLL_INTERVAL_MS,
   buildLifecycleSnapshotFromStatus,
