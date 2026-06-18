@@ -901,51 +901,12 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
   }, [includeOutputClusters, visibleJobs]);
   const filteredJobs = useMemo(() => filterJobsByStatus(visibleJobs, statusFilter), [statusFilter, visibleJobs]);
 
-  useEffect(() => {
-    if (!jobsLoadedOnce) return;
-    let cancelled = false;
-
-    void (async () => {
-      const refs = visibleJobs.flatMap((job) => {
-        const response = job.lastResponse;
-        if (!response) {
-          return [] as Array<{ jobId: string; outputIndex: number; imageUrl: string }>;
-        }
-
-        const pinnedIndices = new Set(job.pinnedOutputIndices ?? []);
-        const allOutputsPinnedByLegacyFlag = Boolean(job.pinnedAt) && pinnedIndices.size === 0;
-
-        return extractRunpodOutputImages(response)
-          .map((image, outputIndex) => ({
-            jobId: job.jobId,
-            outputIndex,
-            imageUrl: image.dataUrl,
-            isPinned: allOutputsPinnedByLegacyFlag || pinnedIndices.has(outputIndex)
-          }))
-          .filter((entry) => entry.isPinned && isArchivedImageUrl(entry.imageUrl))
-          .map(({ jobId, outputIndex, imageUrl }) => ({ jobId, outputIndex, imageUrl }));
-      });
-
-      const signature = refs.map((ref) => `${ref.jobId}:${ref.outputIndex}:${ref.imageUrl}`).sort().join("|");
-      if (signature === lastReconcileSignatureRef.current) {
-        return;
-      }
-
-      lastReconcileSignatureRef.current = signature;
-
-      try {
-        await reconcilePinnedImagesViaProxy({ refs });
-      } catch {
-        if (!cancelled) {
-          setError("Failed to reconcile archived image references.");
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [visibleJobs, jobsLoadedOnce]);
+  // Automatic reconcile disabled — use the Manifest Inspector in the Admin tab
+  // to manually sync pinned image references between client and server manifests.
+  // useEffect(() => {
+  //   if (!jobsLoadedOnce) return;
+  //   ...reconcilePinnedImagesViaProxy({ refs });
+  // }, [visibleJobs, jobsLoadedOnce]);
 
   const pageCount = Math.max(1, Math.ceil(filteredJobs.length / RECENT_JOB_PAGE_SIZE));
 
