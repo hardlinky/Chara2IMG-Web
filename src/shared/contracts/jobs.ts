@@ -87,6 +87,8 @@ export type RecentJobSubmissionInput = {
   lastResponse: Record<string, unknown> | null;
   lastError?: string | null;
   submittedAt?: string;
+  pinnedAt?: string | null;
+  pinnedOutputIndices?: number[];
 };
 
 // Backend poll snapshots can return legacy/vendor aliases; normalize them so

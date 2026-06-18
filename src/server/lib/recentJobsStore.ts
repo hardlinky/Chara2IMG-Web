@@ -330,8 +330,8 @@ function normalizeJobRecord(input: RecentJobSubmissionInput): StoredRecentJob {
     endpointId: input.endpointId,
     submittedAt: input.submittedAt ?? new Date().toISOString(),
     hiddenAt: null,
-    pinnedAt: null,
-    pinnedOutputIndices: undefined,
+    pinnedAt: input.pinnedAt ?? null,
+    pinnedOutputIndices: input.pinnedOutputIndices,
     lifecycle: input.lifecycle,
     provenance: {
       templateFingerprint: input.templateFingerprint,
@@ -413,7 +413,13 @@ export async function upsertRecentJob(input: RecentJobSubmissionInput): Promise<
   const existingIndex = store.jobs.findIndex((job) => job.jobId === record.jobId);
 
   if (existingIndex >= 0) {
-    store.jobs[existingIndex] = record;
+    const existing = store.jobs[existingIndex]!;
+    // Preserve pinned state — upsert must never clear pins set by the user
+    store.jobs[existingIndex] = {
+      ...record,
+      pinnedAt: existing.pinnedAt,
+      pinnedOutputIndices: existing.pinnedOutputIndices,
+    };
   } else {
     store.jobs.push(record);
   }
