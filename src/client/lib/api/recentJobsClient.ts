@@ -19,6 +19,7 @@ import {
 } from "../recentJobsStorage";
 
 const SERVER_STORAGE_MIGRATION_FLAG = "chara2imgRecentJobsMigratedToServer";
+let migrationPromise: Promise<void> | null = null;
 
 async function callRecentJobsApi<T>(path: string, init?: RequestInit): Promise<T | null> {
   try {
@@ -70,6 +71,24 @@ async function migrateLegacyRecentJobsIfNeeded(): Promise<void> {
   window.localStorage.setItem(SERVER_STORAGE_MIGRATION_FLAG, "true");
 }
 
+async function ensureLegacyJobsAreMigrated(): Promise<void> {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  if (window.localStorage.getItem(SERVER_STORAGE_MIGRATION_FLAG) === "true") {
+    return;
+  }
+
+  if (!migrationPromise) {
+    migrationPromise = migrateLegacyRecentJobsIfNeeded().finally(() => {
+      migrationPromise = null;
+    });
+  }
+
+  await migrationPromise;
+}
+
 export async function startRecentJobsImageCompactionMigration(batchSize: number = 5): Promise<void> {
   const remote = await callRecentJobsApi<{ ok: true }>("/api/recent-jobs/compaction-migration", {
     method: "POST",
@@ -100,6 +119,7 @@ export async function upsertRecentJob(input: RecentJobSubmissionInput): Promise<
 }
 
 export async function getRecentJob(jobId: string): Promise<RecentJobRecord | null> {
+  await ensureLegacyJobsAreMigrated();
   const remote = await callRecentJobsApi<{ ok: true; job: RecentJobRecord }>(`/api/recent-jobs/${encodeURIComponent(jobId)}`);
   if (remote) {
     return remote.job;
@@ -109,6 +129,7 @@ export async function getRecentJob(jobId: string): Promise<RecentJobRecord | nul
 }
 
 export async function listRecentJobs(): Promise<RecentJobRecord[]> {
+  await ensureLegacyJobsAreMigrated();
   const remote = await callRecentJobsApi<{ ok: true; jobs: RecentJobRecord[] }>("/api/recent-jobs");
   if (remote) {
     return remote.jobs;
@@ -118,6 +139,7 @@ export async function listRecentJobs(): Promise<RecentJobRecord[]> {
 }
 
 export async function listVisibleRecentJobs(): Promise<RecentJobRecord[]> {
+  await ensureLegacyJobsAreMigrated();
   const remote = await callRecentJobsApi<{ ok: true; jobs: RecentJobRecord[] }>("/api/recent-jobs?visible=true");
   if (remote) {
     return remote.jobs;
@@ -237,6 +259,7 @@ export async function clearRecentJobs(): Promise<void> {
 }
 
 export async function estimateRecentJobsStoredBytes(): Promise<number> {
+  await ensureLegacyJobsAreMigrated();
   const remote = await callRecentJobsApi<{ ok: true; bytes: number }>("/api/recent-jobs/estimate");
   if (remote) {
     return remote.bytes;
