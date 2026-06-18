@@ -114,6 +114,8 @@ export function PinnedManifestPanel() {
     }
   }
 
+  const [showMismatchOnly, setShowMismatchOnly] = useState(false);
+
   const serverFileNames = new Set(serverEntries?.map((e) => e.fileName) ?? []);
   // A server entry's jobId:outputIndex, for matching against client entries that
   // have already been uploaded (their imageUrl is now a server URL).
@@ -140,10 +142,20 @@ export function PinnedManifestPanel() {
       <p style={{ fontSize: "var(--text-sm)", marginBottom: "0.75rem" }}>
         Compare what your browser knows about pinned images against what the server has stored.
       </p>
-      <div style={{ display: "flex", gap: "0.75rem", marginBottom: "1rem", flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: "0.75rem", marginBottom: "1rem", flexWrap: "wrap", alignItems: "center" }}>
         <button className="btn btn-secondary" type="button" onClick={load} disabled={busy === "loading"}>
-          {busy === "loading" ? "Loading…" : "Load both manifests"}
+          {busy === "loading" ? "Loading\u2026" : "Load both manifests"}
         </button>
+        {(clientEntries !== null || serverEntries !== null) && (
+          <button
+            className="btn btn-secondary"
+            type="button"
+            onClick={() => setShowMismatchOnly((v) => !v)}
+            style={{ borderColor: showMismatchOnly ? "rgba(226,137,76,0.8)" : undefined }}
+          >
+            {showMismatchOnly ? "Show all" : "Show mismatches only"}
+          </button>
+        )}
       </div>
 
       {status ? (
@@ -165,7 +177,9 @@ export function PinnedManifestPanel() {
               </p>
             )}
             <div style={{ display: "grid", gap: "0.3rem" }}>
-              {(clientEntries ?? []).map((entry) => {
+              {(clientEntries ?? []).filter((entry) =>
+                !showMismatchOnly || clientMissingOnServer.includes(entry)
+              ).map((entry) => {
                 const type = urlType(entry.imageUrl);
                 const onServer = (entry.serverFileName && serverFileNames.has(entry.serverFileName))
                   || serverJobKeys.has(`${entry.jobId}:${entry.outputIndex}`);
@@ -218,7 +232,9 @@ export function PinnedManifestPanel() {
               </p>
             )}
             <div style={{ display: "grid", gap: "0.3rem" }}>
-              {(serverEntries ?? []).map((entry) => {
+              {(serverEntries ?? []).filter((entry) =>
+                !showMismatchOnly || serverMissingOnClient.includes(entry)
+              ).map((entry) => {
                 const inClient = entry.jobId && clientJobKeys.has(`${entry.jobId}:${entry.outputIndex}`);
                 const isBusy = busy === `pin-${entry.fileName}`;
                 return (
