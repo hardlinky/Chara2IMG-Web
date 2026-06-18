@@ -12,6 +12,7 @@ import {
   pollRecentJobsOnce,
   resetStatusBatchPollingSupportForTests,
   removeRecentJobFromVisibleList,
+  shouldDeferAdaptiveOffload,
   rerunRecentJobWithDependencies
 } from "../../src/client/features/jobs/useRecentJobs";
 
@@ -86,6 +87,32 @@ describe("useRecentJobs helpers", () => {
     await cancelRecentJob("job-complete", { apiKey: "key", endpointId: "endpoint-1" });
 
     expect(vi.mocked(cancelViaProxy)).not.toHaveBeenCalled();
+  });
+
+  it("defers adaptive output offload for one hour after completion", () => {
+    const completedAt = "2026-05-23T10:00:00.000Z";
+
+    expect(
+      shouldDeferAdaptiveOffload(
+        {
+          submittedAt: completedAt,
+          hiddenAt: null,
+          lifecycle: buildLifecycleSnapshotFromStatus("COMPLETED", completedAt),
+        },
+        new Date("2026-05-23T10:59:59.000Z").getTime()
+      )
+    ).toBe(true);
+
+    expect(
+      shouldDeferAdaptiveOffload(
+        {
+          submittedAt: completedAt,
+          hiddenAt: null,
+          lifecycle: buildLifecycleSnapshotFromStatus("COMPLETED", completedAt),
+        },
+        new Date("2026-05-23T11:00:01.000Z").getTime()
+      )
+    ).toBe(false);
   });
 
   it("deletes jobs when removed from the visible list", async () => {

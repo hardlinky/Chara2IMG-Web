@@ -44,6 +44,7 @@ export type RecentJobStatusFilter = (typeof RECENT_JOB_STATUS_FILTERS)[number];
 
 const RECENT_JOB_STATUS_FILTER_STORAGE_KEY = "chara2imgRecentJobsStatusFilter";
 let supportsStatusBatchPolling: boolean | null = null;
+const ADAPTIVE_OFFLOAD_COMPLETION_GRACE_PERIOD_MS = 60 * 60 * 1000;
 
 export function resetStatusBatchPollingSupportForTests(): void {
   supportsStatusBatchPolling = null;
@@ -82,6 +83,24 @@ function buildPinnedWorkflowMetadata(job: RecentJobRecord): {
 
 function isArchivedImageUrl(value: string): boolean {
   return value.startsWith("/api/pinned-images/") || /\/api\/pinned-images\//.test(value);
+}
+
+export function shouldDeferAdaptiveOffload(job: Pick<RecentJobRecord, "hiddenAt" | "lifecycle" | "submittedAt">, now: number = Date.now()): boolean {
+  if (job.hiddenAt !== null) {
+    return true;
+  }
+
+  if (!job.lifecycle.isTerminal) {
+    return true;
+  }
+
+  const finishedAt = job.lifecycle.finishedAt ?? job.submittedAt;
+  const finishedAtMs = Date.parse(finishedAt);
+  if (Number.isNaN(finishedAtMs)) {
+    return true;
+  }
+
+  return now - finishedAtMs < ADAPTIVE_OFFLOAD_COMPLETION_GRACE_PERIOD_MS;
 }
 
 type RecentJobUpdateResult = {
@@ -514,7 +533,7 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
     adaptiveOffloadRunningRef.current = true;
     try {
       const oldestFirstVisibleJobs = [...jobs]
-        .filter((job) => job.hiddenAt === null)
+        .filter((job) => !shouldDeferAdaptiveOffload(job))
         .sort((left, right) => left.submittedAt.localeCompare(right.submittedAt));
 
       let processed = 0;
