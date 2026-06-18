@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { extractRunpodImagePreview, extractRunpodOutputImages } from "../../src/client/lib/runpodOutputImage";
+import { extractRunpodImagePreview, extractRunpodOutputImages } from "../../src/shared/outputImage";
 
 const tinyPngBase64 =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO5WvJwAAAAASUVORK5CYII=";

@@ -9,7 +9,7 @@ import {
   type RecentJobRecord,
   type RecentJobSubmissionInput
 } from "../../shared/contracts/jobs";
-import { extractRunpodOutputImages } from "../../client/lib/runpodOutputImage";
+import { extractRunpodOutputImages } from "../../shared/outputImage";
 
 const CURRENT_DIR = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = resolve(CURRENT_DIR, "../../..");
