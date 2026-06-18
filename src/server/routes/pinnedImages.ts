@@ -461,6 +461,13 @@ export function registerPinnedImageRoutes(app: Hono): void {
       })
       .filter((ref): ref is { fileName: string; consumerKey: string } => Boolean(ref));
 
+    // Safety: never delete files when the client sent an empty refs list.
+    // An empty list almost always means the job store hadn't loaded yet, not
+    // that the user genuinely has zero pinned images.
+    if (refs.length === 0) {
+      return c.json({ ok: true, reconciledEntries: 0, deletedFiles: 0, backfilledEntries: 0 });
+    }
+
     let backfilledEntries = 0;
     const ensuredFiles = new Set<string>();
 

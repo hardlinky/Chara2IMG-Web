@@ -504,6 +504,7 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
   const apiKey = options.apiKey;
   const includeOutputClusters = options.includeOutputClusters ?? true;
   const [jobs, setJobs] = useState<RecentJobRecord[]>([]);
+  const [jobsLoadedOnce, setJobsLoadedOnce] = useState(false);
   const [statusFilter, setStatusFilterState] = useState<RecentJobStatusFilter>(() => getStoredStatusFilter());
   const [page, setPageState] = useState(1);
   const [warningJobIds, setWarningJobIds] = useState<string[]>([]);
@@ -518,6 +519,7 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
   const refreshRecentJobs = useCallback(async (resetPage: boolean = false) => {
     const nextJobs = await loadRecentJobs();
     setJobs(nextJobs);
+    setJobsLoadedOnce(true);
     setStorageRefreshToken((current) => current + 1);
     if (resetPage) {
       setPageState(1);
@@ -898,6 +900,7 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
   const filteredJobs = useMemo(() => filterJobsByStatus(visibleJobs, statusFilter), [statusFilter, visibleJobs]);
 
   useEffect(() => {
+    if (!jobsLoadedOnce) return;
     let cancelled = false;
 
     void (async () => {
@@ -940,7 +943,7 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
     return () => {
       cancelled = true;
     };
-  }, [visibleJobs]);
+  }, [visibleJobs, jobsLoadedOnce]);
 
   const pageCount = Math.max(1, Math.ceil(filteredJobs.length / RECENT_JOB_PAGE_SIZE));
 
