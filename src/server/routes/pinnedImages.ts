@@ -17,6 +17,7 @@ import {
   prunePinnedImagesToClients,
   purgeMissingPinnedImages,
   purgeMissingPinnedImagesForClient,
+  rebuildManifestFromDisk,
   reconcilePinnedImageConsumersForClient,
   releasePinnedImageReference,
   getTrackedPinnedStorageUsageBytes,
@@ -903,6 +904,12 @@ export function registerPinnedImageRoutes(app: Hono): void {
       removedEntries: result.removedEntries,
       checkedEntries: result.checkedEntries
     });
+  });
+
+  app.use("/api/pinned-images/rebuild-manifest", requireAdminSession);
+  app.post("/api/pinned-images/rebuild-manifest", async (c) => {
+    const result = await rebuildManifestFromDisk();
+    return c.json({ ok: true, rebuilt: result.rebuilt });
   });
 
   app.use("/api/pinned-images/purge-missing-for-client", requireInvitedSession);

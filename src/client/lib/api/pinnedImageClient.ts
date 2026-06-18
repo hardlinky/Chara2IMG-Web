@@ -159,6 +159,18 @@ export async function purgeMissingClientPinnedImagesViaProxy(): Promise<PurgeMis
   return data;
 }
 
+export async function rebuildPinnedManifestViaProxy(): Promise<{ ok: true; rebuilt: number }> {
+  const response = await fetch("/api/pinned-images/rebuild-manifest", {
+    method: "POST",
+    credentials: "include"
+  });
+  const data = (await response.json().catch(() => null)) as { ok: true; rebuilt: number } | { error?: string } | null;
+  if (!response.ok || !data || !("ok" in data)) {
+    throw new ProxyRequestError(response.status, `Rebuild manifest failed (${response.status})`, data);
+  }
+  return data as { ok: true; rebuilt: number };
+}
+
 // In-memory override — never persisted, cleared on page refresh.
 let _clientIdOverride: string | null = null;
 

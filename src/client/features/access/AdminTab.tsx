@@ -10,6 +10,7 @@ import {
   prunePinnedImagesViaProxy,
   purgeMissingPinnedImagesViaProxy,
   purgeMissingClientPinnedImagesViaProxy,
+  rebuildPinnedManifestViaProxy,
   type PinnedImageClientUsage
 } from "../../lib/api/pinnedImageClient";
 import { listVisibleRecentJobs, removeRecentJobOutputImage as removeRecentJobOutputImageFromStorage, getRecentJob, restorePinsFromManifest } from "../../lib/api/recentJobsClient";
@@ -475,6 +476,27 @@ export function AdminTab({ enabled }: AdminTabProps) {
             disabled={loading}
           >
             Restore pins from manifest
+          </button>
+          <button
+            className="btn btn-secondary"
+            type="button"
+            onClick={async () => {
+              setStatus("Rebuilding manifest from disk…");
+              setLoading(true);
+              try {
+                const result = await rebuildPinnedManifestViaProxy();
+                setStatus(result.rebuilt > 0
+                  ? `Rebuilt ${result.rebuilt} manifest entry(s) from disk. Run "Restore pins from manifest" next.`
+                  : "No new entries found on disk (manifest already up to date).");
+              } catch {
+                setStatus("Failed to rebuild manifest.");
+              } finally {
+                setLoading(false);
+              }
+            }}
+            disabled={loading}
+          >
+            Rebuild manifest from disk
           </button>
         </div>
       </section>

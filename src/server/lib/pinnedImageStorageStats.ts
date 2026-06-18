@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { mkdir, readFile, readdir, rm, stat, statfs, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -782,4 +783,95 @@ export async function getTrackedPinnedStorageUsageBytes(clientId: string): Promi
     userUsedBytes,
     allUsersUsedBytes
   };
+}
+
+/**
+ * Reconstructs the pinned-images manifest by scanning image files on disk and
+ * parsing their names (format: `{clientId}__{jobId}-{outputIndex}-{uuid}.ext`).
+ * Safe to run when the manifest is missing or corrupt — only adds entries for
+ * files that already exist.  Returns the number of entries written.
+ */
+export async function rebuildManifestFromDisk(): Promise<{ rebuilt: number }> {
+  await mkdir(PINNED_IMAGES_DIR, { recursive: true });
+
+  let files: string[];
+  try {
+    files = await readdir(PINNED_IMAGES_DIR);
+  } catch {
+    return { rebuilt: 0 };
+  }
+
+  const imageFiles = files.filter((f) => /\.(png|jpg|jpeg|webp|gif)$/i.test(f));
+  if (imageFiles.length === 0) return { rebuilt: 0 };
+
+  // Read the existing manifest so we don't duplicate entries
+  const existing = await readManifest();
+  const existingFileNames = new Set(existing.entries.map((e) => e.fileName));
+
+  const now = new Date().toISOString();
+  let rebuilt = 0;
+
+  for (const fileName of imageFiles) {
+    if (existingFileNames.has(fileName)) continue;
+
+    // Parse: {clientId}__{jobId}-{outputIndex}-{uuid}.ext
+    const separatorIndex = fileName.indexOf("__");
+    if (separatorIndex < 0) continue;
+
+    const clientId = sanitizeClientId(fileName.slice(0, separatorIndex));
+    if (!clientId) continue;
+
+    const rest = fileName.slice(separatorIndex + 2); // after "__"
+    // rest = {jobId}-{outputIndex}-{uuid}.ext
+    // uuid is last UUID-like segment before extension; outputIndex is the number before it
+    const withoutExt = rest.replace(/\.[^.]+$/, "");
+    // Split on "-" and try to find outputIndex (single digit near the end before the uuid)
+    // Strategy: last 5 segments are uuid (8-4-4-4-12), before that is outputIndex, before that is jobId
+    const segments = withoutExt.split("-");
+    // UUID = 8-4-4-4-12 chars → 5 groups
+    if (segments.length < 7) continue; // need at least jobId(1+) + outputIndex(1) + uuid(5)
+
+    const uuidParts = segments.slice(-5);
+    const outputIndexStr = segments[segments.length - 6];
+    const jobIdParts = segments.slice(0, segments.length - 6);
+
+    const outputIndex = parseInt(outputIndexStr ?? "", 10);
+    if (!Number.isFinite(outputIndex) || outputIndex < 0) continue;
+
+    const jobId = jobIdParts.join("-");
+    if (!jobId) continue;
+
+    const filePath = resolve(PINNED_IMAGES_DIR, fileName);
+    let sizeBytes = 0;
+    let contentHash = "";
+    try {
+      const [fileStat, fileBytes] = await Promise.all([
+        stat(filePath),
+        readFile(filePath)
+      ]);
+      sizeBytes = fileStat.size;
+      contentHash = createHash("sha256").update(fileBytes).digest("hex");
+    } catch {
+      continue;
+    }
+
+    const consumerKey = `${clientId}:${jobId}:${outputIndex}`;
+    existing.entries.push({
+      fileName,
+      clientId,
+      contentHash,
+      sizeBytes,
+      refCount: 1,
+      consumers: [consumerKey],
+      updatedAt: now
+    });
+
+    rebuilt += 1;
+  }
+
+  if (rebuilt > 0) {
+    await writeManifest(existing);
+  }
+
+  return { rebuilt };
 }
