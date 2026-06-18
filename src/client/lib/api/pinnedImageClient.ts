@@ -181,8 +181,10 @@ export type ServerManifestEntry = {
 };
 
 export async function fetchMyServerManifestEntries(): Promise<{ clientId: string; entries: ServerManifestEntry[] }> {
+  const clientId = getOrCreatePinnedImageClientId();
   const response = await fetch("/api/pinned-images/my-entries", {
-    credentials: "include"
+    credentials: "include",
+    headers: { "x-chara2img-client-id": clientId }
   });
   const data = (await response.json().catch(() => null)) as { ok: true; clientId: string; entries: ServerManifestEntry[] } | null;
   if (!response.ok || !data || !("ok" in data)) {
