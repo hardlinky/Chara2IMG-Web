@@ -38,7 +38,11 @@ export function registerRecentJobsRoutes(app: Hono): void {
 
   app.post("/api/recent-jobs/upsert", async (c) => {
     const payload = await c.req.json().catch(() => null);
-    const job = await upsertRecentJob(payload);
+    if (!payload || typeof payload !== "object" || typeof (payload as { jobId?: unknown }).jobId !== "string") {
+      return c.json({ ok: false, error: "Invalid job payload" }, 400);
+    }
+
+    const job = await upsertRecentJob(payload as never);
     return c.json({ ok: true, job });
   });
 

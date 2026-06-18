@@ -404,6 +404,10 @@ export async function startRecentJobsImageCompactionMigration(): Promise<void> {
 }
 
 export async function upsertRecentJob(input: RecentJobSubmissionInput): Promise<RecentJobRecord> {
+  if (!input || typeof input !== "object" || typeof input.jobId !== "string") {
+    throw new Error("Invalid job input: missing or invalid jobId");
+  }
+
   const store = await readStore();
   const record = normalizeJobRecord(input);
   const existingIndex = store.jobs.findIndex((job) => job.jobId === record.jobId);
