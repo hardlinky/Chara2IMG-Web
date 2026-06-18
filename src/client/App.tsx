@@ -117,8 +117,7 @@ const BASE_APP_TABS: AppTabDefinition[] = [
   { id: "setup", label: "Setup" },
   { id: "input", label: "Input" },
   { id: "jobs", label: "Jobs" },
-  { id: "output", label: "Output" },
-  { id: "admin", label: "Admin" }
+  { id: "output", label: "Output" }
 ];
 
 const SERVER_MANAGED_RUNPOD_KEY = "__SERVER_MANAGED_RUNPOD_KEY__";
