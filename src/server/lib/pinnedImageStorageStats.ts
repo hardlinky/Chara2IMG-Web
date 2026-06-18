@@ -549,18 +549,21 @@ export async function listPinnedImageEntriesForClient(clientId: string): Promise
     .sort((left, right) => left.fileName.localeCompare(right.fileName));
 }
 
-/** Returns every consumer key recorded in the manifest, across all clients.
+/** Returns every consumer key recorded in the manifest, across all clients,
+ * along with any workflow metadata stored on that manifest entry.
  * Consumer keys have the format `clientId:jobId:outputIndex`.
  */
-export async function listAllPinnedImageConsumers(): Promise<string[]> {
+export async function listAllPinnedImageConsumers(): Promise<Array<{ consumer: string; workflowFileName?: string }>> {
   const manifest = await readManifest();
-  const seen = new Set<string>();
+  const seen = new Map<string, { workflowFileName?: string }>();
   for (const entry of manifest.entries) {
     for (const consumer of entry.consumers) {
-      seen.add(consumer);
+      if (!seen.has(consumer)) {
+        seen.set(consumer, { workflowFileName: entry.workflowFileName });
+      }
     }
   }
-  return [...seen];
+  return [...seen.entries()].map(([consumer, meta]) => ({ consumer, ...meta }));
 }
 
 export async function releasePinnedImageReference(fileName: string, clientId: string, consumerKey: string): Promise<{ shouldDeleteFile: boolean }> {

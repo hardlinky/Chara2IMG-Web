@@ -627,42 +627,68 @@ export async function estimateRecentJobsStoredBytes(): Promise<number> {
 
 /**
  * Restores pinnedAt/pinnedOutputIndices on all job records by reading consumer
- * keys from the pinned-images manifest.  Consumer keys encode clientId:jobId:outputIndex,
- * so we can reconstruct the full pin state even after it was lost from the jobs store.
+ * keys from the pinned-images manifest, and back-fills provenance.workflowFileName
+ * for jobs that are missing it.
  * Returns the number of jobs that were updated.
  */
 export async function restorePinsFromManifest(): Promise<number> {
   const consumers = await listAllPinnedImageConsumers();
-  // Build a map of jobId -> Set<outputIndex> from all consumer keys
+
+  // Build maps from all consumer keys:
+  //   pinMap:          jobId -> Set<outputIndex>
+  //   workflowFileMap: jobId -> workflowFileName (first non-empty value wins)
   const pinMap = new Map<string, Set<number>>();
-  for (const consumer of consumers) {
+  const workflowFileMap = new Map<string, string>();
+
+  for (const { consumer, workflowFileName } of consumers) {
     // format: clientId:jobId:outputIndex  (clientId may not contain colons)
     const parts = consumer.split(":");
     if (parts.length < 3) continue;
     const outputIndex = parseInt(parts[parts.length - 1]!, 10);
     const jobId = parts.slice(1, parts.length - 1).join(":");
     if (!jobId || !Number.isFinite(outputIndex)) continue;
+
     if (!pinMap.has(jobId)) pinMap.set(jobId, new Set());
     pinMap.get(jobId)!.add(outputIndex);
+
+    if (workflowFileName && !workflowFileMap.has(jobId)) {
+      workflowFileMap.set(jobId, workflowFileName);
+    }
   }
 
-  if (pinMap.size === 0) return 0;
+  if (pinMap.size === 0 && workflowFileMap.size === 0) return 0;
 
   const store = await readStore();
   let updated = 0;
   const now = new Date().toISOString();
 
   for (const job of store.jobs) {
+    let dirty = false;
+
+    // Restore pins
     const indices = pinMap.get(job.jobId);
-    if (!indices || indices.size === 0) continue;
-    const sorted = [...indices].sort((a, b) => a - b);
-    const alreadyMatches =
-      job.pinnedOutputIndices?.length === sorted.length &&
-      sorted.every((v, i) => job.pinnedOutputIndices![i] === v);
-    if (alreadyMatches) continue;
-    job.pinnedOutputIndices = sorted;
-    job.pinnedAt = job.pinnedAt ?? now;
-    updated += 1;
+    if (indices && indices.size > 0) {
+      const sorted = [...indices].sort((a, b) => a - b);
+      const alreadyMatches =
+        job.pinnedOutputIndices?.length === sorted.length &&
+        sorted.every((v, i) => job.pinnedOutputIndices![i] === v);
+      if (!alreadyMatches) {
+        job.pinnedOutputIndices = sorted;
+        job.pinnedAt = job.pinnedAt ?? now;
+        dirty = true;
+      }
+    }
+
+    // Back-fill missing workflowFileName from manifest metadata
+    if (!job.provenance.workflowFileName) {
+      const fromManifest = workflowFileMap.get(job.jobId);
+      if (fromManifest) {
+        job.provenance.workflowFileName = fromManifest;
+        dirty = true;
+      }
+    }
+
+    if (dirty) updated += 1;
   }
 
   if (updated > 0) await writeStore(store);
