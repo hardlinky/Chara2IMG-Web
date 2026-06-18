@@ -89,6 +89,33 @@ async function ensureLegacyJobsAreMigrated(): Promise<void> {
   await migrationPromise;
 }
 
+async function restoreLegacyJobsIfServerIsEmpty(): Promise<void> {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const remoteJobs = await callRecentJobsApi<{ ok: true; jobs: RecentJobRecord[] }>("/api/recent-jobs");
+  if (!remoteJobs || remoteJobs.jobs.length > 0) {
+    return;
+  }
+
+  const legacyJobs = await listLegacyRecentJobs();
+  if (legacyJobs.length === 0) {
+    return;
+  }
+
+  for (const job of legacyJobs) {
+    await callRecentJobsApi<{ ok: true; job: RecentJobRecord }>("/api/recent-jobs/upsert", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(job)
+    });
+  }
+
+  await clearLegacyRecentJobs();
+  window.localStorage.setItem(SERVER_STORAGE_MIGRATION_FLAG, "true");
+}
+
 export async function startRecentJobsImageCompactionMigration(batchSize: number = 5): Promise<void> {
   const remote = await callRecentJobsApi<{ ok: true }>("/api/recent-jobs/compaction-migration", {
     method: "POST",
@@ -125,6 +152,12 @@ export async function getRecentJob(jobId: string): Promise<RecentJobRecord | nul
     return remote.job;
   }
 
+  await restoreLegacyJobsIfServerIsEmpty();
+  const restoredRemote = await callRecentJobsApi<{ ok: true; job: RecentJobRecord }>(`/api/recent-jobs/${encodeURIComponent(jobId)}`);
+  if (restoredRemote) {
+    return restoredRemote.job;
+  }
+
   return getLegacyRecentJob(jobId);
 }
 
@@ -132,6 +165,14 @@ export async function listRecentJobs(): Promise<RecentJobRecord[]> {
   await ensureLegacyJobsAreMigrated();
   const remote = await callRecentJobsApi<{ ok: true; jobs: RecentJobRecord[] }>("/api/recent-jobs");
   if (remote) {
+    if (remote.jobs.length === 0) {
+      await restoreLegacyJobsIfServerIsEmpty();
+      const restoredRemote = await callRecentJobsApi<{ ok: true; jobs: RecentJobRecord[] }>("/api/recent-jobs");
+      if (restoredRemote) {
+        return restoredRemote.jobs;
+      }
+    }
+
     return remote.jobs;
   }
 
@@ -142,6 +183,14 @@ export async function listVisibleRecentJobs(): Promise<RecentJobRecord[]> {
   await ensureLegacyJobsAreMigrated();
   const remote = await callRecentJobsApi<{ ok: true; jobs: RecentJobRecord[] }>("/api/recent-jobs?visible=true");
   if (remote) {
+    if (remote.jobs.length === 0) {
+      await restoreLegacyJobsIfServerIsEmpty();
+      const restoredRemote = await callRecentJobsApi<{ ok: true; jobs: RecentJobRecord[] }>("/api/recent-jobs?visible=true");
+      if (restoredRemote) {
+        return restoredRemote.jobs;
+      }
+    }
+
     return remote.jobs;
   }
 
