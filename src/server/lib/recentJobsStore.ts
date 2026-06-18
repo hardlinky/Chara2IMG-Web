@@ -1,6 +1,7 @@
 import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { listAllPinnedImageConsumers } from "./pinnedImageStorageStats";
 import {
   RECENT_JOBS_HIDDEN_RETENTION_MS,
   RECENT_JOBS_UNPINNED_LIMIT,
@@ -616,6 +617,50 @@ export async function clearRecentJobs(): Promise<void> {
 export async function estimateRecentJobsStoredBytes(): Promise<number> {
   const store = await readStore();
   return JSON.stringify(store).length;
+}
+
+/**
+ * Restores pinnedAt/pinnedOutputIndices on all job records by reading consumer
+ * keys from the pinned-images manifest.  Consumer keys encode clientId:jobId:outputIndex,
+ * so we can reconstruct the full pin state even after it was lost from the jobs store.
+ * Returns the number of jobs that were updated.
+ */
+export async function restorePinsFromManifest(): Promise<number> {
+  const consumers = await listAllPinnedImageConsumers();
+  // Build a map of jobId -> Set<outputIndex> from all consumer keys
+  const pinMap = new Map<string, Set<number>>();
+  for (const consumer of consumers) {
+    // format: clientId:jobId:outputIndex  (clientId may not contain colons)
+    const parts = consumer.split(":");
+    if (parts.length < 3) continue;
+    const outputIndex = parseInt(parts[parts.length - 1]!, 10);
+    const jobId = parts.slice(1, parts.length - 1).join(":");
+    if (!jobId || !Number.isFinite(outputIndex)) continue;
+    if (!pinMap.has(jobId)) pinMap.set(jobId, new Set());
+    pinMap.get(jobId)!.add(outputIndex);
+  }
+
+  if (pinMap.size === 0) return 0;
+
+  const store = await readStore();
+  let updated = 0;
+  const now = new Date().toISOString();
+
+  for (const job of store.jobs) {
+    const indices = pinMap.get(job.jobId);
+    if (!indices || indices.size === 0) continue;
+    const sorted = [...indices].sort((a, b) => a - b);
+    const alreadyMatches =
+      job.pinnedOutputIndices?.length === sorted.length &&
+      sorted.every((v, i) => job.pinnedOutputIndices![i] === v);
+    if (alreadyMatches) continue;
+    job.pinnedOutputIndices = sorted;
+    job.pinnedAt = job.pinnedAt ?? now;
+    updated += 1;
+  }
+
+  if (updated > 0) await writeStore(store);
+  return updated;
 }
 
 export async function updateRecentJobLifecycle(

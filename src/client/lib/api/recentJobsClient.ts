@@ -335,3 +335,10 @@ export async function updateRecentJobLifecycle(
 
   await updateLegacyRecentJobLifecycle(jobId, lifecycle, lastResponse, lastError);
 }
+
+export async function restorePinsFromManifest(): Promise<number> {
+  const result = await callRecentJobsApi<{ ok: true; updated: number }>("/api/recent-jobs/restore-pins", {
+    method: "POST"
+  });
+  return result?.updated ?? 0;
+}

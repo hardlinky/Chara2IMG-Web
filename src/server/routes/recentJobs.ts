@@ -11,6 +11,7 @@ import {
   listVisibleRecentJobs,
   pruneRecentJobs,
   removeRecentJobOutputImage,
+  restorePinsFromManifest,
   setRecentJobOutputPinned,
   startRecentJobsImageCompactionMigration,
   toggleRecentJobOutputPinned,
@@ -120,5 +121,10 @@ export function registerRecentJobsRoutes(app: Hono): void {
   app.post("/api/recent-jobs/compaction-migration", async (c) => {
     await startRecentJobsImageCompactionMigration();
     return c.json({ ok: true });
+  });
+
+  app.post("/api/recent-jobs/restore-pins", async (c) => {
+    const updated = await restorePinsFromManifest();
+    return c.json({ ok: true, updated });
   });
 }

@@ -12,7 +12,7 @@ import {
   purgeMissingClientPinnedImagesViaProxy,
   type PinnedImageClientUsage
 } from "../../lib/api/pinnedImageClient";
-import { listVisibleRecentJobs, removeRecentJobOutputImage as removeRecentJobOutputImageFromStorage, getRecentJob } from "../../lib/api/recentJobsClient";
+import { listVisibleRecentJobs, removeRecentJobOutputImage as removeRecentJobOutputImageFromStorage, getRecentJob, restorePinsFromManifest } from "../../lib/api/recentJobsClient";
 import { extractRunpodOutputImages } from "../../lib/runpodOutputImage";
 
 const CLIENT_PAGE_SIZE = 10;
@@ -446,16 +446,37 @@ export function AdminTab({ enabled }: AdminTabProps) {
         <p style={{ fontSize: "var(--text-sm)", marginBottom: "0.75rem" }}>
           If your recent jobs are missing, use this to re-upload them from browser storage to the server.
         </p>
-        <button
-          className="btn btn-secondary"
-          type="button"
-          onClick={() => {
-            window.localStorage.removeItem("chara2imgRecentJobsMigratedToServer");
-            window.location.reload();
-          }}
-        >
-          Re-sync jobs from browser
-        </button>
+        <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
+          <button
+            className="btn btn-secondary"
+            type="button"
+            onClick={() => {
+              window.localStorage.removeItem("chara2imgRecentJobsMigratedToServer");
+              window.location.reload();
+            }}
+          >
+            Re-sync jobs from browser
+          </button>
+          <button
+            className="btn btn-secondary"
+            type="button"
+            onClick={async () => {
+              setStatus("Restoring pins…");
+              setLoading(true);
+              try {
+                const updated = await restorePinsFromManifest();
+                setStatus(updated > 0 ? `Restored pins on ${updated} job(s). Reload to see changes.` : "No pins needed restoring.");
+              } catch {
+                setStatus("Failed to restore pins.");
+              } finally {
+                setLoading(false);
+              }
+            }}
+            disabled={loading}
+          >
+            Restore pins from manifest
+          </button>
+        </div>
       </section>
     </div>
   );

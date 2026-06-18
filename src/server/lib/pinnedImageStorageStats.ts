@@ -549,6 +549,20 @@ export async function listPinnedImageEntriesForClient(clientId: string): Promise
     .sort((left, right) => left.fileName.localeCompare(right.fileName));
 }
 
+/** Returns every consumer key recorded in the manifest, across all clients.
+ * Consumer keys have the format `clientId:jobId:outputIndex`.
+ */
+export async function listAllPinnedImageConsumers(): Promise<string[]> {
+  const manifest = await readManifest();
+  const seen = new Set<string>();
+  for (const entry of manifest.entries) {
+    for (const consumer of entry.consumers) {
+      seen.add(consumer);
+    }
+  }
+  return [...seen];
+}
+
 export async function releasePinnedImageReference(fileName: string, clientId: string, consumerKey: string): Promise<{ shouldDeleteFile: boolean }> {
   const manifest = await readManifest();
   const normalizedClientId = sanitizeClientId(clientId);
