@@ -415,11 +415,17 @@ export async function upsertRecentJob(input: RecentJobSubmissionInput): Promise<
 
   if (existingIndex >= 0) {
     const existing = store.jobs[existingIndex]!;
-    // Preserve pinned state — upsert must never clear pins set by the user
+    // Merge: incoming wins for mutable state (lifecycle, lastResponse, lastError),
+    // but server-side user actions (pins, hides) are never overwritten by a client upsert.
     store.jobs[existingIndex] = {
       ...record,
-      pinnedAt: existing.pinnedAt,
-      pinnedOutputIndices: existing.pinnedOutputIndices,
+      // Never clear a hide the server already recorded
+      hiddenAt: existing.hiddenAt ?? record.hiddenAt,
+      // Prefer server pins; fall back to whatever the incoming record carries
+      pinnedAt: existing.pinnedAt ?? record.pinnedAt ?? null,
+      pinnedOutputIndices: (existing.pinnedOutputIndices?.length ?? 0) > 0
+        ? existing.pinnedOutputIndices
+        : record.pinnedOutputIndices,
     };
   } else {
     store.jobs.push(record);
