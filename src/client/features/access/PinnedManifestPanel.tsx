@@ -115,9 +115,17 @@ export function PinnedManifestPanel() {
   }
 
   const serverFileNames = new Set(serverEntries?.map((e) => e.fileName) ?? []);
-  const clientMissingOnServer = clientEntries?.filter(
-    (e) => !e.serverFileName || !serverFileNames.has(e.serverFileName)
-  ) ?? [];
+  // A server entry's jobId:outputIndex, for matching against client entries that
+  // have already been uploaded (their imageUrl is now a server URL).
+  const serverJobKeys = new Set(
+    serverEntries?.filter((e) => e.jobId !== undefined && e.outputIndex !== undefined)
+      .map((e) => `${e.jobId}:${e.outputIndex}`) ?? []
+  );
+  const clientMissingOnServer = clientEntries?.filter((e) => {
+    if (e.serverFileName && serverFileNames.has(e.serverFileName)) return false;
+    if (serverJobKeys.has(`${e.jobId}:${e.outputIndex}`)) return false;
+    return true;
+  }) ?? [];
 
   const clientJobKeys = new Set(
     clientEntries?.map((e) => `${e.jobId}:${e.outputIndex}`) ?? []
@@ -159,7 +167,8 @@ export function PinnedManifestPanel() {
             <div style={{ display: "grid", gap: "0.3rem" }}>
               {(clientEntries ?? []).map((entry) => {
                 const type = urlType(entry.imageUrl);
-                const onServer = entry.serverFileName && serverFileNames.has(entry.serverFileName);
+                const onServer = (entry.serverFileName && serverFileNames.has(entry.serverFileName))
+                  || serverJobKeys.has(`${entry.jobId}:${entry.outputIndex}`);
                 const key = `${entry.jobId}:${entry.outputIndex}`;
                 const isBusy = busy === `upload-${entry.jobId}-${entry.outputIndex}`;
                 return (
