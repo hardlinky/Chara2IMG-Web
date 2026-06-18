@@ -439,6 +439,23 @@ export function AdminTab({ enabled }: AdminTabProps) {
           {status}
         </p>
       ) : null}
+
+      <section className="setup-card">
+        <h2>Job Sync</h2>
+        <p style={{ fontSize: "var(--text-sm)", marginBottom: "0.75rem" }}>
+          If your recent jobs are missing, use this to re-upload them from browser storage to the server.
+        </p>
+        <button
+          className="btn btn-secondary"
+          type="button"
+          onClick={() => {
+            window.localStorage.removeItem("chara2imgRecentJobsMigratedToServer");
+            window.location.reload();
+          }}
+        >
+          Re-sync jobs from browser
+        </button>
+      </section>
     </div>
   );
 }
