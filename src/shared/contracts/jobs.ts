@@ -151,6 +151,7 @@ export type JobRecord = {
   terminalReason?: JobTerminalReason;
   imageCount: number;
   lastError: string | null;
+  isArchived?: boolean;
 };
 
 // Per-image record stored inside JobManifestEntry and server manifest.
