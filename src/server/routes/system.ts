@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import type { Hono } from "hono";
-import { getEffectivePinnedImagesCapacityBytes, getTrackedPinnedStorageUsageBytes, sanitizeClientId } from "../lib/pinnedImageStorageStats";
+import { listJobs } from "../lib/jobStore";
 import { requireInvitedSession } from "../middleware/session";
 
 const execFileAsync = promisify(execFile);
@@ -83,15 +83,15 @@ export function registerSystemRoutes(app: Hono): void {
   });
 
   app.get("/api/system/storage", async (c) => {
-    const clientId = sanitizeClientId(c.req.query("clientId"));
-    const usage = await getTrackedPinnedStorageUsageBytes(clientId);
-    const totalCapacityBytes = await getEffectivePinnedImagesCapacityBytes();
+    const jobs = await listJobs();
+    const archivedCount = jobs.filter(j => j.isArchived).length;
 
     return c.json({
       ok: true,
-      userUsedBytes: usage.userUsedBytes,
-      allUsersUsedBytes: usage.allUsersUsedBytes,
-      totalCapacityBytes,
+      userUsedBytes: 0,
+      allUsersUsedBytes: 0,
+      totalCapacityBytes: 0,
+      archivedJobCount: archivedCount,
       source: "system"
     });
   });
