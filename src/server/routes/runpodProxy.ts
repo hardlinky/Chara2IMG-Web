@@ -2,9 +2,10 @@ import type { Hono } from "hono";
 import { requireInvitedSession } from "../middleware/session";
 import { cancelRequestSchema, purgeQueueRequestSchema, retryRequestSchema, runRequestSchema, statusBatchRequestSchema, statusRequestSchema } from "../schemas/runpodProxy";
 import { forwardRunpodRequest } from "../lib/runpodClient";
-import { pollRunpodJobNow, trackRunpodJob } from "../lib/runpodJobTracker";
+import { trackJob, pollJobNow } from "../lib/jobTracker";
+import { readJob, updateJob } from "../lib/jobStore";
 import { redactSecrets } from "../lib/redaction";
-import { getCachedRunpodJobState, removeUnknownRunpodJobStates, setCachedRunpodJobState } from "../lib/runpodJobStateStore";
+import { isTerminalRunpodStatus, normalizeRunpodStatus, toTerminalReason, type JobStatus } from "../../shared/contracts/jobs";
 import { logServerError, logServerWarning } from "../lib/logger";
 
 function resolveRunpodApiKey(requestApiKey: string): string {
@@ -62,8 +63,7 @@ export function registerRunpodProxyRoutes(app: Hono): void {
 
           if (jobId) {
             const resolvedApiKey = resolveRunpodApiKey(parsed.data.apiKey);
-            setCachedRunpodJobState(parsed.data.endpointId, jobId, parsedBody);
-            trackRunpodJob(parsed.data.endpointId, jobId, resolvedApiKey);
+            void trackJob(parsed.data.endpointId, jobId, resolvedApiKey);
           }
         } catch (error) {
           logServerWarning("Runpod run response was not JSON", error, {
@@ -90,14 +90,12 @@ export function registerRunpodProxyRoutes(app: Hono): void {
 
     try {
       const resolvedApiKey = resolveRunpodApiKey(parsed.data.apiKey);
-      const cached = getCachedRunpodJobState(parsed.data.endpointId, parsed.data.id);
-      if (cached) {
-        if (cached.isTerminal) {
-          return c.json(cached.data);
-        }
+      const cached = await readJob(parsed.data.id);
+      if (cached?.isTerminal) {
+        return c.json(cached);
       }
 
-      const polled = await pollRunpodJobNow(parsed.data.endpointId, parsed.data.id, resolvedApiKey);
+      const polled = await pollJobNow(parsed.data.endpointId, parsed.data.id, resolvedApiKey);
       if (polled.ok) {
         return c.json(polled.data);
       }
@@ -126,26 +124,22 @@ export function registerRunpodProxyRoutes(app: Hono): void {
       return c.json({ ok: false, error: "Invalid status-batch request" }, 400);
     }
 
-    if (parsed.data.knownIds) {
-      removeUnknownRunpodJobStates(parsed.data.endpointId, parsed.data.knownIds);
-    }
-
     const items = await Promise.all(
       parsed.data.ids.map(async (id) => {
         try {
           const resolvedApiKey = resolveRunpodApiKey(parsed.data.apiKey);
-          const cached = getCachedRunpodJobState(parsed.data.endpointId, id);
+          const cached = await readJob(id);
           if (cached?.isTerminal) {
             return {
               id,
               ok: true,
               statusCode: 200,
-              data: cached.data,
+              data: cached,
               source: "cache"
             };
           }
 
-          const polled = await pollRunpodJobNow(parsed.data.endpointId, id, resolvedApiKey);
+          const polled = await pollJobNow(parsed.data.endpointId, id, resolvedApiKey);
 
           if (!polled.ok) {
             return {
@@ -201,7 +195,12 @@ export function registerRunpodProxyRoutes(app: Hono): void {
       const body = await response.text();
       if (response.ok) {
         try {
-          setCachedRunpodJobState(parsed.data.endpointId, parsed.data.id, JSON.parse(body));
+          const normalized = normalizeRunpodStatus((JSON.parse(body) as { status?: string })?.status ?? "CANCELLED");
+          await updateJob(parsed.data.id, {
+            status: normalized as JobStatus,
+            isTerminal: isTerminalRunpodStatus(normalized),
+            terminalReason: toTerminalReason(normalized)
+          });
         } catch (error) {
           logServerWarning("Runpod cancel response was not JSON", error, {
             endpointId: parsed.data.endpointId,
@@ -237,15 +236,7 @@ export function registerRunpodProxyRoutes(app: Hono): void {
 
       const body = await response.text();
       if (response.ok) {
-        try {
-          setCachedRunpodJobState(parsed.data.endpointId, parsed.data.id, JSON.parse(body));
-          trackRunpodJob(parsed.data.endpointId, parsed.data.id, resolveRunpodApiKey(parsed.data.apiKey));
-        } catch (error) {
-          logServerWarning("Runpod retry response was not JSON", error, {
-            endpointId: parsed.data.endpointId,
-            jobId: parsed.data.id
-          });
-        }
+        void trackJob(parsed.data.endpointId, parsed.data.id, resolveRunpodApiKey(parsed.data.apiKey));
       }
 
       return toProxyResponse(response, body);
