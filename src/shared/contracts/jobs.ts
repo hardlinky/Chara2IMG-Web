@@ -118,6 +118,97 @@ export function isTerminalRunpodStatus(status: string): boolean {
   return normalized === "COMPLETED" || normalized === "FAILED" || normalized === "CANCELLED" || normalized === "TIMED_OUT";
 }
 
+// ─── New persistence model (Phase 02+) ───────────────────────────────────────
+
+// Default base directories (overridable via env vars in server code).
+// Stored here so shared contracts document the layout convention.
+export const JOBS_TMP_DIR_DEFAULT = "../chara2img/jobs-tmp";
+export const JOBS_ARCHIVE_DIR_DEFAULT = "../chara2img/archive";
+export const JOB_IMAGE_TTL_MS = 60 * 60 * 1000; // 1 hour in ms
+
+export type JobStatus = RunpodJobStatus | "PENDING" | "UNKNOWN";
+
+export type JobInputs = {
+  draftValues: DynamicInputDraftValues;
+  submittedInput: Record<string, unknown>;
+};
+
+// Core job record — written to {jobDir}/job.json, updated on each poll.
+// workflowFileName references {tmpDir}/workflows/{workflowFileName}.json
+// (same key in archiveDir if job is archived).
+// displayName = FNV-1a hash of jobId (8 hex chars) — use this for all UI display.
+// jobId is internal; never show it in the UI.
+export type JobRecord = {
+  jobId: string;
+  displayName: string;
+  endpointId: string;
+  workflowFileName: string | null;
+  submittedAt: string;
+  completedAt: string | null;
+  expiresAt: string | null;
+  status: JobStatus;
+  isTerminal: boolean;
+  terminalReason?: JobTerminalReason;
+  imageCount: number;
+  lastError: string | null;
+};
+
+// Per-image record stored inside JobManifestEntry and server manifest.
+// relPath is relative to either tmpDir or archiveDir (see isArchived).
+// Full path = {tmpDir}/{relPath} if !isArchived, {archiveDir}/{relPath} if isArchived.
+// fileName format: {displayName}-{imageIndex}.{ext}  e.g. "a3f2c1b0-0.png"
+export type JobImageRecord = {
+  jobId: string;
+  imageIndex: number;
+  fileName: string;
+  relPath: string;
+  mimeType: JobOutputImageMimeType;
+  sizeBytes: number;
+  isPinned: boolean;
+  isArchived: boolean;
+  archivedAt: string | null;
+  unarchiveExpiresAt: string | null;
+};
+
+// Entry in the server-side manifest.
+export type JobManifestEntry = {
+  jobId: string;
+  displayName: string;
+  endpointId: string;
+  workflowFileName: string | null;
+  submittedAt: string;
+  completedAt: string | null;
+  expiresAt: string | null;
+  status: JobStatus;
+  isTerminal: boolean;
+  imageCount: number;
+  images: JobImageRecord[];
+};
+
+// Per-image state on the client (no relPath — client uses API endpoint).
+export type ClientImageState = {
+  imageIndex: number;
+  fileName: string;
+  isPinned: boolean;
+  isArchived: boolean;
+  clientCachedUntil: string | null;
+};
+
+// Entry in the client-side lightweight manifest.
+export type ClientManifestEntry = {
+  jobId: string;
+  displayName: string;
+  endpointId: string;
+  workflowFileName: string | null;
+  submittedAt: string;
+  completedAt: string | null;
+  expiresAt: string | null;
+  status: JobStatus;
+  isTerminal: boolean;
+  imageCount: number;
+  images: ClientImageState[];
+};
+
 export function isActiveRunpodStatus(status: string): boolean {
   const normalized = normalizeRunpodStatus(status);
   return normalized === "IN_QUEUE" || normalized === "IN_PROGRESS";
