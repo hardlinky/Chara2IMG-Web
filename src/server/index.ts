@@ -11,6 +11,7 @@ import { registerSystemRoutes } from "./routes/system";
 import { applySecurityMiddleware } from "./middleware/security";
 import { logAdminPasskey } from "./security/adminPasskey";
 import { logServerError } from "./lib/logger";
+import { ensureJobStoreDirs } from "./lib/jobStore";
 
 const CLIENT_DIST_ROOT = "./dist/client";
 
@@ -76,10 +77,12 @@ if (isMainModule) {
     logServerError("Uncaught exception", error);
   });
 
-  serve({
-    fetch: app.fetch,
-    port
-  });
-
-  console.log(`Server listening on http://localhost:${port}`);
+  void (async () => {
+    await ensureJobStoreDirs();
+    serve({
+      fetch: app.fetch,
+      port
+    });
+    console.log(`Server listening on http://localhost:${port}`);
+  })();
 }

@@ -1,6 +1,5 @@
 import { describe, expect, it, beforeEach, vi, afterEach } from "vitest";
 import { createServerApp } from "../../src/server/index";
-import { clearRunpodJobStateStore } from "../../src/server/lib/runpodJobStateStore";
 
 function extractCookieHeader(setCookieHeader: string | null): string {
   if (!setCookieHeader) {
@@ -12,7 +11,6 @@ function extractCookieHeader(setCookieHeader: string | null): string {
 
 describe("Runpod proxy boundary", () => {
   beforeEach(() => {
-    clearRunpodJobStateStore();
     process.env.INVITE_SECRET = "invite-test";
     process.env.COOKIE_SECRET = "cookie-secret-test";
     process.env.ALLOWED_ORIGIN = "http://localhost:5173";
