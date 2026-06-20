@@ -36,6 +36,16 @@ export async function storeImage(
 }
 
 /**
+ * Enumerate every entry in the IndexedDB image cache, including expired ones.
+ * The admin reconciliation panel must see stale entries as drift, so this does
+ * NOT filter by expiry (unlike getImage).
+ */
+export async function listCachedImages(): Promise<{ cacheKey: string; expiresAt: number }[]> {
+  const rows = await db.images.toArray();
+  return rows.map((r) => ({ cacheKey: r.cacheKey, expiresAt: r.expiresAt }));
+}
+
+/**
  * Retrieve a cached image. Returns null if not found or expired.
  */
 export async function getImage(
