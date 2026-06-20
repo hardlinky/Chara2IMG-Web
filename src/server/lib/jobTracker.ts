@@ -6,7 +6,8 @@ import {
   normalizeRunpodStatus,
   toTerminalReason,
   type JobStatus,
-} from "../../shared/contracts/jobs";
+  JOB_IMAGE_TTL_MS,
+} from "../../shared/contracts/jobs.js";
 import { extractRunpodOutputImages } from "../../shared/outputImage";
 import { logServerError, logServerWarning } from "./logger";
 
@@ -171,6 +172,10 @@ async function pollTrackedJob(job: TrackedJob): Promise<PollResult> {
     const terminalReason = toTerminalReason(rawStatus);
     const completedAt =
       isTerminal && status === "COMPLETED" ? new Date().toISOString() : undefined;
+    const expiresAt =
+      completedAt !== undefined
+        ? new Date(Date.now() + JOB_IMAGE_TTL_MS).toISOString()
+        : undefined;
 
     const jobUpdates: Parameters<typeof updateJob>[1] = { status, isTerminal };
     if (terminalReason !== undefined) {
@@ -179,6 +184,10 @@ async function pollTrackedJob(job: TrackedJob): Promise<PollResult> {
 
     if (completedAt !== undefined) {
       jobUpdates.completedAt = completedAt;
+    }
+
+    if (expiresAt !== undefined) {
+      jobUpdates.expiresAt = expiresAt;
     }
 
     await updateJob(job.jobId, jobUpdates);
