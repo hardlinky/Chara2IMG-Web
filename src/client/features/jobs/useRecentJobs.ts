@@ -1,13 +1,13 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RecentJobRecord } from "../../../shared/contracts/jobs";
 import { cancelViaProxy } from "../../lib/api/runpodProxyClient";
-import { listJobs, deleteJob } from "../../lib/api/jobsClient";
+import { listJobs, deleteJob, pinImage, unpinImage } from "../../lib/api/jobsClient";
 import { getRecentJob } from "../../lib/recentJobsStorage";
 import { submitRunAndPersistRecentJob } from "../../lib/jobSubmission";
 import { projectRecentJobOutputClusters } from "../../lib/jobOutputProjection";
 import { syncClientManifestFromJobs } from "../../lib/clientPinnedManifest";
 import { sanitizeWorkflowForExport } from "../../lib/workflowExport";
-import { pruneExpiredImageCache } from "../../lib/imageCache";
+import { pruneExpiredImageCache, deleteImage } from "../../lib/imageCache";
 import {
   formatSubmittedAtRelative,
   hasJobObservationTimedOut,
@@ -159,6 +159,7 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
   const [page, setPageState] = useState(1);
   const [cancelingJobIds, setCancelingJobIds] = useState<string[]>([]);
   const [deletingJobIds, setDeletingJobIds] = useState<Set<string>>(new Set());
+  const [pinningImageKeys, setPinningImageKeys] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [storageRefreshToken, setStorageRefreshToken] = useState(0);
 
@@ -303,24 +304,63 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
   );
 
   const togglePinnedImage = useCallback(
-    async (jobId: string, outputIndex: number, pinned: boolean): Promise<{ ok: true } | { ok: false; reason: string }> => {
-      setJobs((prev) =>
-        prev.map((j) => {
-          if (j.jobId !== jobId) return j;
-          const pinnedSet = new Set(j.pinnedOutputIndices ?? []);
-          if (pinned) {
-            pinnedSet.add(outputIndex);
-          } else {
-            pinnedSet.delete(outputIndex);
+    async (
+      jobId: string,
+      outputIndex: number,
+      pinned: boolean
+    ): Promise<{ ok: true } | { ok: false; reason: string }> => {
+      const key = `${jobId}:${outputIndex}`;
+
+      // D3: disable button immediately, do NOT flip UI state
+      setPinningImageKeys((prev) => new Set(prev).add(key));
+
+      try {
+        if (pinned) {
+          // PIN action: call server, evict IndexedDB cache, refresh list
+          const result = await pinImage(jobId, outputIndex);
+          if (!result.ok) {
+            return { ok: false, reason: "Pin failed" };
           }
-          return {
-            ...j,
-            pinnedOutputIndices: Array.from(pinnedSet),
-            pinnedAt: pinned ? (j.pinnedAt ?? new Date().toISOString()) : (pinnedSet.size === 0 ? null : j.pinnedAt)
-          };
-        })
-      );
-      return { ok: true };
+          // Evict the cached image so the next render fetches fresh from archive
+          await deleteImage(`/api/jobs/${jobId}/images/${outputIndex}`);
+        } else {
+          // UNPIN action: call server, refresh list
+          const result = await unpinImage(jobId, outputIndex);
+          if (!result.ok) {
+            return { ok: false, reason: "Unpin failed" };
+          }
+          // Update local imageUnarchiveExpiries so projection can show countdown immediately
+          setJobs((prev) =>
+            prev.map((j) => {
+              if (j.jobId !== jobId) return j;
+              return {
+                ...j,
+                imageUnarchiveExpiries: {
+                  ...(j.imageUnarchiveExpiries ?? {}),
+                  [String(outputIndex)]: result.unarchiveExpiresAt,
+                },
+                pinnedOutputIndices: (j.pinnedOutputIndices ?? []).filter((i) => i !== outputIndex),
+              };
+            })
+          );
+        }
+
+        // Refresh from server to get authoritative state
+        if (fetchJobsRef.current) {
+          await fetchJobsRef.current();
+        }
+
+        return { ok: true };
+      } catch {
+        return { ok: false, reason: "Request failed" };
+      } finally {
+        // Always clear loading state — on success AND failure
+        setPinningImageKeys((prev) => {
+          const next = new Set(prev);
+          next.delete(key);
+          return next;
+        });
+      }
     },
     []
   );
@@ -396,6 +436,7 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
     warningJobIds: [] as string[],
     cancelingJobIds,
     deletingJobIds,
+    pinningImageKeys,
     isInitialLoading,
     isPolling: isInitialLoading,
     error,
