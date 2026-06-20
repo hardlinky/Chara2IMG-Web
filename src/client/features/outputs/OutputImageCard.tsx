@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import type { MouseEventHandler, ReactNode, SyntheticEvent } from "react";
 import type { RecentJobOutputImage } from "../../../shared/contracts/jobs";
+import { JOB_IMAGE_TTL_MS } from "../../../shared/contracts/jobs";
+import { getImage, storeImage } from "../../lib/imageCache";
 
 function isJobApiImageUrl(value: string): boolean {
   return value.startsWith("/api/jobs/");
@@ -114,22 +116,68 @@ export function OutputImageCard({
   const isUrlBased = isJobApiImageUrl(image.dataUrl);
   const [isLoading, setIsLoading] = useState(isUrlBased);
   const [isAuthError, setIsAuthError] = useState(false);
+  const [resolvedSrc, setResolvedSrc] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isUrlBased) return;
     setIsLoading(true);
     setIsAuthError(false);
+    setResolvedSrc(null);
     let cancelled = false;
-    fetch(image.dataUrl, { credentials: "include", method: "HEAD" })
-      .then((res) => {
-        if (!cancelled && (res.status === 401 || res.status === 403)) {
+
+    (async () => {
+      // 1. Check cache first
+      const cached = await getImage(image.dataUrl);
+      if (cached && !cancelled) {
+        setResolvedSrc(cached.dataUrl);
+        setIsLoading(false);
+        return;
+      }
+
+      // 2. Cache miss — fetch from server silently
+      try {
+        const res = await fetch(image.dataUrl, { credentials: "include" });
+        if (cancelled) return;
+        if (res.status === 401 || res.status === 403) {
           setIsAuthError(true);
           setIsLoading(false);
+          return;
         }
-      })
-      .catch(() => { /* network error — ignore, img onerror handles it */ });
+        if (!res.ok) {
+          setImgBroken(true);
+          setIsLoading(false);
+          return;
+        }
+        const blob = await res.blob();
+        if (cancelled) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (cancelled) return;
+          const dataUrl = reader.result as string;
+          const mimeType = blob.type || "image/png";
+          if (image.cacheExpiresAt) {
+            void storeImage(image.dataUrl, dataUrl, mimeType, image.cacheExpiresAt);
+          }
+          setResolvedSrc(dataUrl);
+          setIsLoading(false);
+        };
+        reader.onerror = () => {
+          if (!cancelled) {
+            setImgBroken(true);
+            setIsLoading(false);
+          }
+        };
+        reader.readAsDataURL(blob);
+      } catch {
+        if (!cancelled) {
+          setImgBroken(true);
+          setIsLoading(false);
+        }
+      }
+    })();
+
     return () => { cancelled = true; };
-  }, [image.dataUrl, isUrlBased]);
+  }, [image.dataUrl, image.cacheExpiresAt, isUrlBased]);
 
   return (
     <div className={`outputs-image-tile-wrapper ${maxVisible ? "" : "outputs-image-tile-hidden"}`.trim()}>
@@ -143,7 +191,7 @@ export function OutputImageCard({
             <>
               {isLoading && isUrlBased ? <div className="outputs-image-loading" aria-label="Loading image" /> : null}
               <img
-                src={image.dataUrl}
+                src={isUrlBased ? (resolvedSrc ?? "") : image.dataUrl}
                 alt={`${displayPrefix} ${imageLabel}`}
                 loading="lazy"
                 onLoad={(e) => { setIsLoading(false); onImageLoad?.(e); }}
@@ -228,6 +276,21 @@ export function OutputImageCard({
         </span>
         {badge ? <span className="outputs-image-source-chip outputs-image-counter-chip">{badge}</span> : null}
       </div>
+      {image.cacheExpiresAt && !isArchived ? (
+        <div className="outputs-image-expiry-row">
+          <div
+            className="outputs-image-expiry-bar"
+            style={{
+              width: `${Math.max(0, Math.min(100, ((image.cacheExpiresAt - Date.now()) / JOB_IMAGE_TTL_MS) * 100))}%`,
+            }}
+            aria-label="Image expiry"
+            role="progressbar"
+            aria-valuenow={Math.max(0, Math.round(((image.cacheExpiresAt - Date.now()) / JOB_IMAGE_TTL_MS) * 100))}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          />
+        </div>
+      ) : null}
 
     </div>
   );
