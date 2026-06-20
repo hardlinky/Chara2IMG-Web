@@ -11,7 +11,7 @@ import { registerSystemRoutes } from "./routes/system";
 import { applySecurityMiddleware } from "./middleware/security";
 import { logAdminPasskey } from "./security/adminPasskey";
 import { logServerError } from "./lib/logger";
-import { ensureJobStoreDirs } from "./lib/jobStore";
+import { ensureJobStoreDirs, purgeExpiredJobs } from "./lib/jobStore";
 
 const CLIENT_DIST_ROOT = "./dist/client";
 
@@ -79,6 +79,11 @@ if (isMainModule) {
 
   void (async () => {
     await ensureJobStoreDirs();
+    setInterval(() => {
+      void purgeExpiredJobs().catch((err) => {
+        logServerError("Purge timer error", err);
+      });
+    }, 10 * 60 * 1000); // every 10 minutes — no startup purge per design
     serve({
       fetch: app.fetch,
       port
