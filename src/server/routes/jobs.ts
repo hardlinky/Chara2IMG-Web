@@ -36,6 +36,46 @@ export function registerJobsRoutes(app: Hono): void {
     }
   });
 
+  app.get("/api/jobs/:jobId/images/:index", async (c) => {
+    const jobId = c.req.param("jobId");
+    const indexStr = c.req.param("index");
+    const index = parseInt(indexStr, 10);
+    if (!Number.isFinite(index) || index < 0) {
+      return c.json({ ok: false, error: "Invalid index" }, 400);
+    }
+
+    const job = await readJob(jobId);
+    if (!job) {
+      return c.json({ ok: false, error: "Not found" }, 404);
+    }
+
+    const base = join(getJobTmpDir(), "jobs", jobId);
+    const candidates = [
+      { ext: "png", mime: "image/png" },
+      { ext: "jpg", mime: "image/jpeg" },
+      { ext: "webp", mime: "image/webp" },
+    ] as const;
+
+    for (const { ext, mime } of candidates) {
+      const filePath = join(base, `${job.displayName}-${index}.${ext}`);
+      try {
+        const data = await readFile(filePath);
+        return new Response(data, {
+          headers: {
+            "Content-Type": mime,
+            "Content-Disposition": `attachment; filename="${job.displayName}-${index}.${ext}"`,
+            "Cache-Control": "private, max-age=3600",
+          },
+        });
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
+        // try next extension
+      }
+    }
+
+    return c.json({ ok: false, error: "Not found" }, 404);
+  });
+
   app.delete("/api/jobs/:jobId", async (c) => {
     const jobId = c.req.param("jobId");
     await deleteJob(jobId);
