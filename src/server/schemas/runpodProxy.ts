@@ -8,7 +8,14 @@ const commonSchema = {
 export const runRequestSchema = z
   .object({
     ...commonSchema,
-    input: z.record(z.string(), z.unknown())
+    input: z.record(z.string(), z.unknown()),
+    meta: z
+      .object({
+        workflowFileName: z.string().max(256).optional(),
+        draftValues: z.record(z.string(), z.unknown()).optional(),
+        templateFingerprint: z.string().max(128).optional(),
+      })
+      .optional(),
   })
   .strict();
 

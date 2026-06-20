@@ -2,6 +2,11 @@ export type RunpodRunPayload = {
   endpointId: string;
   apiKey: string;
   input: Record<string, unknown>;
+  meta?: {
+    workflowFileName?: string;
+    draftValues?: Record<string, unknown>;
+    templateFingerprint?: string;
+  };
 };
 
 export type RunpodRunResponse = {

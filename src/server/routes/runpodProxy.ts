@@ -3,9 +3,10 @@ import { requireInvitedSession } from "../middleware/session";
 import { cancelRequestSchema, purgeQueueRequestSchema, retryRequestSchema, runRequestSchema, statusBatchRequestSchema, statusRequestSchema } from "../schemas/runpodProxy";
 import { forwardRunpodRequest } from "../lib/runpodClient";
 import { trackJob, pollJobNow } from "../lib/jobTracker";
-import { readJob, updateJob } from "../lib/jobStore";
+import { createJob, readJob, updateJob } from "../lib/jobStore";
 import { redactSecrets } from "../lib/redaction";
 import { isTerminalRunpodStatus, normalizeRunpodStatus, toTerminalReason, type JobStatus } from "../../shared/contracts/jobs";
+import { formatJobDisplayName } from "../../shared/jobDisplay";
 import { logServerError, logServerWarning } from "../lib/logger";
 
 function resolveRunpodApiKey(requestApiKey: string): string {
@@ -63,7 +64,30 @@ export function registerRunpodProxyRoutes(app: Hono): void {
 
           if (jobId) {
             const resolvedApiKey = resolveRunpodApiKey(parsed.data.apiKey);
-            void trackJob(parsed.data.endpointId, jobId, resolvedApiKey);
+            const meta = parsed.data.meta;
+            const now = new Date().toISOString();
+            void createJob(
+              {
+                jobId,
+                displayName: formatJobDisplayName(jobId),
+                endpointId: parsed.data.endpointId,
+                workflowFileName: meta?.workflowFileName ?? null,
+                submittedAt: now,
+                completedAt: null,
+                expiresAt: null,
+                status: "IN_QUEUE" as JobStatus,
+                isTerminal: false,
+                imageCount: 0,
+                lastError: null,
+              },
+              {
+                draftValues: (meta?.draftValues ?? {}) as import("../../shared/contracts/inputs").DynamicInputDraftValues,
+                submittedInput: parsed.data.input,
+              },
+            ).then(() => trackJob(parsed.data.endpointId, jobId, resolvedApiKey)).catch((err: unknown) => {
+              logServerWarning("Failed to persist initial job record", err, { jobId });
+              void trackJob(parsed.data.endpointId, jobId, resolvedApiKey);
+            });
           }
         } catch (error) {
           logServerWarning("Runpod run response was not JSON", error, {

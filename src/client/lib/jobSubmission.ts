@@ -75,7 +75,12 @@ export async function submitRunAndPersistRecentJob(args: {
   const response = await submitRun({
     endpointId: args.endpointId,
     apiKey: args.apiKey,
-    input: args.submittedInput
+    input: args.submittedInput,
+    meta: {
+      workflowFileName: args.snapshot.workflowFileName,
+      draftValues: args.snapshot.draftValues as Record<string, unknown>,
+      templateFingerprint: args.snapshot.templateFingerprint,
+    },
   });
 
   return response;
