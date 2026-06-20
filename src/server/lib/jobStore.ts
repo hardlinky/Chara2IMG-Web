@@ -8,6 +8,7 @@ import {
   type JobRecord,
 } from "../../shared/contracts/jobs.js";
 import { formatJobDisplayName } from "../../shared/jobDisplay.js";
+import { logServerError } from "./logger.js";
 
 // ─── Directory resolution ─────────────────────────────────────────────────────
 
@@ -128,28 +129,20 @@ export async function archiveJob(jobId: string): Promise<boolean> {
 
 export async function purgeExpiredJobs(): Promise<string[]> {
   const now = new Date();
-  const oneDayMs = 24 * 60 * 60 * 1000;
   const jobs = await listJobs();
-  const expired = jobs.filter((r) => r.expiresAt !== null && new Date(r.expiresAt) < now);
+  const toDelete = jobs.filter(
+    (r) => r.expiresAt !== null && new Date(r.expiresAt) < now && !r.isArchived
+  );
 
   const deleted: string[] = [];
 
   await Promise.all(
-    expired.map(async (record) => {
-      const archivePath = join(JOB_ARCHIVE_BASE, "jobs", record.jobId);
-      let archiveExists = false;
+    toDelete.map(async (record) => {
       try {
-        await stat(archivePath);
-        archiveExists = true;
-      } catch {
-        // ENOENT — no archive
-      }
-
-      const expiredLongAgo = now.getTime() - new Date(record.expiresAt!).getTime() > oneDayMs;
-
-      if (archiveExists || expiredLongAgo) {
         await deleteJob(record.jobId);
         deleted.push(record.jobId);
+      } catch (err) {
+        logServerError("Failed to purge expired job directory", err, { jobId: record.jobId });
       }
     }),
   );
