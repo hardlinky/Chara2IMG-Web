@@ -603,3 +603,110 @@
     display: none;
   }
 }
+
+/* Reconciliation panel (admin) */
+.reconcile-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.reconcile-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.reconcile-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.reconcile-list {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.reconcile-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.reconcile-grid--head .reconcile-col-head {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  padding-bottom: var(--space-1);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.reconcile-row {
+  align-items: center;
+  font-size: var(--font-size-xs);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2);
+  background: rgba(18, 23, 28, 0.5);
+}
+
+.reconcile-row--mismatch {
+  border-left: 3px solid var(--color-accent-primary);
+  background: rgba(199, 116, 61, 0.1);
+}
+
+.reconcile-cell {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.reconcile-name {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.reconcile-index {
+  color: var(--color-text-muted);
+  font-weight: 400;
+}
+
+.reconcile-badges {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+}
+
+.reconcile-badge {
+  border-radius: 999px;
+  padding: 0.05rem 0.4rem;
+  font-size: var(--font-size-xs);
+  background: var(--color-surface-elevated);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border-subtle);
+}
+
+.reconcile-ttl {
+  color: var(--color-text-muted);
+}
+
+.reconcile-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+.reconcile-empty {
+  color: var(--color-text-muted);
+  font-style: italic;
+}
