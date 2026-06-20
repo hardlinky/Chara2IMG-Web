@@ -1,5 +1,6 @@
 import type { Hono } from "hono";
 import { clearAdminSessionCookie, hasAdminSession, issueAdminSessionCookie, requireInvitedSession } from "../middleware/session";
+import { deleteJobImage, listManifestImages } from "../lib/jobStore";
 import { verifyAdminKeyRequestSchema } from "../schemas/admin";
 import { getAdminPasskey } from "../security/adminPasskey";
 
@@ -31,5 +32,25 @@ export function registerAdminRoutes(app: Hono): void {
   app.post("/api/admin/logout", (c) => {
     clearAdminSessionCookie(c);
     return c.json({ ok: true, admin: false });
+  });
+
+  app.get("/api/admin/manifest", async (c) => {
+    const admin = await hasAdminSession(c);
+    if (!admin) return c.json({ ok: false, error: "Forbidden" }, 403);
+
+    return c.json({ ok: true, jobs: await listManifestImages() });
+  });
+
+  app.delete("/api/admin/jobs/:jobId/images/:index", async (c) => {
+    const admin = await hasAdminSession(c);
+    if (!admin) return c.json({ ok: false, error: "Forbidden" }, 403);
+
+    const index = Number.parseInt(c.req.param("index"), 10);
+    if (!Number.isFinite(index) || index < 0) {
+      return c.json({ ok: false, error: "Invalid index" }, 400);
+    }
+
+    const removed = await deleteJobImage(c.req.param("jobId"), index);
+    return c.json({ ok: removed });
   });
 }
