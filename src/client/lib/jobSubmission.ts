@@ -1,7 +1,6 @@
-import type { RecentJobRecord, RecentJobSubmissionInput } from "../../shared/contracts/jobs";
-import { isActiveRunpodStatus, isTerminalRunpodStatus, normalizeRunpodStatus, toTerminalReason, type RecentJobProvenance } from "../../shared/contracts/jobs";
+import type { RecentJobRecord } from "../../shared/contracts/jobs";
+import { isActiveRunpodStatus, isTerminalRunpodStatus, normalizeRunpodStatus, toTerminalReason } from "../../shared/contracts/jobs";
 import { runViaProxy, type RunpodRunResponse } from "./api/runpodProxyClient";
-import { upsertRecentJob } from "./api/recentJobsClient";
 import type { DynamicInputDraftValues } from "../../shared/contracts/inputs";
 
 export type RunSubmissionSnapshot = {
@@ -13,7 +12,6 @@ export type RunSubmissionSnapshot = {
 
 export type RunSubmissionDependencies = {
   submitRun?: typeof runViaProxy;
-  saveRecentJob?: typeof upsertRecentJob;
 };
 
 function toPlainObject(value: unknown): Record<string, unknown> | null {
@@ -73,7 +71,6 @@ export async function submitRunAndPersistRecentJob(args: {
   dependencies?: RunSubmissionDependencies;
 }): Promise<RunpodRunResponse> {
   const submitRun = args.dependencies?.submitRun ?? runViaProxy;
-  const saveRecentJob = args.dependencies?.saveRecentJob ?? upsertRecentJob;
 
   const response = await submitRun({
     endpointId: args.endpointId,
@@ -81,22 +78,6 @@ export async function submitRunAndPersistRecentJob(args: {
     input: args.submittedInput
   });
 
-  const jobId = extractJobId(response);
-  const status = extractStatus(response);
-
-  const recentJobInput: RecentJobSubmissionInput = {
-    jobId,
-    endpointId: args.endpointId,
-    templateFingerprint: args.snapshot.templateFingerprint,
-    workflowFileName: args.snapshot.workflowFileName,
-    draftValues: args.snapshot.draftValues,
-    submittedInput: args.snapshot.submittedInput,
-    lifecycle: buildLifecycleSnapshot(status),
-    lastResponse: response,
-    lastError: null
-  };
-
-  await saveRecentJob(recentJobInput);
   return response;
 }
 
