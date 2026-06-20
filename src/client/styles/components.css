@@ -274,3 +274,19 @@ button:focus-visible {
   line-height: 1;
   white-space: nowrap;
 }
+
+/* -- Image expiry bar --------------------------------------------------- */
+.outputs-image-expiry-row {
+  width: 100%;
+  height: 3px;
+  background: var(--color-surface-elevated, #242c34);
+  border-radius: 0 0 4px 4px;
+  overflow: hidden;
+}
+
+.outputs-image-expiry-bar {
+  height: 100%;
+  background: var(--color-accent-primary, #c7743d);
+  border-radius: 0 0 4px 4px;
+  /* Width is set inline per card -- no CSS transition needed */
+}
