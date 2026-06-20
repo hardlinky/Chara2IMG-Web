@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { readClientManifest, type ClientManifestEntry } from "../../lib/clientPinnedManifest";
 import { fetchMyServerManifestEntries, backupPinnedImageViaProxy, type ServerManifestEntry } from "../../lib/api/pinnedImageClient";
-import { setRecentJobOutputPinned } from "../../lib/api/recentJobsClient";
+import { setRecentJobOutputPinned } from "../../lib/recentJobsStorage";
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;

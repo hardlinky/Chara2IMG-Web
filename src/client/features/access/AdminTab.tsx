@@ -13,7 +13,7 @@ import {
   rebuildPinnedManifestViaProxy,
   type PinnedImageClientUsage
 } from "../../lib/api/pinnedImageClient";
-import { listVisibleRecentJobs, removeRecentJobOutputImage as removeRecentJobOutputImageFromStorage, getRecentJob, restorePinsFromManifest } from "../../lib/api/recentJobsClient";
+import { listVisibleRecentJobs, removeRecentJobOutputImage as removeRecentJobOutputImageFromStorage, getRecentJob } from "../../lib/recentJobsStorage";
 import { extractRunpodOutputImages } from "../../lib/runpodOutputImage";
 import { PinnedManifestPanel } from "./PinnedManifestPanel";
 
@@ -466,8 +466,8 @@ export function AdminTab({ enabled }: AdminTabProps) {
               setStatus("Restoring pins…");
               setLoading(true);
               try {
-                const updated = await restorePinsFromManifest();
-                setStatus(updated > 0 ? `Restored pins on ${updated} job(s). Reload to see changes.` : "No pins needed restoring.");
+                // restorePinsFromManifest removed — server is now source of truth
+                setStatus("Pin restoration is no longer needed — server is now the source of truth.");
               } catch {
                 setStatus("Failed to restore pins.");
               } finally {

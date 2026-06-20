@@ -1,6 +1,6 @@
 import { ProxyRequestError } from "./runpodProxyClient";
 import type { RecentJobRecord } from "../../../shared/contracts/jobs";
-import { listRecentJobs } from "./recentJobsClient";
+import { listJobs } from "./jobsClient";
 import { extractRunpodOutputImages } from "../runpodOutputImage";
 import { sanitizeWorkflowForExport } from "../workflowExport";
 
@@ -420,7 +420,7 @@ function buildPinnedWorkflowMetadata(job: RecentJobRecord): {
 }
 
 async function collectPinnedArchivePayload(): Promise<PinnedArchivePayload> {
-  const jobs = await listRecentJobs();
+  const jobs = await listJobs();
   const transientPinnedItems: TransientPinnedArchiveItem[] = [];
   const transientWorkflowsByFileName = new Map<string, TransientPinnedArchiveWorkflow>();
   const archivedPinnedFileNames = new Set<string>();
