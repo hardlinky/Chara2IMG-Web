@@ -1,4 +1,4 @@
-// @vitest-environment jsdom
+﻿// @vitest-environment jsdom
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
@@ -34,6 +34,10 @@ vi.mock("../../src/client/lib/api/runpodProxyClient", () => ({
 vi.mock("../../src/client/lib/clientPinnedManifest", () => ({
   syncClientManifestFromJobs: vi.fn(),
   getClientManifest: vi.fn(() => ({ pinnedJobs: [] })),
+}));
+
+vi.mock("../../src/client/lib/imageCache", () => ({
+  pruneExpiredImageCache: vi.fn().mockResolvedValue(undefined),
 }));
 
 function createJob(jobId: string, status: string) {
