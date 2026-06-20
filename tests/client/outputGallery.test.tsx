@@ -1,5 +1,21 @@
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
+
+beforeAll(() => {
+  Object.defineProperty(window, "matchMedia", {
+    writable: true,
+    value: (query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    }),
+  });
+});
 import { formatOutputJobId } from "../../src/client/features/outputs/formatOutputJobId";
 import { OutputsTab, resolveSelectedJobCluster } from "../../src/client/features/outputs/OutputsTab";
 import type { RecentJobOutputCluster } from "../../src/shared/contracts/jobs";
