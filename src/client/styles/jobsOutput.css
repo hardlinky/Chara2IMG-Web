@@ -510,3 +510,19 @@
     width: 100%;
   }
 }
+
+/* Decision A: pin button hidden unless hovered (unpinned) or always visible (pinned) */
+.outputs-image-tile-wrapper:not(:hover) .outputs-image-pin-btn:not(.is-active) {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.outputs-image-pin-btn {
+  transition: opacity 0.15s ease;
+}
+
+/* Decision D3: loading state for pin button */
+.outputs-image-pin-btn.is-loading {
+  opacity: 0.5;
+  cursor: wait;
+}

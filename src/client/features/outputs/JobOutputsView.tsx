@@ -15,6 +15,7 @@ type JobOutputsViewProps = {
   onExportWorkflow?: () => void;
   onTogglePinnedImage?: (outputIndex: number, pinned: boolean) => void;
   canPinMore?: boolean;
+  pinningOutputIndices?: Set<number>;
 };
 
 const PAGE_SIZE = 24;
@@ -46,7 +47,7 @@ function toRelativeTimestamp(isoValue: string | null): string {
   return `${deltaDays}d ago`;
 }
 
-export function JobOutputsView({ cluster, onBack, onPreviousJob, onNextJob, onRerun, onLoadInputs, onRemoveImage, onRemoveAllOutputs, onExportWorkflow, onTogglePinnedImage, canPinMore = true }: JobOutputsViewProps) {
+export function JobOutputsView({ cluster, onBack, onPreviousJob, onNextJob, onRerun, onLoadInputs, onRemoveImage, onRemoveAllOutputs, onExportWorkflow, onTogglePinnedImage, canPinMore = true, pinningOutputIndices }: JobOutputsViewProps) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const displayJobId = formatOutputJobId(cluster.jobId);
 
@@ -103,6 +104,7 @@ export function JobOutputsView({ cluster, onBack, onPreviousJob, onNextJob, onRe
         onExportWorkflow={onExportWorkflow}
         onLoadInputs={onLoadInputs}
         canPinMore={canPinMore}
+        pinningOutputIndices={pinningOutputIndices}
       />
 
       {visibleImages.length < cluster.outputs.length ? (

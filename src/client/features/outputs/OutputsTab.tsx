@@ -15,10 +15,6 @@ const GALLERY_PAGE_SIZE = 10;
 const OUTPUTS_PIN_FILTER_STORAGE_KEY = "chara2imgOutputsPinFilter";
 const OUTPUTS_VIEW_MODE_STORAGE_KEY = "chara2imgOutputsViewMode";
 
-function isServerBackedImageUrl(value: string): boolean {
-  return value.startsWith("/api/pinned-images/") || /\/api\/pinned-images\//.test(value);
-}
-
 function getStoredOutputsPinFilter(): OutputsPinFilter {
   if (typeof window === "undefined") {
     return "all";
@@ -47,6 +43,7 @@ type OutputsTabProps = {
   onToggleOutputPinned?: (jobId: string, outputIndex: number, pinned: boolean) => void;
   canPinMore?: boolean;
   onLoadOutputCluster?: (jobId: string) => Promise<RecentJobOutputCluster | null>;
+  pinningImageKeys?: Set<string>;
 };
 
 function getGalleryClassName(density: (typeof OUTPUT_DENSITIES)[number]): string {
@@ -71,7 +68,7 @@ export function resolveSelectedJobCluster(
   return hydratedJobClusters[selectedJobId] ?? gallerySelectedCluster;
 }
 
-export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs, onRemoveOutputImage, onExportWorkflow, onToggleOutputPinned, canPinMore = true, onLoadOutputCluster }: OutputsTabProps) {
+export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs, onRemoveOutputImage, onExportWorkflow, onToggleOutputPinned, canPinMore = true, onLoadOutputCluster, pinningImageKeys }: OutputsTabProps) {
   const gallery = useOutputGallery(clusters);
   const [galleryMode, setGalleryMode] = useState<OutputsGalleryMode>(() => getStoredOutputsViewMode());
   const [pinFilter, setPinFilter] = useState<OutputsPinFilter>(() => getStoredOutputsPinFilter());
@@ -124,11 +121,11 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
           }
 
           if (pinFilter === "cached") {
-            return !isServerBackedImageUrl(output.dataUrl);
+            return output.cacheExpiresAt !== undefined && !output.isPinned;
           }
 
           if (pinFilter === "archived") {
-            return isServerBackedImageUrl(output.dataUrl);
+            return output.isPinned && !output.cacheExpiresAt;
           }
 
           return true;
@@ -258,6 +255,7 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
         onExportWorkflow={onExportWorkflow ? () => onExportWorkflow(selectedJobCluster.jobId) : undefined}
         onTogglePinnedImage={onToggleOutputPinned ? (outputIndex, pinned) => onToggleOutputPinned(selectedJobCluster.jobId, outputIndex, pinned) : undefined}
         canPinMore={canPinMore}
+        pinningOutputIndices={pinningImageKeys ? new Set([...pinningImageKeys].filter((k) => k.startsWith(`${selectedJobCluster.jobId}:`)).map((k) => Number(k.split(":")[1]))) : undefined}
       />
     );
   }
@@ -354,6 +352,7 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
                         onRemoveImage={onRemoveOutputImage ? () => onRemoveOutputImage(cluster.jobId, cluster.representative.outputIndex) : undefined}
                         onTogglePin={onToggleOutputPinned ? () => onToggleOutputPinned(cluster.jobId, cluster.representative.outputIndex, !cluster.representative.isPinned) : undefined}
                         canPinMore={canPinMore}
+                        isPinning={pinningImageKeys?.has(`${cluster.jobId}:${cluster.representative.outputIndex}`) ?? false}
                         badge={`${cluster.outputCount} images`}
                       />
                     </div>
@@ -414,6 +413,7 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
                         onRemoveImage={onRemoveOutputImage ? () => onRemoveOutputImage(outputImage.jobId, outputImage.outputIndex) : undefined}
                         onTogglePin={onToggleOutputPinned ? () => onToggleOutputPinned(outputImage.jobId, outputImage.outputIndex, !outputImage.isPinned) : undefined}
                         canPinMore={canPinMore}
+                        isPinning={pinningImageKeys?.has(`${outputImage.jobId}:${outputImage.outputIndex}`) ?? false}
                       />
                     </div>
                   )}

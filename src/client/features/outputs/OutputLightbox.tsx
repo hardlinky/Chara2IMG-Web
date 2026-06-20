@@ -14,6 +14,7 @@ type OutputLightboxProps = {
   onExportWorkflow?: () => void;
   onLoadInputs?: () => void;
   canPinMore?: boolean;
+  pinningOutputIndices?: Set<number>;
 };
 
 export function OutputLightbox({
@@ -25,7 +26,8 @@ export function OutputLightbox({
   onTogglePinnedImage,
   onExportWorkflow,
   onLoadInputs,
-  canPinMore = true
+  canPinMore = true,
+  pinningOutputIndices
 }: OutputLightboxProps) {
   const [imageDimensions, setImageDimensions] = useState<Record<number, { width: number; height: number }>>({});
   const visibleImages = images.slice(0, maxVisible);
@@ -95,6 +97,7 @@ export function OutputLightbox({
                     onExportWorkflow={onExportWorkflow}
                     onLoadInputs={onLoadInputs}
                     canPinMore={canPinMore}
+                    isPinning={pinningOutputIndices?.has(image.outputIndex) ?? false}
                   />
                 </div>
               )}

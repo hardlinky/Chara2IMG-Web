@@ -612,6 +612,7 @@ export function App() {
               }
             }}
             canPinMore={recentJobs.canPinMoreJobs}
+            pinningImageKeys={recentJobs.pinningImageKeys}
           />
         ),
         admin: (

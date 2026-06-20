@@ -21,13 +21,10 @@ type OutputImageCardProps = {
   onLoadInputs?: () => void;
   onViewJobOutputs?: () => void;
   canPinMore?: boolean;
+  isPinning?: boolean;
   maxVisible?: boolean;
   badge?: ReactNode;
 };
-
-function isServerBackedImageUrl(value: string): boolean {
-  return value.startsWith("/api/pinned-images/") || /\/api\/pinned-images\//.test(value);
-}
 
 function triggerDownload(image: RecentJobOutputImage, imagePrefix: string, imageLabel: string): void {
   const link = document.createElement("a");
@@ -106,11 +103,12 @@ export function OutputImageCard({
   onLoadInputs,
   onViewJobOutputs,
   canPinMore = true,
+  isPinning = false,
   maxVisible = true,
   badge
 }: OutputImageCardProps) {
   const showBottomActions = Boolean(onExportWorkflow || onLoadInputs || onViewJobOutputs);
-  const isArchived = isServerBackedImageUrl(image.dataUrl);
+  const isArchived = image.isPinned && !image.cacheExpiresAt;
   const storageSourceLabel = isArchived ? "Archived" : "Cached";
   const [imgBroken, setImgBroken] = useState(false);
   const isUrlBased = isJobApiImageUrl(image.dataUrl);
@@ -126,15 +124,17 @@ export function OutputImageCard({
     let cancelled = false;
 
     (async () => {
-      // 1. Check cache first
-      const cached = await getImage(image.dataUrl);
-      if (cached && !cancelled) {
-        setResolvedSrc(cached.dataUrl);
-        setIsLoading(false);
-        return;
+      // 1. Archived images skip IndexedDB cache — always fetch fresh from server
+      if (!isArchived) {
+        const cached = await getImage(image.dataUrl);
+        if (cached && !cancelled) {
+          setResolvedSrc(cached.dataUrl);
+          setIsLoading(false);
+          return;
+        }
       }
 
-      // 2. Cache miss — fetch from server silently
+      // 2. Cache miss (or archived) — fetch from server silently
       try {
         const res = await fetch(image.dataUrl, { credentials: "include" });
         if (cancelled) return;
@@ -177,7 +177,7 @@ export function OutputImageCard({
     })();
 
     return () => { cancelled = true; };
-  }, [image.dataUrl, image.cacheExpiresAt, isUrlBased]);
+  }, [image.dataUrl, image.cacheExpiresAt, image.isPinned, isArchived, isUrlBased]);
 
   return (
     <div className={`outputs-image-tile-wrapper ${maxVisible ? "" : "outputs-image-tile-hidden"}`.trim()}>
@@ -202,13 +202,13 @@ export function OutputImageCard({
         </button>
         <button
           type="button"
-          className={`outputs-image-pin-btn ${image.isPinned ? "is-active" : ""}`.trim()}
+          className={`outputs-image-pin-btn ${image.isPinned ? "is-active" : ""} ${isPinning ? "is-loading" : ""}`.trim()}
           aria-label={image.isPinned ? `Unpin ${displayPrefix} image ${imageLabel}` : `Pin ${displayPrefix} image ${imageLabel}`}
           title={image.isPinned ? `Unpin ${displayPrefix} image ${imageLabel}` : `Pin ${displayPrefix} image ${imageLabel}`}
-          disabled={!onTogglePin || (!image.isPinned && !canPinMore)}
+          disabled={isPinning || !onTogglePin || (!image.isPinned && !canPinMore)}
           onClick={onTogglePin}
         >
-          {image.isPinned ? "📌" : "📍"}
+          {isPinning ? "⏳" : image.isPinned ? "📌" : "📍"}
         </button>
         {showBottomActions ? (
           <div className="outputs-image-bottom-actions" aria-label={`Actions for ${displayPrefix} image ${imageLabel}`}>
