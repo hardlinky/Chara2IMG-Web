@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Hono } from "hono";
 import { requireInvitedSession } from "../middleware/session";
-import { listJobs, readJob, deleteJob, getJobTmpDir } from "../lib/jobStore";
+import { listJobs, readJob, deleteJob, getJobTmpDir, getJobArchiveDir, pinImage, unpinImage } from "../lib/jobStore";
 
 export function registerJobsRoutes(app: Hono): void {
   app.use("/api/jobs/*", requireInvitedSession);
@@ -49,7 +49,9 @@ export function registerJobsRoutes(app: Hono): void {
       return c.json({ ok: false, error: "Not found" }, 404);
     }
 
-    const base = join(getJobTmpDir(), "jobs", jobId);
+    // Pinned images live in archive dir; all others in tmp
+    const isPinned = job.pinnedImageIndices?.includes(index) ?? false;
+    const base = join(isPinned ? getJobArchiveDir() : getJobTmpDir(), "jobs", jobId);
     const candidates = [
       { ext: "png", mime: "image/png" },
       { ext: "jpg", mime: "image/jpeg" },
@@ -74,6 +76,34 @@ export function registerJobsRoutes(app: Hono): void {
     }
 
     return c.json({ ok: false, error: "Not found" }, 404);
+  });
+
+  app.post("/api/jobs/:jobId/images/:index/pin", async (c) => {
+    const jobId = c.req.param("jobId");
+    const index = parseInt(c.req.param("index"), 10);
+    if (!Number.isFinite(index) || index < 0) {
+      return c.json({ ok: false, error: "Invalid index" }, 400);
+    }
+
+    const success = await pinImage(jobId, index);
+    if (!success) {
+      return c.json({ ok: false, error: "Not found" }, 404);
+    }
+    return c.json({ ok: true });
+  });
+
+  app.post("/api/jobs/:jobId/images/:index/unpin", async (c) => {
+    const jobId = c.req.param("jobId");
+    const index = parseInt(c.req.param("index"), 10);
+    if (!Number.isFinite(index) || index < 0) {
+      return c.json({ ok: false, error: "Invalid index" }, 400);
+    }
+
+    const result = await unpinImage(jobId, index);
+    if (!result.ok) {
+      return c.json({ ok: false, error: "Not found" }, 404);
+    }
+    return c.json({ ok: true, unarchiveExpiresAt: result.unarchiveExpiresAt });
   });
 
   app.delete("/api/jobs/:jobId", async (c) => {
