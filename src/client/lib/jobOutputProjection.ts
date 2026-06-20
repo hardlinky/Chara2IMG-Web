@@ -1,4 +1,4 @@
-import type { RecentJobOutputCluster, RecentJobOutputImage, RecentJobRecord } from "../../shared/contracts/jobs";
+import type { JobOutputImageMimeType, RecentJobOutputCluster, RecentJobOutputImage, RecentJobRecord } from "../../shared/contracts/jobs";
 import { extractRunpodOutputImages } from "./runpodOutputImage";
 
 type ProjectionOptions = {
@@ -16,7 +16,7 @@ function getClusterSortTimestamp(job: RecentJobRecord): number {
 }
 
 export function projectJobOutputCluster(job: RecentJobRecord, options: ProjectionOptions = {}): RecentJobOutputCluster | null {
-  if (!isCompletedJob(job) || !job.lastResponse) {
+  if (!isCompletedJob(job)) {
     return null;
   }
 
@@ -24,7 +24,20 @@ export function projectJobOutputCluster(job: RecentJobRecord, options: Projectio
     return null;
   }
 
-  const extractedImages = extractRunpodOutputImages(job.lastResponse);
+  let extractedImages: Array<{ dataUrl: string; mimeType: JobOutputImageMimeType; sourcePath: string }>;
+
+  if (job.lastResponse) {
+    extractedImages = extractRunpodOutputImages(job.lastResponse);
+  } else if ((job.outputImageCount ?? 0) > 0) {
+    extractedImages = Array.from({ length: job.outputImageCount! }, (_, i) => ({
+      dataUrl: `/api/jobs/${job.jobId}/images/${i}`,
+      mimeType: "image/png" as JobOutputImageMimeType,
+      sourcePath: `/api/jobs/${job.jobId}/images/${i}`,
+    }));
+  } else {
+    return null;
+  }
+
   if (extractedImages.length === 0) {
     return null;
   }

@@ -1,6 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { MouseEventHandler, ReactNode, SyntheticEvent } from "react";
 import type { RecentJobOutputImage } from "../../../shared/contracts/jobs";
+
+function isJobApiImageUrl(value: string): boolean {
+  return value.startsWith("/api/jobs/");
+}
 
 type OutputImageCardProps = {
   image: RecentJobOutputImage;
@@ -24,10 +28,14 @@ function isServerBackedImageUrl(value: string): boolean {
 }
 
 function triggerDownload(image: RecentJobOutputImage, imagePrefix: string, imageLabel: string): void {
-  const extension = image.mimeType === "image/jpeg" ? "jpg" : "png";
   const link = document.createElement("a");
   link.href = image.dataUrl;
-  link.download = `${imagePrefix}-image-${imageLabel}.${extension}`;
+  if (isJobApiImageUrl(image.dataUrl)) {
+    link.download = "";
+  } else {
+    const extension = image.mimeType === "image/jpeg" ? "jpg" : "png";
+    link.download = `${imagePrefix}-image-${imageLabel}.${extension}`;
+  }
   link.click();
 }
 
@@ -103,29 +111,57 @@ export function OutputImageCard({
   const isArchived = isServerBackedImageUrl(image.dataUrl);
   const storageSourceLabel = isArchived ? "Archived" : "Cached";
   const [imgBroken, setImgBroken] = useState(false);
+  const isUrlBased = isJobApiImageUrl(image.dataUrl);
+  const [isLoading, setIsLoading] = useState(isUrlBased);
+  const [isAuthError, setIsAuthError] = useState(false);
+
+  useEffect(() => {
+    if (!isUrlBased) return;
+    setIsLoading(true);
+    setIsAuthError(false);
+    let cancelled = false;
+    fetch(image.dataUrl, { credentials: "include", method: "HEAD" })
+      .then((res) => {
+        if (!cancelled && (res.status === 401 || res.status === 403)) {
+          setIsAuthError(true);
+          setIsLoading(false);
+        }
+      })
+      .catch(() => { /* network error — ignore, img onerror handles it */ });
+    return () => { cancelled = true; };
+  }, [image.dataUrl, isUrlBased]);
 
   return (
     <div className={`outputs-image-tile-wrapper ${maxVisible ? "" : "outputs-image-tile-hidden"}`.trim()}>
       <div className="outputs-image-media">
         <button type="button" className="outputs-image-tile" onClick={onOpen} aria-label={`Open ${displayPrefix} image ${imageLabel}`}>
-          {imgBroken ? (
-            <div className="outputs-image-broken" aria-label={`Image ${imageLabel} unavailable`}>⚠ Not available</div>
+          {imgBroken || isAuthError ? (
+            isAuthError
+              ? <div className="outputs-image-error">Session expired — please refresh</div>
+              : <div className="outputs-image-broken" aria-label={`Image ${imageLabel} unavailable`}>⚠ Not available</div>
           ) : (
-            <img src={image.dataUrl} alt={`${displayPrefix} ${imageLabel}`} loading="lazy" onLoad={onImageLoad} onError={() => setImgBroken(true)} />
+            <>
+              {isLoading && isUrlBased ? <div className="outputs-image-loading" aria-label="Loading image" /> : null}
+              <img
+                src={image.dataUrl}
+                alt={`${displayPrefix} ${imageLabel}`}
+                loading="lazy"
+                onLoad={(e) => { setIsLoading(false); onImageLoad?.(e); }}
+                onError={() => setImgBroken(true)}
+              />
+            </>
           )}
         </button>
-        {onTogglePin ? (
-          <button
-            type="button"
-            className={`outputs-image-pin-btn ${image.isPinned ? "is-active" : ""}`.trim()}
-            aria-label={image.isPinned ? `Unpin ${displayPrefix} image ${imageLabel}` : `Pin ${displayPrefix} image ${imageLabel}`}
-            title={image.isPinned ? `Unpin ${displayPrefix} image ${imageLabel}` : `Pin ${displayPrefix} image ${imageLabel}`}
-            disabled={!image.isPinned && !canPinMore}
-            onClick={onTogglePin}
-          >
-            {image.isPinned ? "📌" : "📍"}
-          </button>
-        ) : null}
+        <button
+          type="button"
+          className={`outputs-image-pin-btn ${image.isPinned ? "is-active" : ""}`.trim()}
+          aria-label={image.isPinned ? `Unpin ${displayPrefix} image ${imageLabel}` : `Pin ${displayPrefix} image ${imageLabel}`}
+          title={image.isPinned ? `Unpin ${displayPrefix} image ${imageLabel}` : `Pin ${displayPrefix} image ${imageLabel}`}
+          disabled={!onTogglePin || (!image.isPinned && !canPinMore)}
+          onClick={onTogglePin}
+        >
+          {image.isPinned ? "📌" : "📍"}
+        </button>
         {showBottomActions ? (
           <div className="outputs-image-bottom-actions" aria-label={`Actions for ${displayPrefix} image ${imageLabel}`}>
             <button

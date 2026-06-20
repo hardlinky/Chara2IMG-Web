@@ -1,27 +1,39 @@
+// @vitest-environment jsdom
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi, afterEach } from "vitest";
-import { cancelViaProxy, statusBatchViaProxy, statusViaProxy } from "../../src/client/lib/api/runpodProxyClient";
+import { renderHook, act } from "@testing-library/react";
 import { clearRecentJobs, getRecentJob, listRecentJobs, upsertRecentJob } from "../../src/client/lib/recentJobsStorage";
 import { buildLifecycleSnapshotFromStatus } from "../../src/client/features/jobs/jobStatus";
 import {
-  cancelRecentJob,
   filterJobsByStatus,
   getStoredStatusFilter,
   persistStatusFilter,
-  pollSingleJob,
-  pollRecentJobsOnce,
-  resetStatusBatchPollingSupportForTests,
   removeRecentJobFromVisibleList,
   shouldDeferAdaptiveOffload,
-  rerunRecentJobWithDependencies
+  rerunRecentJobWithDependencies,
+  useRecentJobs,
 } from "../../src/client/features/jobs/useRecentJobs";
+import { listJobs, deleteJob } from "../../src/client/lib/api/jobsClient";
+import type { RecentJobRecord } from "../../src/shared/contracts/jobs";
+
+vi.mock("../../src/client/lib/api/jobsClient", () => ({
+  listJobs: vi.fn(),
+  getJob: vi.fn(),
+  deleteJob: vi.fn(),
+  adaptJobRecord: vi.fn(),
+}));
 
 vi.mock("../../src/client/lib/api/runpodProxyClient", () => ({
   statusViaProxy: vi.fn(),
   statusBatchViaProxy: vi.fn(),
   cancelViaProxy: vi.fn(),
   runViaProxy: vi.fn(),
-  updateAppViaProxy: vi.fn()
+  updateAppViaProxy: vi.fn(),
+}));
+
+vi.mock("../../src/client/lib/clientPinnedManifest", () => ({
+  syncClientManifestFromJobs: vi.fn(),
+  getClientManifest: vi.fn(() => ({ pinnedJobs: [] })),
 }));
 
 function createJob(jobId: string, status: string) {
@@ -42,10 +54,8 @@ function createJob(jobId: string, status: string) {
 describe("useRecentJobs helpers", () => {
   beforeEach(async () => {
     await clearRecentJobs();
-    resetStatusBatchPollingSupportForTests();
-    vi.mocked(cancelViaProxy).mockReset();
-    vi.mocked(statusViaProxy).mockReset();
-    vi.mocked(statusBatchViaProxy).mockReset();
+    vi.mocked(deleteJob).mockReset();
+    vi.mocked(listJobs).mockReset();
     let storedFilter: string | null = null;
     vi.stubGlobal("window", {
       localStorage: {
@@ -67,26 +77,6 @@ describe("useRecentJobs helpers", () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
-  });
-
-  it("cancels queued jobs and persists the cancelled terminal state", async () => {
-    await upsertRecentJob(createJob("job-cancel", "IN_QUEUE"));
-    vi.mocked(cancelViaProxy).mockResolvedValueOnce({ id: "job-cancel", status: "CANCELLED" });
-
-    await cancelRecentJob("job-cancel", { apiKey: "key", endpointId: "endpoint-1" });
-
-    expect(vi.mocked(cancelViaProxy)).toHaveBeenCalledTimes(1);
-    const stored = await getRecentJob("job-cancel");
-    expect(stored?.lifecycle.isTerminal).toBe(true);
-    expect(stored?.lifecycle.terminalReason).toBe("cancelled");
-  });
-
-  it("does not call cancel for terminal jobs", async () => {
-    await upsertRecentJob(createJob("job-complete", "COMPLETED"));
-
-    await cancelRecentJob("job-complete", { apiKey: "key", endpointId: "endpoint-1" });
-
-    expect(vi.mocked(cancelViaProxy)).not.toHaveBeenCalled();
   });
 
   it("defers adaptive output offload for one hour after completion", () => {
@@ -116,12 +106,9 @@ describe("useRecentJobs helpers", () => {
   });
 
   it("deletes jobs when removed from the visible list", async () => {
-    await upsertRecentJob(createJob("job-hide", "IN_PROGRESS"));
-
+    vi.mocked(deleteJob).mockResolvedValueOnce(undefined);
     await removeRecentJobFromVisibleList("job-hide");
-
-    const stored = await getRecentJob("job-hide");
-    expect(stored).toBeNull();
+    expect(vi.mocked(deleteJob)).toHaveBeenCalledWith("job-hide");
   });
 
   it("reruns a prior job as a new submission using the saved payload input", async () => {
@@ -194,141 +181,139 @@ describe("useRecentJobs helpers", () => {
       }
     ], "FAILED").map((job) => job.jobId)).toEqual(["job-b"]);
   });
+});
 
-  it("polls a single IN_PROGRESS job and updates its lifecycle without affecting other jobs", async () => {
-    await upsertRecentJob(createJob("job-poll", "IN_PROGRESS"));
-    await upsertRecentJob(createJob("job-other", "IN_QUEUE"));
-    vi.mocked(statusViaProxy).mockResolvedValueOnce({ id: "job-poll", status: "COMPLETED" });
+describe("useRecentJobs hook", () => {
+  function makeJob(jobId: string, status: string): RecentJobRecord {
+    return {
+      jobId,
+      endpointId: "endpoint-1",
+      submittedAt: "2026-06-01T00:00:00.000Z",
+      hiddenAt: null,
+      pinnedAt: null,
+      lifecycle: {
+        status,
+        isTerminal: ["COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT"].includes(status),
+        terminalReason: undefined,
+        lastCheckedAt: undefined,
+        finishedAt: undefined,
+        warning: null,
+        executionTimeMs: undefined,
+        failureReason: null,
+      },
+      provenance: { templateFingerprint: "", workflowFileName: "wf.json", draftValues: {}, submittedInput: {} },
+      lastResponse: null,
+      lastError: null,
+      outputImageCount: 0,
+      hiddenOutputIndices: [],
+      outputsHidden: false,
+    };
+  }
 
-    const result = await pollSingleJob("job-poll", { apiKey: "key", endpointId: "endpoint-1" });
-
-    expect(vi.mocked(statusViaProxy)).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(statusViaProxy)).toHaveBeenCalledWith(expect.objectContaining({ id: "job-poll" }));
-
-    const polled = result.jobs.find((job) => job.jobId === "job-poll");
-    expect(polled?.lifecycle.status).toBe("COMPLETED");
-    expect(polled?.lifecycle.isTerminal).toBe(true);
-
-    const other = result.jobs.find((job) => job.jobId === "job-other");
-    expect(other?.lifecycle.status).toBe("IN_QUEUE");
-    expect(result.warningJobIds).toHaveLength(0);
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.mocked(listJobs).mockReset();
+    vi.mocked(deleteJob).mockReset();
   });
 
-  it("polls queued aliases and normalizes them when updating lifecycle", async () => {
-    await upsertRecentJob(createJob("job-queued-alias", "queued"));
-    vi.mocked(statusViaProxy).mockResolvedValueOnce({ id: "job-queued-alias", status: "running" });
-
-    const result = await pollSingleJob("job-queued-alias", { apiKey: "key", endpointId: "endpoint-1" });
-
-    expect(vi.mocked(statusViaProxy)).toHaveBeenCalledTimes(1);
-
-    const stored = result.jobs.find((job) => job.jobId === "job-queued-alias");
-    expect(stored?.lifecycle.status).toBe("IN_PROGRESS");
-    expect(stored?.lifecycle.isTerminal).toBe(false);
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
-  it("stores execution duration when status payload includes duration", async () => {
-    await upsertRecentJob(createJob("job-duration", "IN_PROGRESS"));
-    vi.mocked(statusViaProxy).mockResolvedValueOnce({
-      id: "job-duration",
-      status: "COMPLETED",
-      duration: 2.4
+  it("isInitialLoading starts true and becomes false after first poll", async () => {
+    vi.mocked(listJobs).mockResolvedValue([]);
+
+    const { result } = renderHook(() => useRecentJobs());
+    expect(result.current.isInitialLoading).toBe(true);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100);
     });
 
-    const result = await pollSingleJob("job-duration", { apiKey: "key", endpointId: "endpoint-1" });
-    const updated = result.jobs.find((job) => job.jobId === "job-duration");
-
-    expect(updated?.lifecycle.status).toBe("COMPLETED");
-    expect(updated?.lifecycle.executionTimeMs).toBe(2400);
+    expect(result.current.isInitialLoading).toBe(false);
+    expect(vi.mocked(listJobs)).toHaveBeenCalledTimes(1);
   });
 
-  it("adds a warning when the single job poll request fails with a non-404 error", async () => {
-    await upsertRecentJob(createJob("job-warn", "IN_PROGRESS"));
-    vi.mocked(statusViaProxy).mockRejectedValueOnce(new Error("Network error"));
+  it("jobs are populated from listJobs response", async () => {
+    vi.mocked(listJobs).mockResolvedValue([makeJob("job-1", "IN_QUEUE")]);
 
-    const result = await pollSingleJob("job-warn", { apiKey: "key", endpointId: "endpoint-1" });
+    const { result } = renderHook(() => useRecentJobs());
 
-    expect(result.warningJobIds).toContain("job-warn");
-    const stored = await getRecentJob("job-warn");
-    expect(stored?.lifecycle.status).toBe("IN_PROGRESS");
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100);
+    });
+
+    expect(result.current.visibleJobs).toHaveLength(1);
+    expect(result.current.visibleJobs[0]?.jobId).toBe("job-1");
   });
 
-  it("updates queued jobs from nested batch status payloads", async () => {
-    await upsertRecentJob(createJob("job-batch", "IN_QUEUE"));
+  it("re-fetches jobs after 10 seconds", async () => {
+    vi.mocked(listJobs).mockResolvedValue([]);
 
-    vi.mocked(statusBatchViaProxy).mockResolvedValueOnce({
-      items: [
-        {
-          id: "job-batch",
-          ok: true,
-          statusCode: 200,
-          data: {
-            data: {
-              status: "running"
-            }
-          }
-        }
-      ]
+    renderHook(() => useRecentJobs());
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100);
     });
 
-    const result = await pollRecentJobsOnce({ apiKey: "key", endpointId: "endpoint-1" });
+    const callsAfterInit = vi.mocked(listJobs).mock.calls.length;
 
-    expect(vi.mocked(statusBatchViaProxy)).toHaveBeenCalledTimes(1);
-    const updated = result.jobs.find((job) => job.jobId === "job-batch");
-    expect(updated?.lifecycle.status).toBe("IN_PROGRESS");
-    expect(updated?.lifecycle.isTerminal).toBe(false);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+
+    expect(vi.mocked(listJobs).mock.calls.length).toBeGreaterThan(callsAfterInit);
   });
 
-  it("falls back to single-job polling when status-batch returns 404", async () => {
-    await upsertRecentJob(createJob("job-fallback-1", "IN_QUEUE"));
-    await upsertRecentJob(createJob("job-fallback-2", "IN_PROGRESS"));
+  it("delete calls deleteJob and removes job from list", async () => {
+    vi.mocked(listJobs).mockResolvedValue([makeJob("job-del", "COMPLETED")]);
+    vi.mocked(deleteJob).mockResolvedValueOnce(undefined);
 
-    vi.mocked(statusBatchViaProxy).mockRejectedValueOnce({
-      status: 404,
-      message: "Not Found"
+    const { result } = renderHook(() => useRecentJobs());
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100);
     });
 
-    vi.mocked(statusViaProxy).mockImplementation(async (payload) => {
-      if (payload.id === "job-fallback-1") {
-        return { id: "job-fallback-1", status: "IN_PROGRESS" };
-      }
+    expect(result.current.visibleJobs).toHaveLength(1);
 
-      return { id: "job-fallback-2", status: "COMPLETED" };
+    await act(async () => {
+      await result.current.removeVisibleJob("job-del");
     });
 
-    const result = await pollRecentJobsOnce({ apiKey: "key", endpointId: "endpoint-1" });
-
-    expect(vi.mocked(statusBatchViaProxy)).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(statusViaProxy)).toHaveBeenCalledTimes(2);
-    expect(result.warningJobIds).toHaveLength(0);
-
-    const first = result.jobs.find((job) => job.jobId === "job-fallback-1");
-    const second = result.jobs.find((job) => job.jobId === "job-fallback-2");
-    expect(first?.lifecycle.status).toBe("IN_PROGRESS");
-    expect(second?.lifecycle.status).toBe("COMPLETED");
-    expect(second?.lifecycle.isTerminal).toBe(true);
+    expect(vi.mocked(deleteJob)).toHaveBeenCalledWith("job-del");
+    expect(result.current.visibleJobs).toHaveLength(0);
   });
 
-  it("stops retrying status-batch after a 404 capability miss", async () => {
-    await upsertRecentJob(createJob("job-capability", "IN_QUEUE"));
+  it("delete button re-enabled after server error", async () => {
+    vi.mocked(listJobs).mockResolvedValue([makeJob("job-err", "COMPLETED")]);
+    vi.mocked(deleteJob).mockRejectedValueOnce(new Error("server error"));
 
-    vi.mocked(statusBatchViaProxy).mockRejectedValueOnce({
-      status: 404,
-      message: "Not Found"
+    const { result } = renderHook(() => useRecentJobs());
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100);
     });
 
-    vi.mocked(statusViaProxy)
-      .mockResolvedValueOnce({ id: "job-capability", status: "IN_PROGRESS" })
-      .mockResolvedValueOnce({ id: "job-capability", status: "COMPLETED" });
+    await act(async () => {
+      await result.current.removeVisibleJob("job-err").catch(() => undefined);
+    });
 
-    await pollRecentJobsOnce({ apiKey: "key", endpointId: "endpoint-1" });
-    await pollRecentJobsOnce({ apiKey: "key", endpointId: "endpoint-1" });
+    // Job should still be in the list (not removed on error)
+    expect(result.current.visibleJobs).toHaveLength(1);
+    // deletingJobIds should be empty (re-enabled)
+    expect(result.current.deletingJobIds.has("job-err")).toBe(false);
+  });
+});
 
-    expect(vi.mocked(statusBatchViaProxy)).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(statusViaProxy)).toHaveBeenCalledTimes(2);
+describe("removeRecentJobFromVisibleList", () => {
+  beforeEach(() => {
+    vi.mocked(deleteJob).mockReset();
+  });
 
-    const stored = await getRecentJob("job-capability");
-    expect(stored?.lifecycle.status).toBe("COMPLETED");
-    expect(stored?.lifecycle.isTerminal).toBe(true);
+  it("calls deleteJob with the provided jobId", async () => {
+    vi.mocked(deleteJob).mockResolvedValueOnce(undefined);
+    await removeRecentJobFromVisibleList("job-to-delete");
+    expect(vi.mocked(deleteJob)).toHaveBeenCalledWith("job-to-delete");
   });
 });
