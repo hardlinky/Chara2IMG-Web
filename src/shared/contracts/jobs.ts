@@ -75,6 +75,7 @@ export type RecentJobRecord = {
   lastError: string | null;
   hiddenOutputIndices?: number[];
   outputsHidden?: boolean;
+  imageUnarchiveExpiries?: Record<string, string | null>; // mirrors JobRecord field; used by client projection
 };
 
 export type RecentJobSubmissionInput = {
@@ -153,6 +154,8 @@ export type JobRecord = {
   imageCount: number;
   lastError: string | null;
   isArchived?: boolean;
+  pinnedImageIndices?: number[];                          // indices of per-image pinned outputs
+  imageUnarchiveExpiries?: Record<string, string | null>; // key=imageIndex.toString(), value=ISO expiry or null
 };
 
 // Per-image record stored inside JobManifestEntry and server manifest.
