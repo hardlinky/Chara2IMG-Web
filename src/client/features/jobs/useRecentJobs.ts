@@ -5,7 +5,6 @@ import { listJobs, deleteJob, pinImage, unpinImage } from "../../lib/api/jobsCli
 import { getRecentJob } from "../../lib/recentJobsStorage";
 import { submitRunAndPersistRecentJob } from "../../lib/jobSubmission";
 import { projectRecentJobOutputClusters } from "../../lib/jobOutputProjection";
-import { syncClientManifestFromJobs } from "../../lib/clientPinnedManifest";
 import { sanitizeWorkflowForExport } from "../../lib/workflowExport";
 import { pruneExpiredImageCache, deleteImage } from "../../lib/imageCache";
 import {
@@ -174,7 +173,6 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
         const fetched = await listJobs();
         if (!cancelled) {
           setJobs(fetched);
-          syncClientManifestFromJobs(fetched);
           setStorageRefreshToken((current) => current + 1);
         }
       } catch {

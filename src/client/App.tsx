@@ -14,7 +14,6 @@ import { formatOutputJobId } from "./features/outputs/formatOutputJobId";
 import { ActiveWorkflowTemplate } from "./features/workflows/ActiveWorkflowTemplate";
 import { WorkflowImport } from "./features/workflows/WorkflowImport";
 import { useActiveWorkflowTemplate } from "./features/workflows/useActiveWorkflowTemplate";
-import { getOrCreatePinnedImageClientId } from "./lib/api/pinnedImageClient";
 import { fetchSystemConfig, fetchSystemStorageStats, ProxyRequestError, updateAppViaProxy } from "./lib/api/runpodProxyClient";
 import { getStoredEndpointId, saveEndpointId } from "./lib/endpointStorage";
 import { APP_VERSION_LABEL } from "./lib/appVersion";
@@ -182,8 +181,6 @@ export function App() {
   } | null>(null);
   const [selectedJobInputCategories, setSelectedJobInputCategories] = useState<string[]>([]);
   const [isImportingJobInputs, setIsImportingJobInputs] = useState(false);
-
-  const currentClientId = getOrCreatePinnedImageClientId();
 
   const { activeTemplate, recentTemplates, isLoading, error, persistTemplate, clearTemplate, removeRecentTemplate } = useActiveWorkflowTemplate();
 
@@ -482,7 +479,6 @@ export function App() {
             <button className="btn btn-secondary" type="button" onClick={() => setActiveTab("admin")}>
               Admin
             </button>
-            <p className="app-header-status">{`Client ID: ${currentClientId}`}</p>
           </div>
         </>
       }
