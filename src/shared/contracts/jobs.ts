@@ -46,6 +46,7 @@ export type RecentJobOutputImage = {
   sourcePath: string;
   outputIndex: number;
   isPinned: boolean;
+  cacheExpiresAt?: number; // epoch ms; set only for server URL-based images (not embedded dataUrls)
 };
 
 export type RecentJobOutputCluster = {

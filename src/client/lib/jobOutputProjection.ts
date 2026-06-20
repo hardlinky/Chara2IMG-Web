@@ -1,4 +1,5 @@
 import type { JobOutputImageMimeType, RecentJobOutputCluster, RecentJobOutputImage, RecentJobRecord } from "../../shared/contracts/jobs";
+import { JOB_IMAGE_TTL_MS } from "../../shared/contracts/jobs";
 import { extractRunpodOutputImages } from "./runpodOutputImage";
 
 type ProjectionOptions = {
@@ -44,13 +45,21 @@ export function projectJobOutputCluster(job: RecentJobRecord, options: Projectio
 
   const hiddenSet = new Set<number>(job.hiddenOutputIndices ?? []);
   const pinnedSet = new Set<number>(job.pinnedOutputIndices ?? []);
+
+  // Only URL-based images (no lastResponse) need a client-side expiry stamp.
+  const cacheExpiresAt =
+    !job.lastResponse && job.lifecycle.finishedAt
+      ? Date.parse(job.lifecycle.finishedAt) + JOB_IMAGE_TTL_MS
+      : undefined;
+
   const allVisibleOutputs: RecentJobOutputImage[] = extractedImages
     .map((image, index) => ({
       dataUrl: image.dataUrl,
       mimeType: image.mimeType,
       sourcePath: image.sourcePath,
       outputIndex: index,
-      isPinned: pinnedSet.has(index)
+      isPinned: pinnedSet.has(index),
+      cacheExpiresAt,  // undefined for lastResponse-based images; epoch ms for URL-based
     }))
     .filter((image) => !hiddenSet.has(image.outputIndex));
 
