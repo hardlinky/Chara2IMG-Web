@@ -46,21 +46,42 @@ export function projectJobOutputCluster(job: RecentJobRecord, options: Projectio
   const hiddenSet = new Set<number>(job.hiddenOutputIndices ?? []);
   const pinnedSet = new Set<number>(job.pinnedOutputIndices ?? []);
 
-  // Only URL-based images (no lastResponse) need a client-side expiry stamp.
-  const cacheExpiresAt =
+  // Job-level TTL baseline for non-pinned URL-based images.
+  const jobLevelCacheExpiresAt =
     !job.lastResponse && job.lifecycle.finishedAt
       ? Date.parse(job.lifecycle.finishedAt) + JOB_IMAGE_TTL_MS
       : undefined;
 
   const allVisibleOutputs: RecentJobOutputImage[] = extractedImages
-    .map((image, index) => ({
-      dataUrl: image.dataUrl,
-      mimeType: image.mimeType,
-      sourcePath: image.sourcePath,
-      outputIndex: index,
-      isPinned: pinnedSet.has(index),
-      cacheExpiresAt,  // undefined for lastResponse-based images; epoch ms for URL-based
-    }))
+    .map((image, index) => {
+      const isPinned = pinnedSet.has(index);
+
+      let cacheExpiresAt: number | undefined;
+
+      if (isPinned) {
+        // Check for an active unarchive expiry (image was unpinned and is counting down)
+        const unarchiveIso = job.imageUnarchiveExpiries?.[String(index)];
+        if (unarchiveIso) {
+          // Unpin countdown: show progress bar until this expiry
+          cacheExpiresAt = Date.parse(unarchiveIso);
+        } else {
+          // No unarchive expiry + isPinned → archived state (TTL expired while pinned)
+          cacheExpiresAt = undefined;
+        }
+      } else {
+        // Unpinned image: use job-level TTL (same as before)
+        cacheExpiresAt = jobLevelCacheExpiresAt;
+      }
+
+      return {
+        dataUrl: image.dataUrl,
+        mimeType: image.mimeType,
+        sourcePath: image.sourcePath,
+        outputIndex: index,
+        isPinned,
+        cacheExpiresAt,
+      };
+    })
     .filter((image) => !hiddenSet.has(image.outputIndex));
 
   if (allVisibleOutputs.length === 0) {
