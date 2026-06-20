@@ -5,7 +5,10 @@ import {
   JOBS_ARCHIVE_DIR_DEFAULT,
   JOBS_TMP_DIR_DEFAULT,
   JOB_IMAGE_TTL_MS,
+  type JobImageRecord,
   type JobInputs,
+  type JobManifestEntry,
+  type JobOutputImageMimeType,
   type JobRecord,
 } from "../../shared/contracts/jobs.js";
 import { formatJobDisplayName } from "../../shared/jobDisplay.js";
@@ -216,6 +219,181 @@ export async function unpinImage(
   });
 
   return { ok: true, unarchiveExpiresAt };
+}
+
+// ─── Manifest enumeration + single-image purge ─────────────────────────────
+
+const MIME_BY_EXT: Record<(typeof IMAGE_EXTENSIONS)[number], JobOutputImageMimeType> = {
+  png: "image/png",
+  jpg: "image/jpeg",
+  webp: "image/webp",
+};
+
+/** Read the archive copy of a job.json (ENOENT → null). */
+async function readArchiveJob(jobId: string): Promise<JobRecord | null> {
+  try {
+    const raw = await readFile(join(JOB_ARCHIVE_BASE, "jobs", jobId, "job.json"), "utf8");
+    return JSON.parse(raw) as JobRecord;
+  } catch (err: unknown) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") return null;
+    throw err;
+  }
+}
+
+/** List jobIds present under {base}/jobs (ENOENT → []). */
+async function listJobIdsIn(base: string): Promise<string[]> {
+  try {
+    const entries = (await readdir(join(base, "jobs"), { withFileTypes: true })) as unknown as {
+      name: string;
+      isDirectory(): boolean;
+    }[];
+    return entries.filter((e) => e.isDirectory()).map((e) => e.name);
+  } catch (err: unknown) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") return [];
+    throw err;
+  }
+}
+
+/** Parse a `{displayName}-{index}.{ext}` filename → { index, ext } or null. */
+function parseImageFileName(
+  fileName: string,
+  displayName: string
+): { index: number; ext: (typeof IMAGE_EXTENSIONS)[number] } | null {
+  const prefix = `${displayName}-`;
+  for (const ext of IMAGE_EXTENSIONS) {
+    const suffix = `.${ext}`;
+    if (!fileName.startsWith(prefix) || !fileName.endsWith(suffix)) continue;
+    const indexStr = fileName.slice(prefix.length, fileName.length - suffix.length);
+    if (!/^\d+$/.test(indexStr)) continue;
+    return { index: Number.parseInt(indexStr, 10), ext };
+  }
+  return null;
+}
+
+/**
+ * Enumerate every known job (tmp ∪ archive) as a per-image manifest entry.
+ * Scans both tmp and archive dirs; if an index exists in both, the archive
+ * (pinned) copy wins and a single record is emitted.
+ */
+export async function listManifestImages(): Promise<JobManifestEntry[]> {
+  const tmpIds = await listJobIdsIn(JOB_TMP_BASE);
+  const archiveIds = await listJobIdsIn(JOB_ARCHIVE_BASE);
+  const jobIds = Array.from(new Set([...tmpIds, ...archiveIds]));
+
+  const entries = await Promise.all(
+    jobIds.map(async (jobId): Promise<JobManifestEntry | null> => {
+      const job = (await readJob(jobId)) ?? (await readArchiveJob(jobId));
+      if (!job) return null;
+
+      const byIndex = new Map<number, JobImageRecord>();
+
+      const scan = async (base: string, archived: boolean): Promise<void> => {
+        const dir = join(base, "jobs", jobId);
+        let files: string[];
+        try {
+          files = await readdir(dir);
+        } catch (err: unknown) {
+          if ((err as NodeJS.ErrnoException).code === "ENOENT") return;
+          throw err;
+        }
+        for (const fileName of files) {
+          const parsed = parseImageFileName(fileName, job.displayName);
+          if (!parsed) continue;
+          // Archive scanned first; tmp does not overwrite an existing archive record.
+          if (byIndex.has(parsed.index)) continue;
+          const filePath = join(dir, fileName);
+          const fileStat = await stat(filePath);
+          byIndex.set(parsed.index, {
+            jobId,
+            imageIndex: parsed.index,
+            fileName,
+            relPath: `jobs/${jobId}/${fileName}`,
+            mimeType: MIME_BY_EXT[parsed.ext],
+            sizeBytes: fileStat.size,
+            isPinned: job.pinnedImageIndices?.includes(parsed.index) ?? false,
+            isArchived: archived,
+            archivedAt: null,
+            unarchiveExpiresAt: job.imageUnarchiveExpiries?.[String(parsed.index)] ?? null,
+          });
+        }
+      };
+
+      await scan(JOB_ARCHIVE_BASE, true);
+      await scan(JOB_TMP_BASE, false);
+
+      const images = Array.from(byIndex.values()).sort((a, b) => a.imageIndex - b.imageIndex);
+
+      return {
+        jobId: job.jobId,
+        displayName: job.displayName,
+        endpointId: job.endpointId,
+        workflowFileName: job.workflowFileName,
+        submittedAt: job.submittedAt,
+        completedAt: job.completedAt,
+        expiresAt: job.expiresAt,
+        status: job.status,
+        isTerminal: job.isTerminal,
+        imageCount: job.imageCount,
+        images,
+      };
+    })
+  );
+
+  return (entries.filter((e) => e !== null) as JobManifestEntry[]).sort(
+    (a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
+  );
+}
+
+/**
+ * Purge a single image (by stable index) from BOTH tmp and archive dirs and
+ * clean its pin/expiry state from job.json in whichever dir(s) it exists.
+ * Returns true if at least one image file was removed.
+ */
+export async function deleteJobImage(jobId: string, imageIndex: number): Promise<boolean> {
+  const job = (await readJob(jobId)) ?? (await readArchiveJob(jobId));
+  if (!job) return false;
+
+  const dirs = [join(JOB_TMP_BASE, "jobs", jobId), join(JOB_ARCHIVE_BASE, "jobs", jobId)];
+
+  let removed = false;
+  for (const dir of dirs) {
+    for (const ext of IMAGE_EXTENSIONS) {
+      const filePath = join(dir, `${job.displayName}-${imageIndex}.${ext}`);
+      try {
+        await stat(filePath);
+      } catch (err: unknown) {
+        if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
+        continue;
+      }
+      await rm(filePath, { force: true });
+      removed = true;
+    }
+  }
+
+  // Clean tmp job.json pin/expiry state (if a tmp record exists).
+  const tmpJob = await readJob(jobId);
+  if (tmpJob) {
+    const pinnedImageIndices = (tmpJob.pinnedImageIndices ?? []).filter((i) => i !== imageIndex);
+    const imageUnarchiveExpiries = { ...(tmpJob.imageUnarchiveExpiries ?? {}) };
+    delete imageUnarchiveExpiries[String(imageIndex)];
+    await updateJob(jobId, { pinnedImageIndices, imageUnarchiveExpiries });
+  }
+
+  // Clean archive job.json pin/expiry state directly (if an archive record exists).
+  const archiveJobPath = join(JOB_ARCHIVE_BASE, "jobs", jobId, "job.json");
+  try {
+    const raw = await readFile(archiveJobPath, "utf8");
+    const archiveRecord = JSON.parse(raw) as JobRecord;
+    const pinnedImageIndices = (archiveRecord.pinnedImageIndices ?? []).filter((i) => i !== imageIndex);
+    const imageUnarchiveExpiries = { ...(archiveRecord.imageUnarchiveExpiries ?? {}) };
+    delete imageUnarchiveExpiries[String(imageIndex)];
+    const next: JobRecord = { ...archiveRecord, pinnedImageIndices, imageUnarchiveExpiries };
+    await writeFile(archiveJobPath, JSON.stringify(next, null, 2), "utf8");
+  } catch (err: unknown) {
+    if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
+  }
+
+  return removed;
 }
 
 // ─── Purge ────────────────────────────────────────────────────────────────────
