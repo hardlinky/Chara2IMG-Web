@@ -7,6 +7,7 @@ import { submitRunAndPersistRecentJob } from "../../lib/jobSubmission";
 import { projectRecentJobOutputClusters } from "../../lib/jobOutputProjection";
 import { syncClientManifestFromJobs } from "../../lib/clientPinnedManifest";
 import { sanitizeWorkflowForExport } from "../../lib/workflowExport";
+import { pruneExpiredImageCache } from "../../lib/imageCache";
 import {
   formatSubmittedAtRelative,
   hasJobObservationTimedOut,
@@ -185,7 +186,12 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
     fetchJobsRef.current = fetchJobs;
 
     void fetchJobs();
-    const interval = setInterval(() => { void fetchJobs(); }, POLL_INTERVAL_MS);
+    const interval = setInterval(() => {
+      void pruneExpiredImageCache().catch(() => {
+        // prune errors are non-critical; ignore silently
+      });
+      void fetchJobs();
+    }, POLL_INTERVAL_MS);
 
     return () => {
       cancelled = true;
