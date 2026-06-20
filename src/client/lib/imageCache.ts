@@ -55,3 +55,12 @@ export async function getImage(
 export async function pruneExpiredImageCache(): Promise<void> {
   await db.images.where("expiresAt").below(Date.now()).delete();
 }
+
+/**
+ * Delete a single cached image by its cache key (API URL).
+ * Called after a successful pin operation to evict the local copy
+ * before the image moves to the server's persistent archive.
+ */
+export async function deleteImage(cacheKey: string): Promise<void> {
+  await db.images.delete(cacheKey);
+}

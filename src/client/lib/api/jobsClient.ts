@@ -28,6 +28,8 @@ export function adaptJobRecord(job: JobRecord): RecentJobRecord {
     lastError: job.lastError,
     hiddenOutputIndices: [],
     outputsHidden: false,
+    pinnedOutputIndices: job.pinnedImageIndices,
+    imageUnarchiveExpiries: job.imageUnarchiveExpiries,
   };
 }
 
@@ -49,4 +51,33 @@ export async function getJob(jobId: string): Promise<RecentJobRecord | null> {
 export async function deleteJob(jobId: string): Promise<void> {
   const res = await fetch(`/api/jobs/${encodeURIComponent(jobId)}`, { method: "DELETE" });
   if (!res.ok) throw new Error(`Failed to delete job ${jobId}: ${res.status}`);
+}
+
+/**
+ * Pin a single image output. Moves server file from tmp → archive.
+ * Returns {ok: true} on success.
+ */
+export async function pinImage(jobId: string, imageIndex: number): Promise<{ ok: boolean }> {
+  const res = await fetch(
+    `/api/jobs/${encodeURIComponent(jobId)}/images/${imageIndex}/pin`,
+    { method: "POST", credentials: "include" }
+  );
+  if (!res.ok) return { ok: false };
+  return (await res.json()) as { ok: boolean };
+}
+
+/**
+ * Unpin a single image output. Moves server file from archive → tmp with 1-hour TTL.
+ * Returns {ok, unarchiveExpiresAt} on success.
+ */
+export async function unpinImage(
+  jobId: string,
+  imageIndex: number
+): Promise<{ ok: true; unarchiveExpiresAt: string } | { ok: false }> {
+  const res = await fetch(
+    `/api/jobs/${encodeURIComponent(jobId)}/images/${imageIndex}/unpin`,
+    { method: "POST", credentials: "include" }
+  );
+  if (!res.ok) return { ok: false };
+  return (await res.json()) as { ok: true; unarchiveExpiresAt: string } | { ok: false };
 }
