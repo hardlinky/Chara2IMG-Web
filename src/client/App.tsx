@@ -592,6 +592,7 @@ export function App() {
                 }, 0);
               }}
               formatSubmittedAtRelative={formatSubmittedAtRelative}
+              lastFetchedAt={recentJobs.lastFetchedAt}
             />
           </div>
         ),

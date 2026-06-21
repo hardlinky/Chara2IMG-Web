@@ -25,6 +25,7 @@ type RecentJobsPanelProps = {
   onRemoveVisible: (jobId: string) => void;
   onViewOutputs?: (jobId: string) => void;
   formatSubmittedAtRelative: (submittedAt: string) => string;
+  lastFetchedAt: number | null;
 };
 
 function LoadInputsIcon() {
@@ -228,10 +229,9 @@ function formatJobTimestampTooltip(job: RecentJobRecord, executionTime: string |
   return parts.join(" | ");
 }
 
-function formatNextPollCountdown(job: RecentJobRecord, now: number): string {
-  const lastCheckedAtMs = Date.parse(job.lifecycle.lastCheckedAt ?? job.submittedAt);
-  const safeLastCheckedAtMs = Number.isFinite(lastCheckedAtMs) ? lastCheckedAtMs : now;
-  const nextPollAt = safeLastCheckedAtMs + JOB_POLL_INTERVAL_MS;
+function formatNextPollCountdown(lastFetchedAt: number | null, now: number): string {
+  if (lastFetchedAt === null) return "...";
+  const nextPollAt = lastFetchedAt + JOB_POLL_INTERVAL_MS;
   const remainingMs = Math.max(0, nextPollAt - now);
   const remainingSeconds = Math.ceil(remainingMs / 1000);
   return `${remainingSeconds}s`;
@@ -314,7 +314,7 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
                       ↻
                     </button>
                   ) : null}
-                  {!job.lifecycle.isTerminal ? <span className="jobs-next-poll">Next poll in {formatNextPollCountdown(job, now)}</span> : null}
+                  {!job.lifecycle.isTerminal ? <span className="jobs-next-poll">Next poll in {formatNextPollCountdown(props.lastFetchedAt, now)}</span> : null}
                   {props.warningJobIds.includes(job.jobId) ? (
                     <span className="jobs-status-chip jobs-warning-chip">Polling warning</span>
                   ) : null}

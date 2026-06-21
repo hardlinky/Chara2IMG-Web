@@ -53,6 +53,7 @@ describe("RecentJobsPanel", () => {
         onExportWorkflow={vi.fn()}
         onRemoveVisible={vi.fn()}
         formatSubmittedAtRelative={() => "2h ago"}
+        lastFetchedAt={null}
       />
     );
 
@@ -104,6 +105,7 @@ describe("RecentJobsPanel", () => {
         onExportWorkflow={vi.fn()}
         onRemoveVisible={vi.fn()}
         formatSubmittedAtRelative={() => "just now"}
+        lastFetchedAt={null}
       />
     );
 
@@ -138,6 +140,7 @@ describe("RecentJobsPanel", () => {
         onExportWorkflow={vi.fn()}
         onRemoveVisible={vi.fn()}
         formatSubmittedAtRelative={() => "just now"}
+        lastFetchedAt={null}
       />
     );
 
@@ -178,6 +181,7 @@ describe("RecentJobsPanel", () => {
         onExportWorkflow={vi.fn()}
         onRemoveVisible={vi.fn()}
         formatSubmittedAtRelative={() => "just now"}
+        lastFetchedAt={null}
       />
     );
 
@@ -203,6 +207,7 @@ describe("RecentJobsPanel", () => {
         onExportWorkflow={vi.fn()}
         onRemoveVisible={vi.fn()}
         formatSubmittedAtRelative={() => "just now"}
+        lastFetchedAt={null}
       />
     );
 
@@ -241,6 +246,7 @@ describe("RecentJobsPanel", () => {
         onExportWorkflow={vi.fn()}
         onRemoveVisible={vi.fn()}
         formatSubmittedAtRelative={() => "just now"}
+        lastFetchedAt={null}
       />
     );
 
@@ -279,6 +285,7 @@ describe("RecentJobsPanel", () => {
         onExportWorkflow={vi.fn()}
         onRemoveVisible={vi.fn()}
         formatSubmittedAtRelative={() => "just now"}
+        lastFetchedAt={null}
       />
     );
 
@@ -316,6 +323,7 @@ describe("RecentJobsPanel", () => {
         onExportWorkflow={vi.fn()}
         onRemoveVisible={vi.fn()}
         formatSubmittedAtRelative={() => "just now"}
+        lastFetchedAt={null}
       />
     );
 
@@ -340,6 +348,7 @@ describe("RecentJobsPanel", () => {
         onExportWorkflow={vi.fn()}
         onRemoveVisible={vi.fn()}
         formatSubmittedAtRelative={() => "just now"}
+        lastFetchedAt={null}
       />
     );
 

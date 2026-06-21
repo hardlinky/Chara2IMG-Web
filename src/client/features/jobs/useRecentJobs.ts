@@ -162,6 +162,7 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
   const includeOutputClusters = options.includeOutputClusters ?? true;
   const [jobs, setJobs] = useState<RecentJobRecord[]>([]);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [lastFetchedAt, setLastFetchedAt] = useState<number | null>(null);
   const [statusFilter, setStatusFilterState] = useState<RecentJobStatusFilter>(() => getStoredStatusFilter());
   const [page, setPageState] = useState(1);
   const [cancelingJobIds, setCancelingJobIds] = useState<string[]>([]);
@@ -181,6 +182,7 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
         const fetched = await listJobs();
         if (!cancelled) {
           setJobs(fetched);
+          setLastFetchedAt(Date.now());
           setStorageRefreshToken((current) => current + 1);
         }
       } catch {
@@ -461,6 +463,7 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
     pinnedImageCount,
     transientJobsCount,
     storageRefreshToken,
+    lastFetchedAt,
     canPinMoreJobs,
     formatSubmittedAtRelative,
     hasTimedOut: hasJobObservationTimedOut
