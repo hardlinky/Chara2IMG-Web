@@ -385,7 +385,23 @@
   .outputs-gallery-comfortable .outputs-cluster-card {
     flex-basis: 100%;
     max-width: 100%;
-    aspect-ratio: var(--image-aspect, 1);
     height: auto;
+    aspect-ratio: unset;
+  }
+
+  /* Reset height:100% chain so image sizes naturally and caption bar isn't clipped */
+  .outputs-gallery-comfortable .outputs-cluster-card > div,
+  .outputs-gallery-comfortable .outputs-cluster-card .outputs-image-tile-wrapper,
+  .outputs-gallery-comfortable .outputs-cluster-card .outputs-image-media,
+  .outputs-gallery-comfortable .outputs-cluster-card .outputs-image-tile {
+    height: auto;
+  }
+
+  /* Image takes the aspect ratio; card height = image + info bar */
+  .outputs-gallery-comfortable .outputs-cluster-card .outputs-image-tile img {
+    height: auto;
+    width: 100%;
+    aspect-ratio: var(--image-aspect, 1);
+    object-fit: cover;
   }
 }
