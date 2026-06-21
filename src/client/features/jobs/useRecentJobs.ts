@@ -284,9 +284,11 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
         return { ...j, hiddenOutputIndices: Array.from(hidden) };
       })
     );
-    // Then delete from server (fire-and-forget; next poll will reflect reality).
+    // Delete on server, then force a fresh fetch so the server-persisted
+    // deletedImageIndices replaces the optimistic state before the next poll.
     try {
       await deleteServerImage(jobId, outputIndex);
+      if (fetchJobsRef.current) await fetchJobsRef.current();
     } catch {
       // Ignore — image will reappear on next poll if deletion failed.
     }
