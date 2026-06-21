@@ -400,10 +400,11 @@
     --base-height: 220px;
   }
 
-  /* Balanced: single column on mobile to avoid last-row size mismatch */
+  /* Balanced: 2-column on mobile (flex-grow:0 prevents last-row stretch) */
   .outputs-gallery-balanced .outputs-cluster-card {
-    flex-basis: 100%;
-    max-width: 100%;
+    flex-basis: calc(50% - 0.3rem);
+    flex-grow: 0;
+    max-width: calc(50% - 0.3rem);
     height: auto;
     aspect-ratio: unset;
   }
