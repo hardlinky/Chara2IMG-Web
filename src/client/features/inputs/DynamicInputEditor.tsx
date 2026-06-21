@@ -98,6 +98,19 @@ function renderVariableLinks(
   );
 }
 
+function findImg2ImgControl(controls: DynamicInputControl[]): DynamicInputControl | null {
+  for (const control of controls) {
+    if (control.kind !== "image") {
+      continue;
+    }
+    const haystack = `${control.name} ${control.category} ${control.fullTitle}`.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (haystack.includes("img2img")) {
+      return control;
+    }
+  }
+  return null;
+}
+
 function toImageDraftValue(file: File): Promise<{ dataUrl: string }> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -951,18 +964,30 @@ type DynamicInputEditorProps = {
       ok: false;
       reason: string;
     }>;
+    img2imgInputAvailable: boolean;
+    setImg2ImgImage: (dataUrl: string) => boolean;
   }) => void;
 };
 
 export function DynamicInputEditor(props: DynamicInputEditorProps) {
   const editor = useDynamicInputEditor(props.activeTemplate);
 
+  const img2imgControl = useMemo(() => findImg2ImgControl(editor.controls), [editor.controls]);
+
   useEffect(() => {
     props.onEditorReady?.({
       applyExternalDraftValues: editor.applyExternalDraft,
-      applyImportedWorkflowInputs: editor.applyImportedWorkflowInputs
+      applyImportedWorkflowInputs: editor.applyImportedWorkflowInputs,
+      img2imgInputAvailable: img2imgControl !== null,
+      setImg2ImgImage: (dataUrl: string) => {
+        if (!img2imgControl) {
+          return false;
+        }
+        editor.setValue(img2imgControl.id, { dataUrl });
+        return true;
+      }
     });
-  }, [editor.applyExternalDraft, editor.applyImportedWorkflowInputs, props.onEditorReady]);
+  }, [editor.applyExternalDraft, editor.applyImportedWorkflowInputs, editor.setValue, img2imgControl, props.onEditorReady]);
 
   function onRun(): void {
     const result = editor.attemptRun();

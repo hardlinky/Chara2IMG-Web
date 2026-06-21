@@ -16,6 +16,8 @@ type JobOutputsViewProps = {
   onTogglePinnedImage?: (outputIndex: number, pinned: boolean) => void;
   canPinMore?: boolean;
   pinningOutputIndices?: Set<number>;
+  img2imgInputAvailable?: boolean;
+  onLoadImageIntoImg2Img?: (imageUrl: string) => void;
 };
 
 const PAGE_SIZE = 24;
@@ -47,7 +49,7 @@ function toRelativeTimestamp(isoValue: string | null): string {
   return `${deltaDays}d ago`;
 }
 
-export function JobOutputsView({ cluster, onBack, onPreviousJob, onNextJob, onRerun, onLoadInputs, onRemoveImage, onRemoveAllOutputs, onExportWorkflow, onTogglePinnedImage, canPinMore = true, pinningOutputIndices }: JobOutputsViewProps) {
+export function JobOutputsView({ cluster, onBack, onPreviousJob, onNextJob, onRerun, onLoadInputs, onRemoveImage, onRemoveAllOutputs, onExportWorkflow, onTogglePinnedImage, canPinMore = true, pinningOutputIndices, img2imgInputAvailable = false, onLoadImageIntoImg2Img }: JobOutputsViewProps) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const displayJobId = formatOutputJobId(cluster.jobId);
 
@@ -106,6 +108,8 @@ export function JobOutputsView({ cluster, onBack, onPreviousJob, onNextJob, onRe
           onLoadInputs={onLoadInputs}
           canPinMore={canPinMore}
           pinningOutputIndices={pinningOutputIndices}
+          img2imgInputAvailable={img2imgInputAvailable}
+          onLoadImageIntoImg2Img={onLoadImageIntoImg2Img}
         />
       </div>
 

@@ -44,6 +44,8 @@ type OutputsTabProps = {
   canPinMore?: boolean;
   onLoadOutputCluster?: (jobId: string) => Promise<RecentJobOutputCluster | null>;
   pinningImageKeys?: Set<string>;
+  img2imgInputAvailable?: boolean;
+  onLoadImageIntoImg2Img?: (imageUrl: string) => void;
 };
 
 function getGalleryClassName(density: (typeof OUTPUT_DENSITIES)[number]): string {
@@ -68,7 +70,7 @@ export function resolveSelectedJobCluster(
   return hydratedJobClusters[selectedJobId] ?? gallerySelectedCluster;
 }
 
-export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs, onRemoveOutputImage, onExportWorkflow, onToggleOutputPinned, canPinMore = true, onLoadOutputCluster, pinningImageKeys }: OutputsTabProps) {
+export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs, onRemoveOutputImage, onExportWorkflow, onToggleOutputPinned, canPinMore = true, onLoadOutputCluster, pinningImageKeys, img2imgInputAvailable = false, onLoadImageIntoImg2Img }: OutputsTabProps) {
   const gallery = useOutputGallery(clusters);
   const [galleryMode, setGalleryMode] = useState<OutputsGalleryMode>(() => getStoredOutputsViewMode());
   const [pinFilter, setPinFilter] = useState<OutputsPinFilter>(() => getStoredOutputsPinFilter());
@@ -256,6 +258,8 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
         onTogglePinnedImage={onToggleOutputPinned ? (outputIndex, pinned) => onToggleOutputPinned(selectedJobCluster.jobId, outputIndex, pinned) : undefined}
         canPinMore={canPinMore}
         pinningOutputIndices={pinningImageKeys ? new Set([...pinningImageKeys].filter((k) => k.startsWith(`${selectedJobCluster.jobId}:`)).map((k) => Number(k.split(":")[1]))) : undefined}
+        img2imgInputAvailable={img2imgInputAvailable}
+        onLoadImageIntoImg2Img={onLoadImageIntoImg2Img}
       />
     );
   }

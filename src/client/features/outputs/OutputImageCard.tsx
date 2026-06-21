@@ -20,6 +20,7 @@ type OutputImageCardProps = {
   onExportWorkflow?: () => void;
   onLoadInputs?: () => void;
   onViewJobOutputs?: () => void;
+  onLoadIntoImg2Img?: () => void;
   canPinMore?: boolean;
   isPinning?: boolean;
   maxVisible?: boolean;
@@ -73,6 +74,16 @@ function ViewJobOutputsIcon() {
   );
 }
 
+function Img2ImgIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false">
+      <rect x="3" y="4" width="18" height="14" rx="2" fill="none" stroke="currentColor" strokeWidth="2" />
+      <path d="m6 15 3.5-4 2.5 3 2-2.5L18 15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12 21h6m0 0-2.5-2.5M18 21l-2.5 2.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 function CachedSourceIcon() {
   return (
     <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" focusable="false">
@@ -102,12 +113,13 @@ export function OutputImageCard({
   onExportWorkflow,
   onLoadInputs,
   onViewJobOutputs,
+  onLoadIntoImg2Img,
   canPinMore = true,
   isPinning = false,
   maxVisible = true,
   badge
 }: OutputImageCardProps) {
-  const showBottomActions = Boolean(onExportWorkflow || onLoadInputs || onViewJobOutputs);
+  const showBottomActions = Boolean(onExportWorkflow || onLoadInputs || onViewJobOutputs || onLoadIntoImg2Img);
   const isArchived = image.isPinned && !image.cacheExpiresAt;
   const storageSourceLabel = isArchived ? "Archived" : "Cached";
   const [imgBroken, setImgBroken] = useState(false);
@@ -223,6 +235,17 @@ export function OutputImageCard({
         ) : null}
         {showBottomActions ? (
           <div className="outputs-image-bottom-actions" aria-label={`Actions for ${displayPrefix} image ${imageLabel}`}>
+            {onLoadIntoImg2Img ? (
+              <button
+                type="button"
+                className="outputs-image-action-btn"
+                aria-label={`Load ${displayPrefix} image ${imageLabel} into IMG2IMG input`}
+                title={`Load ${displayPrefix} image ${imageLabel} into IMG2IMG input`}
+                onClick={onLoadIntoImg2Img}
+              >
+                <Img2ImgIcon />
+              </button>
+            ) : null}
             {onViewJobOutputs ? (
               <button
                 type="button"

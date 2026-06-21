@@ -15,6 +15,8 @@ type OutputLightboxProps = {
   onLoadInputs?: () => void;
   canPinMore?: boolean;
   pinningOutputIndices?: Set<number>;
+  img2imgInputAvailable?: boolean;
+  onLoadImageIntoImg2Img?: (imageUrl: string) => void;
 };
 
 export function OutputLightbox({
@@ -27,7 +29,9 @@ export function OutputLightbox({
   onExportWorkflow,
   onLoadInputs,
   canPinMore = true,
-  pinningOutputIndices
+  pinningOutputIndices,
+  img2imgInputAvailable = false,
+  onLoadImageIntoImg2Img
 }: OutputLightboxProps) {
   const [imageDimensions, setImageDimensions] = useState<Record<number, { width: number; height: number }>>({});
   const visibleImages = images.slice(0, maxVisible);
@@ -96,6 +100,7 @@ export function OutputLightbox({
                     onTogglePin={onTogglePinnedImage ? () => onTogglePinnedImage(image.outputIndex, !image.isPinned) : undefined}
                     onExportWorkflow={onExportWorkflow}
                     onLoadInputs={onLoadInputs}
+                    onLoadIntoImg2Img={img2imgInputAvailable && onLoadImageIntoImg2Img ? () => onLoadImageIntoImg2Img(image.dataUrl) : undefined}
                     canPinMore={canPinMore}
                     isPinning={pinningOutputIndices?.has(image.outputIndex) ?? false}
                   />

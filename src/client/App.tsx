@@ -139,6 +139,28 @@ function persistActiveTab(tabId: "setup" | "input" | "jobs" | "output" | "admin"
   window.localStorage.setItem(APP_ACTIVE_TAB_STORAGE_KEY, tabId);
 }
 
+async function resolveImageDataUrl(imageUrl: string): Promise<string | null> {
+  if (imageUrl.startsWith("data:")) {
+    return imageUrl;
+  }
+
+  try {
+    const response = await fetch(imageUrl, { credentials: "include" });
+    if (!response.ok) {
+      return null;
+    }
+    const blob = await response.blob();
+    return await new Promise<string | null>((resolve) => {
+      const reader = new FileReader();
+      reader.addEventListener("load", () => resolve(String(reader.result ?? "")));
+      reader.addEventListener("error", () => resolve(null));
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
 export function App() {
   const [activeTab, setActiveTab] = useState<"setup" | "input" | "jobs" | "output" | "admin">(() => getStoredActiveTab());
   const [invited, setInvited] = useState(false);
@@ -173,6 +195,8 @@ export function App() {
           reason: string;
         }
     >;
+    img2imgInputAvailable: boolean;
+    setImg2ImgImage: (dataUrl: string) => boolean;
   } | null>(null);
   const [pendingJobInputImport, setPendingJobInputImport] = useState<{
     jobId: string;
@@ -340,6 +364,32 @@ export function App() {
       categories
     });
     setSelectedJobInputCategories(categories.map((entry) => entry.category));
+    setJobActionError("");
+    setActiveTab("input");
+  }
+
+  async function onLoadImageIntoImg2Img(imageUrl: string): Promise<void> {
+    if (!editorApi) {
+      setJobActionError("Input editor is not ready yet.");
+      return;
+    }
+
+    if (!editorApi.img2imgInputAvailable) {
+      setJobActionError("The loaded workflow has no IMG2IMG input.");
+      return;
+    }
+
+    const dataUrl = await resolveImageDataUrl(imageUrl);
+    if (!dataUrl) {
+      setJobActionError("Failed to load the image into the IMG2IMG input.");
+      return;
+    }
+
+    if (!editorApi.setImg2ImgImage(dataUrl)) {
+      setJobActionError("Failed to load the image into the IMG2IMG input.");
+      return;
+    }
+
     setJobActionError("");
     setActiveTab("input");
   }
@@ -614,6 +664,8 @@ export function App() {
             }}
             canPinMore={recentJobs.canPinMoreJobs}
             pinningImageKeys={recentJobs.pinningImageKeys}
+            img2imgInputAvailable={Boolean(editorApi?.img2imgInputAvailable)}
+            onLoadImageIntoImg2Img={(imageUrl) => void onLoadImageIntoImg2Img(imageUrl)}
           />
         ),
         admin: (
