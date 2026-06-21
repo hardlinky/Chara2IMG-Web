@@ -523,7 +523,6 @@ export function App() {
             <details className="workflow-controls" aria-label="Workflow controls" >
               <summary>Workflow controls</summary>
               <div style={{ padding: "0.5rem 0" }}>
-                <WorkflowImport onImported={persistTemplate} onImportInputs={onImportInputs} currentTemplate={activeTemplate} />
                 <ActiveWorkflowTemplate
                   activeTemplate={activeTemplate}
                   recentTemplates={recentTemplates}
@@ -539,6 +538,7 @@ export function App() {
                     void clearTemplate();
                   }}
                 />
+                <WorkflowImport onImported={persistTemplate} onImportInputs={onImportInputs} currentTemplate={activeTemplate} />
               </div>
             </details>
             <p>Workflow template loaded: {activeTemplate ? "Yes" : "No"}</p>
