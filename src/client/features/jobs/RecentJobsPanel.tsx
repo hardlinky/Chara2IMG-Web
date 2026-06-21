@@ -80,15 +80,20 @@ function formatExecutionTime(job: RecentJobRecord, now: number): string | null {
     return null;
   }
 
+  // Prefer the moment the job started executing; fall back to submission time
+  // for jobs recorded before start tracking existed.
+  const startedAtMs = job.lifecycle.startedAt ? Date.parse(job.lifecycle.startedAt) : NaN;
+  const startMs = Number.isFinite(startedAtMs) ? startedAtMs : submittedAtMs;
+
   if (!job.lifecycle.isTerminal && job.lifecycle.status === "IN_PROGRESS") {
-    const elapsedMs = Math.max(0, now - submittedAtMs);
+    const elapsedMs = Math.max(0, now - startMs);
     return toHmsLabel(elapsedMs);
   }
 
   if (job.lifecycle.isTerminal && job.lifecycle.finishedAt) {
     const finishedAtMs = Date.parse(job.lifecycle.finishedAt);
-    if (Number.isFinite(finishedAtMs) && finishedAtMs >= submittedAtMs) {
-      return toHmsLabel(finishedAtMs - submittedAtMs);
+    if (Number.isFinite(finishedAtMs) && finishedAtMs >= startMs) {
+      return toHmsLabel(finishedAtMs - startMs);
     }
   }
 

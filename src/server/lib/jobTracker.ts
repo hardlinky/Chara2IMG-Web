@@ -182,6 +182,11 @@ async function pollTrackedJob(job: TrackedJob): Promise<PollResult> {
       jobUpdates.terminalReason = terminalReason;
     }
 
+    // Record when the job first enters execution so the UI can time from there.
+    if (status === "IN_PROGRESS" && !existing?.startedAt) {
+      jobUpdates.startedAt = new Date().toISOString();
+    }
+
     if (completedAt !== undefined) {
       jobUpdates.completedAt = completedAt;
     }

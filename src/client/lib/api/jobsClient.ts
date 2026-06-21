@@ -12,6 +12,7 @@ export function adaptJobRecord(job: JobRecord): RecentJobRecord {
       isTerminal: job.isTerminal,
       terminalReason: job.terminalReason,
       lastCheckedAt: undefined,
+      startedAt: job.startedAt ?? undefined,
       finishedAt: job.completedAt ?? undefined,
       warning: null,
       executionTimeMs: undefined,

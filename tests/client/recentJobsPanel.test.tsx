@@ -98,7 +98,8 @@ describe("RecentJobsPanel", () => {
         onStatusFilterChange={vi.fn()}
         onPageChange={vi.fn()}
         onCancel={vi.fn()}
-        onRerun={vi.fn()}
+        onRerun={vi.fn()}
+
         onLoadInputs={vi.fn()}
         onExportWorkflow={vi.fn()}
         onRemoveVisible={vi.fn()}
@@ -132,7 +133,8 @@ describe("RecentJobsPanel", () => {
         onStatusFilterChange={vi.fn()}
         onPageChange={vi.fn()}
         onCancel={vi.fn()}
-        onRerun={vi.fn()}
+        onRerun={vi.fn()}
+
         onLoadInputs={vi.fn()}
         onExportWorkflow={vi.fn()}
         onRemoveVisible={vi.fn()}
@@ -172,7 +174,8 @@ describe("RecentJobsPanel", () => {
         onStatusFilterChange={vi.fn()}
         onPageChange={vi.fn()}
         onCancel={vi.fn()}
-        onRerun={vi.fn()}
+        onRerun={vi.fn()}
+
         onLoadInputs={vi.fn()}
         onExportWorkflow={vi.fn()}
         onRemoveVisible={vi.fn()}
@@ -197,7 +200,8 @@ describe("RecentJobsPanel", () => {
         onStatusFilterChange={vi.fn()}
         onPageChange={vi.fn()}
         onCancel={vi.fn()}
-        onRerun={vi.fn()}
+        onRerun={vi.fn()}
+
         onLoadInputs={vi.fn()}
         onExportWorkflow={vi.fn()}
         onRemoveVisible={vi.fn()}
@@ -235,7 +239,8 @@ describe("RecentJobsPanel", () => {
         onStatusFilterChange={vi.fn()}
         onPageChange={vi.fn()}
         onCancel={vi.fn()}
-        onRerun={vi.fn()}
+        onRerun={vi.fn()}
+
         onLoadInputs={vi.fn()}
         onExportWorkflow={vi.fn()}
         onRemoveVisible={vi.fn()}
@@ -272,7 +277,8 @@ describe("RecentJobsPanel", () => {
         onStatusFilterChange={vi.fn()}
         onPageChange={vi.fn()}
         onCancel={vi.fn()}
-        onRerun={vi.fn()}
+        onRerun={vi.fn()}
+
         onLoadInputs={vi.fn()}
         onExportWorkflow={vi.fn()}
         onRemoveVisible={vi.fn()}
@@ -308,7 +314,8 @@ describe("RecentJobsPanel", () => {
         onStatusFilterChange={vi.fn()}
         onPageChange={vi.fn()}
         onCancel={vi.fn()}
-        onRerun={vi.fn()}
+        onRerun={vi.fn()}
+
         onLoadInputs={vi.fn()}
         onExportWorkflow={vi.fn()}
         onRemoveVisible={vi.fn()}
@@ -331,7 +338,8 @@ describe("RecentJobsPanel", () => {
         onStatusFilterChange={vi.fn()}
         onPageChange={vi.fn()}
         onCancel={vi.fn()}
-        onRerun={vi.fn()}
+        onRerun={vi.fn()}
+
         onLoadInputs={vi.fn()}
         onExportWorkflow={vi.fn()}
         onRemoveVisible={vi.fn()}
@@ -341,5 +349,48 @@ describe("RecentJobsPanel", () => {
     );
 
     expect(failedHtml).not.toContain("Next poll in");
+  });
+
+  it("measures terminal execution time from startedAt, not submittedAt", () => {
+    const html = renderToStaticMarkup(
+      <RecentJobsPanel
+        jobs={[
+          createJob({
+            jobId: "job-started",
+            submittedAt: "2026-05-23T10:00:00.000Z",
+            lifecycle: {
+              status: "COMPLETED",
+              isTerminal: true,
+              terminalReason: undefined,
+              startedAt: "2026-05-23T10:05:00.000Z",
+              finishedAt: "2026-05-23T10:10:00.000Z",
+              lastCheckedAt: "2026-05-23T10:10:00.000Z",
+              warning: null,
+              executionTimeMs: undefined,
+              failureReason: null
+            }
+          })
+        ]}
+        warningJobIds={[]}
+        cancelingJobIds={[]}
+        statusFilter="All"
+        page={1}
+        pageCount={1}
+        pageNumbers={[1]}
+        onStatusFilterChange={vi.fn()}
+        onPageChange={vi.fn()}
+        onCancel={vi.fn()}
+        onRerun={vi.fn()}
+        onLoadInputs={vi.fn()}
+        onExportWorkflow={vi.fn()}
+        onRemoveVisible={vi.fn()}
+        formatSubmittedAtRelative={() => "just now"}
+        lastFetchedAt={null}
+      />
+    );
+
+    // 10:05 -> 10:10 is 5 minutes, not the 10 minutes from submittedAt.
+    expect(html).toContain("5m 0s");
+    expect(html).not.toContain("10m 0s");
   });
 });

@@ -73,6 +73,7 @@ export function registerRunpodProxyRoutes(app: Hono): void {
                 endpointId: parsed.data.endpointId,
                 workflowFileName: meta?.workflowFileName ?? null,
                 submittedAt: now,
+                startedAt: null,
                 completedAt: null,
                 expiresAt: null,
                 status: "IN_QUEUE" as JobStatus,

@@ -25,6 +25,7 @@ export type JobLifecycleSnapshot = {
   isTerminal: boolean;
   terminalReason?: JobTerminalReason;
   lastCheckedAt?: string;
+  startedAt?: string;
   finishedAt?: string;
   warning?: string | null;
   executionTimeMs?: number;
@@ -146,6 +147,7 @@ export type JobRecord = {
   endpointId: string;
   workflowFileName: string | null;
   submittedAt: string;
+  startedAt?: string | null;                              // when the job first became IN_PROGRESS
   completedAt: string | null;
   expiresAt: string | null;
   status: JobStatus;
