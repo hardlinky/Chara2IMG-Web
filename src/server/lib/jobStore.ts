@@ -396,7 +396,8 @@ export async function deleteJobImage(jobId: string, imageIndex: number): Promise
     const pinnedImageIndices = (tmpJob.pinnedImageIndices ?? []).filter((i) => i !== imageIndex);
     const imageUnarchiveExpiries = { ...(tmpJob.imageUnarchiveExpiries ?? {}) };
     delete imageUnarchiveExpiries[String(imageIndex)];
-    await updateJob(jobId, { pinnedImageIndices, imageUnarchiveExpiries });
+    const deletedImageIndices = Array.from(new Set([...(tmpJob.deletedImageIndices ?? []), imageIndex]));
+    await updateJob(jobId, { pinnedImageIndices, imageUnarchiveExpiries, deletedImageIndices });
 
     // If no image files remain in tmp dir AND no pinned images in archive,
     // remove the whole tmp job folder. If archive still has pinned images,

@@ -155,6 +155,7 @@ export type JobRecord = {
   lastError: string | null;
   isArchived?: boolean;
   pinnedImageIndices?: number[];                          // indices of per-image pinned outputs
+  deletedImageIndices?: number[];                        // indices permanently deleted via delete-image API
   imageUnarchiveExpiries?: Record<string, string | null>; // key=imageIndex.toString(), value=ISO expiry or null
 };
 

@@ -26,7 +26,7 @@ export function adaptJobRecord(job: JobRecord): RecentJobRecord {
     lastResponse: null,
     outputImageCount: job.imageCount,
     lastError: job.lastError,
-    hiddenOutputIndices: [],
+    hiddenOutputIndices: job.deletedImageIndices ?? [],
     outputsHidden: false,
     pinnedOutputIndices: job.pinnedImageIndices,
     imageUnarchiveExpiries: job.imageUnarchiveExpiries,
