@@ -398,9 +398,12 @@ export async function deleteJobImage(jobId: string, imageIndex: number): Promise
     delete imageUnarchiveExpiries[String(imageIndex)];
     await updateJob(jobId, { pinnedImageIndices, imageUnarchiveExpiries });
 
-    // If no image files remain in tmp dir, remove the whole tmp job folder.
+    // If no image files remain in tmp dir AND no pinned images in archive,
+    // remove the whole tmp job folder. If archive still has pinned images,
+    // keep tmp so the job stays visible in listJobs (which reads from tmp).
     const hasRemainingTmpImages = await dirHasImages(tmpDir, job.displayName);
-    if (!hasRemainingTmpImages) {
+    const hasRemainingArchiveImages = await dirHasImages(archiveDir, job.displayName);
+    if (!hasRemainingTmpImages && !hasRemainingArchiveImages) {
       await rm(tmpDir, { recursive: true, force: true });
     }
   }
