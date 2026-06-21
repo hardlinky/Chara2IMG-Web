@@ -580,7 +580,6 @@ export function App() {
               onPageChange={recentJobs.setPage}
               onCancel={(jobId) => void recentJobs.cancelJob(jobId)}
               onRerun={(jobId) => void recentJobs.rerunJob(jobId)}
-              onPollStatus={(jobId) => void recentJobs.pollJob(jobId)}
               onLoadInputs={(jobId) => void onLoadInputs(jobId)}
               onExportWorkflow={(jobId) => void onExportWorkflow(jobId)}
               onRemoveVisible={(jobId) => void recentJobs.removeVisibleJob(jobId)}

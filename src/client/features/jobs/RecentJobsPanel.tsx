@@ -19,7 +19,6 @@ type RecentJobsPanelProps = {
   onPageChange: (next: number) => void;
   onCancel: (jobId: string) => void;
   onRerun: (jobId: string) => void;
-  onPollStatus: (jobId: string) => void;
   onLoadInputs: (jobId: string) => void;
   onExportWorkflow: (jobId: string) => void;
   onRemoveVisible: (jobId: string) => void;
@@ -303,17 +302,6 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
                 {workerId ? <span>Worker ID: {workerId}</span> : null}
                 <div className="jobs-status-row">
                   <span className="jobs-status-chip">Status: {job.lifecycle.status}</span>
-                  {!job.lifecycle.isTerminal ? (
-                    <button
-                      className="btn btn-secondary jobs-refresh-btn"
-                      type="button"
-                      aria-label="Refresh job status"
-                      title="Refresh job status"
-                      onClick={() => props.onPollStatus(job.jobId)}
-                    >
-                      ↻
-                    </button>
-                  ) : null}
                   {!job.lifecycle.isTerminal ? <span className="jobs-next-poll">Next poll in {formatNextPollCountdown(props.lastFetchedAt, now)}</span> : null}
                   {props.warningJobIds.includes(job.jobId) ? (
                     <span className="jobs-status-chip jobs-warning-chip">Polling warning</span>

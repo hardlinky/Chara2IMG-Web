@@ -260,14 +260,6 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
     [apiKey, endpointId]
   );
 
-  const pollJob = useCallback(async (_jobId: string) => {
-    // In the server-polling model, just refresh the full list.
-    if (fetchJobsRef.current) {
-      await fetchJobsRef.current();
-    }
-    setError(null);
-  }, []);
-
   const loadJobInputs = useCallback(
     async (jobId: string): Promise<RecentJobRecord | null> => {
       return jobs.find((j) => j.jobId === jobId) ?? null;
@@ -450,7 +442,6 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
     error,
     handleNewSubmission,
     pollNow: async () => { if (fetchJobsRef.current) await fetchJobsRef.current(); },
-    pollJob,
     cancelJob,
     rerunJob,
     loadOutputCluster,

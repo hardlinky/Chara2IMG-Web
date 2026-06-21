@@ -48,7 +48,6 @@ describe("RecentJobsPanel", () => {
         onPageChange={vi.fn()}
         onCancel={vi.fn()}
         onRerun={vi.fn()}
-        onPollStatus={vi.fn()}
         onLoadInputs={vi.fn()}
         onExportWorkflow={vi.fn()}
         onRemoveVisible={vi.fn()}
@@ -214,7 +213,7 @@ describe("RecentJobsPanel", () => {
     expect(html).toContain("No recent jobs yet");
   });
 
-  it("shows refresh icon button for transient jobs and hides it for terminal jobs", () => {
+  it("shows next-poll countdown for transient jobs and hides it for terminal jobs", () => {
     const inProgressHtml = renderToStaticMarkup(
       <RecentJobsPanel
         jobs={[
@@ -250,7 +249,6 @@ describe("RecentJobsPanel", () => {
       />
     );
 
-    expect(inProgressHtml).toContain('aria-label="Refresh job status"');
     expect(inProgressHtml).toContain("Next poll in");
     expect(inProgressHtml).toContain("Execution time:");
 
@@ -289,7 +287,6 @@ describe("RecentJobsPanel", () => {
       />
     );
 
-    expect(inQueueHtml).toContain('aria-label="Refresh job status"');
     expect(inQueueHtml).toContain("Next poll in");
 
     const cancellingHtml = renderToStaticMarkup(
@@ -327,7 +324,6 @@ describe("RecentJobsPanel", () => {
       />
     );
 
-    expect(cancellingHtml).toContain('aria-label="Refresh job status"');
     expect(cancellingHtml).toContain("Next poll in");
 
     const failedHtml = renderToStaticMarkup(
@@ -352,7 +348,6 @@ describe("RecentJobsPanel", () => {
       />
     );
 
-    expect(failedHtml).not.toContain("Refresh job status");
     expect(failedHtml).not.toContain("Next poll in");
   });
 });
