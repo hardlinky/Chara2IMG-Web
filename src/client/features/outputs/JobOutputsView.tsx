@@ -94,18 +94,20 @@ export function JobOutputsView({ cluster, onBack, onPreviousJob, onNextJob, onRe
         {displayJobId} | {toRelativeTimestamp(cluster.finishedAt ?? cluster.submittedAt)} | {cluster.workflowFileName ?? "Workflow unknown"}
       </p>
 
-      <OutputLightbox
-        images={cluster.outputs}
-        imagePrefix={cluster.jobId}
-        displayPrefix={displayJobId}
-        maxVisible={visibleCount}
-        onRemoveImage={onRemoveImage}
-        onTogglePinnedImage={onTogglePinnedImage}
-        onExportWorkflow={onExportWorkflow}
-        onLoadInputs={onLoadInputs}
-        canPinMore={canPinMore}
-        pinningOutputIndices={pinningOutputIndices}
-      />
+      <div className="outputs-gallery outputs-gallery-comfortable">
+        <OutputLightbox
+          images={cluster.outputs}
+          imagePrefix={cluster.jobId}
+          displayPrefix={displayJobId}
+          maxVisible={visibleCount}
+          onRemoveImage={onRemoveImage}
+          onTogglePinnedImage={onTogglePinnedImage}
+          onExportWorkflow={onExportWorkflow}
+          onLoadInputs={onLoadInputs}
+          canPinMore={canPinMore}
+          pinningOutputIndices={pinningOutputIndices}
+        />
+      </div>
 
       {visibleImages.length < cluster.outputs.length ? (
         <div className="outputs-job-view-more">
