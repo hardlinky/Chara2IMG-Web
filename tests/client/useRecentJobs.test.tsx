@@ -19,6 +19,7 @@ import type { RecentJobRecord } from "../../src/shared/contracts/jobs";
 vi.mock("../../src/client/lib/api/jobsClient", () => ({
   listJobs: vi.fn(),
   getJob: vi.fn(),
+  getJobInputs: vi.fn().mockResolvedValue(null),
   deleteJob: vi.fn(),
   adaptJobRecord: vi.fn(),
 }));

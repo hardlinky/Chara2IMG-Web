@@ -1,8 +1,8 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RecentJobRecord } from "../../../shared/contracts/jobs";
 import { cancelViaProxy } from "../../lib/api/runpodProxyClient";
-import { listJobs, deleteJob, pinImage, unpinImage } from "../../lib/api/jobsClient";
-import { getRecentJob } from "../../lib/recentJobsStorage";
+import { listJobs, deleteJob, pinImage, unpinImage, getJob, getJobInputs } from "../../lib/api/jobsClient";
+import { getRecentJob } from "../../lib/recentJobsStorage"; // still used by non-rerun paths
 import { submitRunAndPersistRecentJob } from "../../lib/jobSubmission";
 import { projectRecentJobOutputClusters } from "../../lib/jobOutputProjection";
 import { sanitizeWorkflowForExport } from "../../lib/workflowExport";
@@ -122,20 +122,28 @@ export async function rerunRecentJobWithDependencies(
     return null;
   }
 
-  const job = await getRecentJob(jobId);
+  // Fetch from server (source of truth); fall back to IndexedDB for pre-rework jobs.
+  let job = await getJob(jobId);
+  if (!job) {
+    job = await getRecentJob(jobId);
+  }
   if (!job) {
     return null;
   }
 
+  // adaptJobRecord zeroes submittedInput — fetch the real workflow from the server.
+  const serverInputs = await getJobInputs(jobId);
+  const submittedInput = serverInputs?.submittedInput ?? job.provenance.submittedInput;
+
   await dependencies.submitRunAndPersistRecentJob({
     endpointId: job.endpointId,
     apiKey: options.apiKey,
-    submittedInput: job.provenance.submittedInput,
+    submittedInput,
     snapshot: {
       templateFingerprint: job.provenance.templateFingerprint,
       workflowFileName: job.provenance.workflowFileName,
       draftValues: job.provenance.draftValues,
-      submittedInput: job.provenance.submittedInput
+      submittedInput,
     }
   });
 
