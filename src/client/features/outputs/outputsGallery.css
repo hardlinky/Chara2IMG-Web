@@ -400,11 +400,20 @@
     --base-height: 220px;
   }
 
-  /* Balanced: 2-column on mobile (flex-grow:0 prevents last-row stretch) */
+  /* Balanced: 2-column grid on mobile */
+  .outputs-gallery-balanced {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .outputs-gallery-balanced::after {
+    display: none;
+  }
+
   .outputs-gallery-balanced .outputs-cluster-card {
-    flex-basis: calc(50% - 0.3rem);
-    flex-grow: 0;
-    max-width: calc(50% - 0.3rem);
+    flex-basis: unset;
+    flex-grow: unset;
+    max-width: unset;
     height: auto;
     aspect-ratio: unset;
   }
