@@ -1,7 +1,7 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RecentJobRecord } from "../../../shared/contracts/jobs";
 import { cancelViaProxy } from "../../lib/api/runpodProxyClient";
-import { listJobs, deleteJob, pinImage, unpinImage, getJob, getJobInputs } from "../../lib/api/jobsClient";
+import { listJobs, deleteJob, deleteImage as deleteServerImage, pinImage, unpinImage, getJob, getJobInputs } from "../../lib/api/jobsClient";
 import { getRecentJob } from "../../lib/recentJobsStorage"; // still used by non-rerun paths
 import { submitRunAndPersistRecentJob } from "../../lib/jobSubmission";
 import { projectRecentJobOutputClusters } from "../../lib/jobOutputProjection";
@@ -275,6 +275,7 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
   );
 
   const removeOutputImage = useCallback(async (jobId: string, outputIndex: number) => {
+    // Optimistically hide from view immediately.
     setJobs((prev) =>
       prev.map((j) => {
         if (j.jobId !== jobId) return j;
@@ -283,6 +284,12 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
         return { ...j, hiddenOutputIndices: Array.from(hidden) };
       })
     );
+    // Then delete from server (fire-and-forget; next poll will reflect reality).
+    try {
+      await deleteServerImage(jobId, outputIndex);
+    } catch {
+      // Ignore — image will reappear on next poll if deletion failed.
+    }
   }, []);
 
   const removeJobOutputs = useCallback(async (jobId: string) => {

@@ -69,6 +69,14 @@ export async function getJobInputs(jobId: string): Promise<{ submittedInput: Rec
  * Pin a single image output. Moves server file from tmp → archive.
  * Returns {ok: true} on success.
  */
+export async function deleteImage(jobId: string, imageIndex: number): Promise<void> {
+  const res = await fetch(
+    `/api/jobs/${encodeURIComponent(jobId)}/images/${imageIndex}`,
+    { method: "DELETE", credentials: "include" }
+  );
+  if (!res.ok) throw new Error(`Failed to delete image ${jobId}/${imageIndex}: ${res.status}`);
+}
+
 export async function pinImage(jobId: string, imageIndex: number): Promise<{ ok: boolean }> {
   const res = await fetch(
     `/api/jobs/${encodeURIComponent(jobId)}/images/${imageIndex}/pin`,

@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Hono } from "hono";
 import { requireInvitedSession } from "../middleware/session";
-import { listJobs, readJob, deleteJob, getJobTmpDir, getJobArchiveDir, pinImage, unpinImage } from "../lib/jobStore";
+import { listJobs, readJob, deleteJob, deleteJobImage, getJobTmpDir, getJobArchiveDir, pinImage, unpinImage } from "../lib/jobStore";
 
 export function registerJobsRoutes(app: Hono): void {
   app.use("/api/jobs/*", requireInvitedSession);
@@ -104,6 +104,16 @@ export function registerJobsRoutes(app: Hono): void {
       return c.json({ ok: false, error: "Not found" }, 404);
     }
     return c.json({ ok: true, unarchiveExpiresAt: result.unarchiveExpiresAt });
+  });
+
+  app.delete("/api/jobs/:jobId/images/:index", async (c) => {
+    const jobId = c.req.param("jobId");
+    const index = parseInt(c.req.param("index"), 10);
+    if (!Number.isFinite(index) || index < 0) {
+      return c.json({ ok: false, error: "Invalid index" }, 400);
+    }
+    await deleteJobImage(jobId, index);
+    return c.json({ ok: true });
   });
 
   app.delete("/api/jobs/:jobId", async (c) => {
