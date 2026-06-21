@@ -54,6 +54,18 @@ export async function deleteJob(jobId: string): Promise<void> {
 }
 
 /**
+ * Fetch the saved inputs for a job (the ComfyUI workflow JSON that was submitted).
+ * Returns null if the job or its inputs are no longer available (404).
+ */
+export async function getJobInputs(jobId: string): Promise<{ submittedInput: Record<string, unknown> } | null> {
+  const res = await fetch(`/api/jobs/${encodeURIComponent(jobId)}/inputs`, { credentials: "include" });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Failed to fetch inputs for job ${jobId}: ${res.status}`);
+  const data = (await res.json()) as { ok: boolean; inputs: { submittedInput: Record<string, unknown> } };
+  return data.inputs ?? null;
+}
+
+/**
  * Pin a single image output. Moves server file from tmp → archive.
  * Returns {ok: true} on success.
  */

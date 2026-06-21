@@ -15,6 +15,7 @@ import { ActiveWorkflowTemplate } from "./features/workflows/ActiveWorkflowTempl
 import { WorkflowImport } from "./features/workflows/WorkflowImport";
 import { useActiveWorkflowTemplate } from "./features/workflows/useActiveWorkflowTemplate";
 import { fetchSystemConfig, fetchSystemStorageStats, ProxyRequestError, updateAppViaProxy } from "./lib/api/runpodProxyClient";
+import { getJobInputs } from "./lib/api/jobsClient";
 import { getStoredEndpointId, saveEndpointId } from "./lib/endpointStorage";
 import { APP_VERSION_LABEL } from "./lib/appVersion";
 import { submitRunAndPersistRecentJob } from "./lib/jobSubmission";
@@ -317,7 +318,10 @@ export function App() {
       return;
     }
 
-    const sourceWorkflowRawJson = normalizeWorkflowSource(job.provenance.submittedInput);
+    const serverInputs = await getJobInputs(jobId);
+    const sourceWorkflowRawJson = normalizeWorkflowSource(
+      serverInputs?.submittedInput ?? job.provenance.submittedInput
+    );
     const derivation = deriveInputControls(sourceWorkflowRawJson);
     const categories = derivation.sections.map((section) => ({
       category: section.category,
@@ -442,7 +446,8 @@ export function App() {
       return;
     }
 
-    const workflowPayload = toWorkflowExportPayload(job.provenance.submittedInput);
+    const serverInputs = await getJobInputs(jobId);
+    const workflowPayload = toWorkflowExportPayload(serverInputs?.submittedInput ?? job.provenance.submittedInput);
     if (!workflowPayload) {
       setJobActionError("This job does not include an exportable workflow payload.");
       return;
