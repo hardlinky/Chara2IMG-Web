@@ -19,7 +19,7 @@ type UseRecentJobsOptions = {
   includeOutputClusters?: boolean;
 };
 
-export const RECENT_JOB_PAGE_SIZE = 10;
+export const RECENT_JOB_PAGE_SIZE = 12;
 const OUTPUTS_IN_MEMORY_PER_JOB_LIMIT = 8;
 const POLL_INTERVAL_MS = 10_000;
 const ADAPTIVE_OFFLOAD_COMPLETION_GRACE_PERIOD_MS = 60 * 60 * 1000;
