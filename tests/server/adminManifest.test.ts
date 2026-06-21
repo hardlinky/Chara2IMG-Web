@@ -127,3 +127,58 @@ describe("deleteJobImage", () => {
     expect(updated.pinnedImageIndices).toEqual([1]);
   });
 });
+
+describe("purgeExpiredJobs", () => {
+  it("deletes an expired job that has no pinned images", async () => {
+    const job = makeJobRecord({
+      jobId: "job-plain",
+      displayName: "eeee5555",
+      imageCount: 1,
+      completedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+      expiresAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+    });
+    await jobStore.createJob(job, { draftValues: {}, submittedInput: {} });
+    await writeFile(jobStore.getJobImagePath("job-plain", "eeee5555-0.png"), Buffer.from("tmp"));
+
+    const deleted = await jobStore.purgeExpiredJobs();
+
+    expect(deleted).toContain("job-plain");
+    expect(await jobStore.readJob("job-plain")).toBeNull();
+  });
+
+  it("preserves an expired job with pinned images and only purges its unpinned images", async () => {
+    const job = makeJobRecord({
+      jobId: "job-mixed",
+      displayName: "ffff6666",
+      imageCount: 2,
+      pinnedImageIndices: [0],
+      completedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+      expiresAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+    });
+    await jobStore.createJob(job, { draftValues: {}, submittedInput: {} });
+    // Pinned image lives in archive; unpinned image lives in tmp.
+    await mkdir(join(archiveBase, "jobs", "job-mixed"), { recursive: true });
+    await writeFile(jobStore.getJobImagePath("job-mixed", "ffff6666-0.png", true), Buffer.from("archive"));
+    await writeFile(jobStore.getJobImagePath("job-mixed", "ffff6666-1.png"), Buffer.from("tmp"));
+
+    const deleted = await jobStore.purgeExpiredJobs();
+
+    expect(deleted).not.toContain("job-mixed");
+
+    const survived = await jobStore.readJob("job-mixed");
+    expect(survived).not.toBeNull();
+    expect(survived?.pinnedImageIndices).toEqual([0]);
+    expect(survived?.deletedImageIndices).toContain(1);
+    expect(survived?.expiresAt).toBeNull();
+
+    // Pinned archive image must still be present.
+    await expect(
+      readFile(jobStore.getJobImagePath("job-mixed", "ffff6666-0.png", true), "utf8")
+    ).resolves.toBe("archive");
+    // Unpinned tmp image must be gone.
+    await expect(
+      readFile(jobStore.getJobImagePath("job-mixed", "ffff6666-1.png"), "utf8")
+    ).rejects.toMatchObject({ code: "ENOENT" });
+  });
+});
+

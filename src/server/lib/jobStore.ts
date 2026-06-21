@@ -435,18 +435,65 @@ export async function deleteJobImage(jobId: string, imageIndex: number): Promise
 
 // ─── Purge ────────────────────────────────────────────────────────────────────
 
+/**
+ * For an expired job that still has pinned images, remove only the unpinned
+ * image files (which live in the tmp dir) instead of deleting the whole job.
+ * Their indices are recorded in deletedImageIndices so they drop out of the UI,
+ * the job record + its archived pinned images are preserved, and expiresAt is
+ * cleared so the job is no longer purge-eligible.
+ */
+async function purgeUnpinnedTmpImagesForExpiredJob(record: JobRecord): Promise<void> {
+  const tmpDir = join(JOB_TMP_BASE, "jobs", record.jobId);
+
+  let files: string[];
+  try {
+    files = await readdir(tmpDir);
+  } catch (err: unknown) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+      await updateJob(record.jobId, { expiresAt: null });
+      return;
+    }
+    throw err;
+  }
+
+  const pinnedSet = new Set(record.pinnedImageIndices ?? []);
+  const removedIndices: number[] = [];
+
+  for (const fileName of files) {
+    const parsed = parseImageFileName(fileName, record.displayName);
+    if (!parsed) continue;
+    if (pinnedSet.has(parsed.index)) continue; // safety: never remove pinned images
+    await rm(join(tmpDir, fileName), { force: true });
+    removedIndices.push(parsed.index);
+  }
+
+  const deletedImageIndices = Array.from(
+    new Set([...(record.deletedImageIndices ?? []), ...removedIndices])
+  );
+
+  await updateJob(record.jobId, { deletedImageIndices, expiresAt: null });
+}
+
 export async function purgeExpiredJobs(): Promise<string[]> {
   const now = new Date();
   const jobs = await listJobs();
-  const toDelete = jobs.filter(
+  const expired = jobs.filter(
     (r) => r.expiresAt !== null && new Date(r.expiresAt) < now && !r.isArchived
   );
 
   const deleted: string[] = [];
 
   await Promise.all(
-    toDelete.map(async (record) => {
+    expired.map(async (record) => {
       try {
+        // Jobs with pinned images must survive expiry: pinned images live in the
+        // archive dir, so deleting the whole tmp job folder would orphan them and
+        // make the job vanish from listJobs(). Purge only the unpinned images.
+        if ((record.pinnedImageIndices?.length ?? 0) > 0) {
+          await purgeUnpinnedTmpImagesForExpiredJob(record);
+          return;
+        }
+
         await deleteJob(record.jobId);
         deleted.push(record.jobId);
       } catch (err) {
