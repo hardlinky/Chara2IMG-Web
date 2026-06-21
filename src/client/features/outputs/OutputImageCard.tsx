@@ -211,16 +211,18 @@ export function OutputImageCard({
           {isPinning ? "⏳" : image.isPinned ? "📌" : "📍"}
         </button>
         {showBottomActions ? (
+          <button
+            type="button"
+            className="outputs-image-action-btn outputs-image-download-btn"
+            aria-label={`Download ${displayPrefix} image ${imageLabel}`}
+            title={`Download ${displayPrefix} image ${imageLabel}`}
+            onClick={() => triggerDownload(image, displayPrefix, imageLabel)}
+          >
+            <DownloadIcon />
+          </button>
+        ) : null}
+        {showBottomActions ? (
           <div className="outputs-image-bottom-actions" aria-label={`Actions for ${displayPrefix} image ${imageLabel}`}>
-            <button
-              type="button"
-              className="outputs-image-action-btn"
-              aria-label={`Download ${displayPrefix} image ${imageLabel}`}
-              title={`Download ${displayPrefix} image ${imageLabel}`}
-              onClick={() => triggerDownload(image, displayPrefix, imageLabel)}
-            >
-              <DownloadIcon />
-            </button>
             {onViewJobOutputs ? (
               <button
                 type="button"

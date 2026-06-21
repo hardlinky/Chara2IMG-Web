@@ -367,6 +367,13 @@
   color: var(--color-text-muted);
 }
 
+.outputs-image-download-btn {
+  position: absolute;
+  bottom: var(--space-2);
+  right: var(--space-2);
+  z-index: 1;
+}
+
 .outputs-image-bottom-actions {
   position: absolute;
   bottom: var(--space-2);
