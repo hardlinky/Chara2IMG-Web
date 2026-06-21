@@ -345,6 +345,24 @@ export async function listManifestImages(): Promise<JobManifestEntry[]> {
 }
 
 /**
+ * Returns true if any image file (png/jpg/webp) exists in `dir` for the given displayName.
+ */
+async function dirHasImages(dir: string, displayName: string): Promise<boolean> {
+  for (const ext of IMAGE_EXTENSIONS) {
+    // Check any index 0–999 by listing and matching
+    try {
+      const entries = await readdir(dir);
+      if (entries.some((f) => f.startsWith(`${displayName}-`) && f.endsWith(`.${ext}`))) {
+        return true;
+      }
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
+/**
  * Purge a single image (by stable index) from BOTH tmp and archive dirs and
  * clean its pin/expiry state from job.json in whichever dir(s) it exists.
  * Returns true if at least one image file was removed.
@@ -353,7 +371,9 @@ export async function deleteJobImage(jobId: string, imageIndex: number): Promise
   const job = (await readJob(jobId)) ?? (await readArchiveJob(jobId));
   if (!job) return false;
 
-  const dirs = [join(JOB_TMP_BASE, "jobs", jobId), join(JOB_ARCHIVE_BASE, "jobs", jobId)];
+  const tmpDir = join(JOB_TMP_BASE, "jobs", jobId);
+  const archiveDir = join(JOB_ARCHIVE_BASE, "jobs", jobId);
+  const dirs = [tmpDir, archiveDir];
 
   let removed = false;
   for (const dir of dirs) {
@@ -377,10 +397,16 @@ export async function deleteJobImage(jobId: string, imageIndex: number): Promise
     const imageUnarchiveExpiries = { ...(tmpJob.imageUnarchiveExpiries ?? {}) };
     delete imageUnarchiveExpiries[String(imageIndex)];
     await updateJob(jobId, { pinnedImageIndices, imageUnarchiveExpiries });
+
+    // If no image files remain in tmp dir, remove the whole tmp job folder.
+    const hasRemainingTmpImages = await dirHasImages(tmpDir, job.displayName);
+    if (!hasRemainingTmpImages) {
+      await rm(tmpDir, { recursive: true, force: true });
+    }
   }
 
   // Clean archive job.json pin/expiry state directly (if an archive record exists).
-  const archiveJobPath = join(JOB_ARCHIVE_BASE, "jobs", jobId, "job.json");
+  const archiveJobPath = join(archiveDir, "job.json");
   try {
     const raw = await readFile(archiveJobPath, "utf8");
     const archiveRecord = JSON.parse(raw) as JobRecord;
@@ -388,7 +414,14 @@ export async function deleteJobImage(jobId: string, imageIndex: number): Promise
     const imageUnarchiveExpiries = { ...(archiveRecord.imageUnarchiveExpiries ?? {}) };
     delete imageUnarchiveExpiries[String(imageIndex)];
     const next: JobRecord = { ...archiveRecord, pinnedImageIndices, imageUnarchiveExpiries };
-    await writeFile(archiveJobPath, JSON.stringify(next, null, 2), "utf8");
+
+    // If no image files remain in archive dir, remove the whole archive job folder.
+    const hasRemainingArchiveImages = await dirHasImages(archiveDir, job.displayName);
+    if (!hasRemainingArchiveImages) {
+      await rm(archiveDir, { recursive: true, force: true });
+    } else {
+      await writeFile(archiveJobPath, JSON.stringify(next, null, 2), "utf8");
+    }
   } catch (err: unknown) {
     if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
   }
