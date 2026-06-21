@@ -8,7 +8,7 @@ coverage/
 
 # Environment-scaffolded workspace files
 .github/
-.gsd/templates/
+.gsd/
 
 # OS/editor noise
 .DS_Store
