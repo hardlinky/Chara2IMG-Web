@@ -85,15 +85,40 @@ export async function listJobs(): Promise<JobRecord[]> {
   try {
     entries = await readdir(join(JOB_TMP_BASE, "jobs"), { withFileTypes: true }) as unknown as { name: string; isDirectory(): boolean }[];
   } catch (err: unknown) {
-    if ((err as NodeJS.ErrnoException).code === "ENOENT") return [];
-    throw err;
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+      entries = [];
+    } else {
+      throw err;
+    }
   }
 
-  const results = await Promise.all(
+  const tmpResults = await Promise.all(
     entries.filter((e) => e.isDirectory()).map((e) => readJob(e.name)),
   );
 
-  return (results.filter((r) => r !== null) as JobRecord[]).sort(
+  const byJobId = new Map<string, JobRecord>();
+  for (const record of tmpResults) {
+    if (record !== null) byJobId.set(record.jobId, record);
+  }
+
+  // Merge in archive-only jobs (e.g. the tmp dir was wiped on a pod restart, or
+  // an unpinned-image purge removed the tmp record) so pinned images survive.
+  // The tmp record is authoritative when present, so we only reconstruct jobs
+  // that have no tmp record.
+  const archiveIds = await listJobIdsIn(JOB_ARCHIVE_BASE);
+  const reconstructed = await Promise.all(
+    archiveIds.map(async (jobId) => {
+      if (byJobId.has(jobId)) return null;
+      const archiveJob = await readArchiveJob(jobId);
+      if (!archiveJob) return null;
+      return reconstructArchiveOnlyJob(archiveJob);
+    }),
+  );
+  for (const record of reconstructed) {
+    if (record !== null) byJobId.set(record.jobId, record);
+  }
+
+  return Array.from(byJobId.values()).sort(
     (a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime(),
   );
 }
@@ -176,10 +201,18 @@ export async function pinImage(jobId: string, imageIndex: number): Promise<boole
   const expiries = { ...(job.imageUnarchiveExpiries ?? {}) };
   delete expiries[String(imageIndex)];
 
-  await updateJob(jobId, {
-    pinnedImageIndices: Array.from(pinnedSet),
+  const pinnedImageIndices = Array.from(pinnedSet).sort((a, b) => a - b);
+  const updated = await updateJob(jobId, {
+    pinnedImageIndices,
     imageUnarchiveExpiries: expiries,
   });
+
+  // Persist an archive-side job.json so the pinned image survives a tmp wipe
+  // (pod restart). listJobs() reconstructs jobs from this record when the tmp
+  // copy is gone. Mark expiresAt null — archived pinned data must never expire.
+  if (updated) {
+    await writeArchiveJobRecord(jobId, { ...updated, isArchived: true, expiresAt: null });
+  }
 
   return true;
 }
@@ -213,10 +246,19 @@ export async function unpinImage(
     [String(imageIndex)]: unarchiveExpiresAt,
   };
 
-  await updateJob(jobId, {
-    pinnedImageIndices: Array.from(pinnedSet),
+  const pinnedImageIndices = Array.from(pinnedSet).sort((a, b) => a - b);
+  const updated = await updateJob(jobId, {
+    pinnedImageIndices,
     imageUnarchiveExpiries: expiries,
   });
+
+  // Keep the archive-side record in sync. If no pinned images remain, drop the
+  // archive job dir entirely; otherwise rewrite its job.json with the new state.
+  if (pinnedImageIndices.length === 0) {
+    await rm(archiveDir, { recursive: true, force: true });
+  } else if (updated) {
+    await writeArchiveJobRecord(jobId, { ...updated, isArchived: true, expiresAt: null });
+  }
 
   return { ok: true, unarchiveExpiresAt };
 }
@@ -238,6 +280,58 @@ async function readArchiveJob(jobId: string): Promise<JobRecord | null> {
     if ((err as NodeJS.ErrnoException).code === "ENOENT") return null;
     throw err;
   }
+}
+
+/** Write (or overwrite) a job.json into the archive job dir, creating it if needed. */
+async function writeArchiveJobRecord(jobId: string, record: JobRecord): Promise<void> {
+  const archiveDir = join(JOB_ARCHIVE_BASE, "jobs", jobId);
+  await mkdir(archiveDir, { recursive: true });
+  await writeFile(join(archiveDir, "job.json"), JSON.stringify(record, null, 2), "utf8");
+}
+
+/** Read a job from tmp, falling back to the archive copy (for tmp-wiped pinned jobs). */
+export async function readJobAnywhere(jobId: string): Promise<JobRecord | null> {
+  return (await readJob(jobId)) ?? (await readArchiveJob(jobId));
+}
+
+/**
+ * Build a listable JobRecord for a job that exists only in the archive (its tmp
+ * record was wiped on a pod restart or removed by an unpinned-image purge).
+ * Only the pinned images actually present on disk are surfaced; every other
+ * index is marked deleted so the client never renders broken image URLs for
+ * images that lived solely in the now-gone tmp dir. Returns null if no archived
+ * image files remain.
+ */
+async function reconstructArchiveOnlyJob(archiveJob: JobRecord): Promise<JobRecord | null> {
+  const archiveDir = join(JOB_ARCHIVE_BASE, "jobs", archiveJob.jobId);
+
+  let files: string[];
+  try {
+    files = await readdir(archiveDir);
+  } catch (err: unknown) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") return null;
+    throw err;
+  }
+
+  const presentIndices = new Set<number>();
+  for (const fileName of files) {
+    const parsed = parseImageFileName(fileName, archiveJob.displayName);
+    if (parsed) presentIndices.add(parsed.index);
+  }
+  if (presentIndices.size === 0) return null;
+
+  const deleted = new Set(archiveJob.deletedImageIndices ?? []);
+  for (let index = 0; index < archiveJob.imageCount; index += 1) {
+    if (!presentIndices.has(index)) deleted.add(index);
+  }
+
+  return {
+    ...archiveJob,
+    pinnedImageIndices: Array.from(presentIndices).sort((a, b) => a - b),
+    deletedImageIndices: Array.from(deleted).sort((a, b) => a - b),
+    expiresAt: null,
+    isArchived: true,
+  };
 }
 
 /** List jobIds present under {base}/jobs (ENOENT → []). */

@@ -182,3 +182,65 @@ describe("purgeExpiredJobs", () => {
   });
 });
 
+describe("pinned jobs surviving a tmp wipe (pod restart)", () => {
+  it("pinImage persists an archive job.json", async () => {
+    const job = makeJobRecord({ jobId: "job-pin", displayName: "1111aaaa", imageCount: 2 });
+    await jobStore.createJob(job, { draftValues: {}, submittedInput: {} });
+    await writeFile(jobStore.getJobImagePath("job-pin", "1111aaaa-0.png"), Buffer.from("img0"));
+    await writeFile(jobStore.getJobImagePath("job-pin", "1111aaaa-1.png"), Buffer.from("img1"));
+
+    const ok = await jobStore.pinImage("job-pin", 0);
+    expect(ok).toBe(true);
+
+    const raw = await readFile(join(archiveBase, "jobs", "job-pin", "job.json"), "utf8");
+    const archived = JSON.parse(raw) as JobRecord;
+    expect(archived.pinnedImageIndices).toEqual([0]);
+    expect(archived.isArchived).toBe(true);
+    expect(archived.expiresAt).toBeNull();
+  });
+
+  it("listJobs reconstructs an archive-only job after the tmp dir is wiped, showing only pinned images", async () => {
+    const job = makeJobRecord({ jobId: "job-wipe", displayName: "2222bbbb", imageCount: 2 });
+    await jobStore.createJob(job, { draftValues: {}, submittedInput: {} });
+    await writeFile(jobStore.getJobImagePath("job-wipe", "2222bbbb-0.png"), Buffer.from("img0"));
+    await writeFile(jobStore.getJobImagePath("job-wipe", "2222bbbb-1.png"), Buffer.from("img1"));
+
+    await jobStore.pinImage("job-wipe", 0);
+
+    // Simulate a pod restart wiping the ephemeral tmp dir.
+    await rm(join(tmpBase, "jobs"), { recursive: true, force: true });
+
+    const jobs = await jobStore.listJobs();
+    const reconstructed = jobs.find((j) => j.jobId === "job-wipe");
+    expect(reconstructed).toBeDefined();
+    expect(reconstructed?.pinnedImageIndices).toEqual([0]);
+    expect(reconstructed?.deletedImageIndices).toContain(1);
+    expect(reconstructed?.expiresAt).toBeNull();
+
+    // The pinned image is still readable via the archive fallback.
+    const fromArchive = await jobStore.readJobAnywhere("job-wipe");
+    expect(fromArchive?.pinnedImageIndices).toContain(0);
+    await expect(
+      readFile(jobStore.getJobImagePath("job-wipe", "2222bbbb-0.png", true), "utf8")
+    ).resolves.toBe("img0");
+  });
+
+  it("unpinning the last pinned image removes the archive job dir", async () => {
+    const job = makeJobRecord({ jobId: "job-unpin", displayName: "3333cccc", imageCount: 1 });
+    await jobStore.createJob(job, { draftValues: {}, submittedInput: {} });
+    await writeFile(jobStore.getJobImagePath("job-unpin", "3333cccc-0.png"), Buffer.from("img0"));
+
+    await jobStore.pinImage("job-unpin", 0);
+    await expect(
+      readFile(join(archiveBase, "jobs", "job-unpin", "job.json"), "utf8")
+    ).resolves.toBeTruthy();
+
+    const result = await jobStore.unpinImage("job-unpin", 0);
+    expect(result.ok).toBe(true);
+
+    await expect(
+      readFile(join(archiveBase, "jobs", "job-unpin", "job.json"), "utf8")
+    ).rejects.toMatchObject({ code: "ENOENT" });
+  });
+});
+

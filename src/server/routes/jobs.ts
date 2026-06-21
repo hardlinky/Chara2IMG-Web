@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Hono } from "hono";
 import { requireInvitedSession } from "../middleware/session";
-import { listJobs, readJob, deleteJob, deleteJobImage, getJobTmpDir, getJobArchiveDir, pinImage, unpinImage } from "../lib/jobStore";
+import { listJobs, readJob, readJobAnywhere, deleteJob, deleteJobImage, getJobTmpDir, getJobArchiveDir, pinImage, unpinImage } from "../lib/jobStore";
 
 export function registerJobsRoutes(app: Hono): void {
   app.use("/api/jobs/*", requireInvitedSession);
@@ -44,7 +44,7 @@ export function registerJobsRoutes(app: Hono): void {
       return c.json({ ok: false, error: "Invalid index" }, 400);
     }
 
-    const job = await readJob(jobId);
+    const job = await readJobAnywhere(jobId);
     if (!job) {
       return c.json({ ok: false, error: "Not found" }, 404);
     }
