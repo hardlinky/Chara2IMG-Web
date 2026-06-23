@@ -84,23 +84,6 @@ function Img2ImgIcon() {
   );
 }
 
-function CachedSourceIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" focusable="false">
-      <path d="M7 8V6a5 5 0 0 1 10 0v2m-9 0h8a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2Z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function ArchivedSourceIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" focusable="false">
-      <path d="M4 7h16v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7Z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M3 4h18v3H3zM9 12h6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
 export function OutputImageCard({
   image,
   imagePrefix,
@@ -121,7 +104,6 @@ export function OutputImageCard({
 }: OutputImageCardProps) {
   const showBottomActions = Boolean(onExportWorkflow || onLoadInputs || onViewJobOutputs || onLoadIntoImg2Img);
   const isArchived = image.isPinned && !image.cacheExpiresAt;
-  const storageSourceLabel = isArchived ? "Archived" : "Cached";
   const [imgBroken, setImgBroken] = useState(false);
   const isUrlBased = isJobApiImageUrl(image.dataUrl);
   const [isLoading, setIsLoading] = useState(isUrlBased);
@@ -295,10 +277,6 @@ export function OutputImageCard({
       </div>
       <div className="outputs-image-caption-row">
         <span className="outputs-image-caption-label">{`${displayPrefix} #${imageLabel}`}</span>
-        <span className="outputs-image-source-chip" title={isArchived ? "Loaded from server backup" : "Loaded from browser cache"}>
-          {isArchived ? <ArchivedSourceIcon /> : <CachedSourceIcon />}
-          <span>{storageSourceLabel}</span>
-        </span>
         {badge ? <span className="outputs-image-source-chip outputs-image-counter-chip">{badge}</span> : null}
       </div>
       {image.cacheExpiresAt && !isArchived ? (

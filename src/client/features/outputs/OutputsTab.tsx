@@ -9,7 +9,7 @@ import "./outputsGallery.css";
 import "../../styles/jobsOutput.css";
 
 type OutputsGalleryMode = "per-job" | "all-images";
-type OutputsPinFilter = "all" | "pinned" | "unpinned" | "cached" | "archived";
+type OutputsPinFilter = "all" | "pinned" | "unpinned";
 const MOBILE_OUTPUT_DENSITIES: readonly OutputDensity[] = ["compact", "balanced", "comfortable"];
 const GALLERY_PAGE_SIZE = 12;
 const OUTPUTS_PIN_FILTER_STORAGE_KEY = "chara2imgOutputsPinFilter";
@@ -21,7 +21,7 @@ function getStoredOutputsPinFilter(): OutputsPinFilter {
   }
 
   const stored = window.localStorage.getItem(OUTPUTS_PIN_FILTER_STORAGE_KEY);
-  return stored === "all" || stored === "pinned" || stored === "unpinned" || stored === "cached" || stored === "archived" ? stored : "all";
+  return stored === "all" || stored === "pinned" || stored === "unpinned" ? stored : "all";
 }
 
 function getStoredOutputsViewMode(): OutputsGalleryMode {
@@ -120,14 +120,6 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
 
           if (pinFilter === "unpinned") {
             return !output.isPinned;
-          }
-
-          if (pinFilter === "cached") {
-            return output.cacheExpiresAt !== undefined && !output.isPinned;
-          }
-
-          if (pinFilter === "archived") {
-            return output.isPinned && !output.cacheExpiresAt;
           }
 
           return true;
@@ -286,8 +278,6 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
               <option value="all">All images</option>
               <option value="pinned">Pinned only</option>
               <option value="unpinned">Unpinned only</option>
-              <option value="cached">Cached only</option>
-              <option value="archived">Archived only</option>
             </select>
           </label>
           <label className="field">
