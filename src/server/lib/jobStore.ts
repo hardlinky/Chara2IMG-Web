@@ -1,4 +1,4 @@
-import { copyFile, mkdir, readdir, rm, stat, writeFile, readFile } from "node:fs/promises";
+import { copyFile, mkdir, readdir, rm, stat, statfs, writeFile, readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -38,6 +38,54 @@ export function getJobArchiveDir(): string {
 export function getJobImagePath(jobId: string, fileName: string, archived = false): string {
   const base = archived ? JOB_ARCHIVE_BASE : JOB_TMP_BASE;
   return join(base, "jobs", jobId, fileName);
+}
+
+// ─── Storage usage ────────────────────────────────────────────────────────────
+
+/** Recursively sum the byte size of every file under `dir`. Missing dir => 0. */
+async function getDirectorySizeBytes(dir: string): Promise<number> {
+  let entries: { name: string; isDirectory(): boolean; isFile(): boolean }[];
+  try {
+    entries = (await readdir(dir, { withFileTypes: true })) as unknown as {
+      name: string;
+      isDirectory(): boolean;
+      isFile(): boolean;
+    }[];
+  } catch (err: unknown) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") return 0;
+    throw err;
+  }
+
+  let total = 0;
+  for (const entry of entries) {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      total += await getDirectorySizeBytes(full);
+    } else if (entry.isFile()) {
+      try {
+        const fileStat = await stat(full);
+        total += fileStat.size;
+      } catch (err: unknown) {
+        if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
+      }
+    }
+  }
+  return total;
+}
+
+/** Total bytes currently used by archived (pinned) job images. */
+export async function getArchiveUsageBytes(): Promise<number> {
+  return getDirectorySizeBytes(join(JOB_ARCHIVE_BASE, "jobs"));
+}
+
+/** Total capacity of the filesystem backing the archive directory. 0 if unknown. */
+export async function getArchiveCapacityBytes(): Promise<number> {
+  try {
+    const fs = await statfs(JOB_ARCHIVE_BASE);
+    return fs.bsize * fs.blocks;
+  } catch {
+    return 0;
+  }
 }
 
 // ─── Startup ──────────────────────────────────────────────────────────────────

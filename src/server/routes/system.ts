@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import type { Hono } from "hono";
-import { listJobs } from "../lib/jobStore";
+import { getArchiveCapacityBytes, getArchiveUsageBytes, listJobs } from "../lib/jobStore";
 import { requireInvitedSession } from "../middleware/session";
 
 const execFileAsync = promisify(execFile);
@@ -86,11 +86,18 @@ export function registerSystemRoutes(app: Hono): void {
     const jobs = await listJobs();
     const archivedCount = jobs.filter(j => j.isArchived).length;
 
+    const [archiveUsedBytes, totalCapacityBytes] = await Promise.all([
+      getArchiveUsageBytes(),
+      getArchiveCapacityBytes(),
+    ]);
+
     return c.json({
       ok: true,
-      userUsedBytes: 0,
-      allUsersUsedBytes: 0,
-      totalCapacityBytes: 0,
+      // Single user per server today, so per-user and all-user usage are equal.
+      // Kept as distinct fields so multi-user can report per-user usage later.
+      userUsedBytes: archiveUsedBytes,
+      allUsersUsedBytes: archiveUsedBytes,
+      totalCapacityBytes,
       archivedJobCount: archivedCount,
       source: "system"
     });

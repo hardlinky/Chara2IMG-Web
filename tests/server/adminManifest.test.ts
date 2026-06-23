@@ -244,3 +244,22 @@ describe("pinned jobs surviving a tmp wipe (pod restart)", () => {
   });
 });
 
+describe("getArchiveUsageBytes", () => {
+  it("returns 0 when nothing is archived", async () => {
+    expect(await jobStore.getArchiveUsageBytes()).toBe(0);
+  });
+
+  it("sums the byte sizes of all archived image files", async () => {
+    const job = makeJobRecord({ jobId: "job-size", displayName: "4444dddd", imageCount: 2 });
+    await jobStore.createJob(job, { draftValues: {}, submittedInput: {} });
+    await mkdir(join(archiveBase, "jobs", "job-size"), { recursive: true });
+    await writeFile(jobStore.getJobImagePath("job-size", "4444dddd-0.png", true), Buffer.alloc(100));
+    await writeFile(jobStore.getJobImagePath("job-size", "4444dddd-1.png", true), Buffer.alloc(250));
+
+    const used = await jobStore.getArchiveUsageBytes();
+    // 100 + 250 image bytes, plus the job.json written by createJob's archive path is not counted
+    // here because createJob only writes tmp; archive only holds the two image files.
+    expect(used).toBe(350);
+  });
+});
+
