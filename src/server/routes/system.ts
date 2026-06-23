@@ -86,10 +86,8 @@ export function registerSystemRoutes(app: Hono): void {
     const jobs = await listJobs();
     const archivedCount = jobs.filter(j => j.isArchived).length;
 
-    const [archiveUsedBytes, totalCapacityBytes] = await Promise.all([
-      getArchiveUsageBytes(),
-      getArchiveCapacityBytes(),
-    ]);
+    const archiveUsedBytes = await getArchiveUsageBytes();
+    const totalCapacityBytes = getArchiveCapacityBytes();
 
     return c.json({
       ok: true,

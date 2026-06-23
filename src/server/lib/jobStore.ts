@@ -1,4 +1,4 @@
-import { copyFile, mkdir, readdir, rm, stat, statfs, writeFile, readFile } from "node:fs/promises";
+import { copyFile, mkdir, readdir, rm, stat, writeFile, readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -78,14 +78,12 @@ export async function getArchiveUsageBytes(): Promise<number> {
   return getDirectorySizeBytes(join(JOB_ARCHIVE_BASE, "jobs"));
 }
 
-/** Total capacity of the filesystem backing the archive directory. 0 if unknown. */
-export async function getArchiveCapacityBytes(): Promise<number> {
-  try {
-    const fs = await statfs(JOB_ARCHIVE_BASE);
-    return fs.bsize * fs.blocks;
-  } catch {
-    return 0;
-  }
+/** Configured archive capacity from PINNED_IMAGES_STORAGE_CAPACITY_BYTES. 0 if unset/invalid. */
+export function getArchiveCapacityBytes(): number {
+  const raw = process.env.PINNED_IMAGES_STORAGE_CAPACITY_BYTES?.trim();
+  if (!raw) return 0;
+  const value = Number(raw);
+  return Number.isFinite(value) && value > 0 ? value : 0;
 }
 
 // ─── Startup ──────────────────────────────────────────────────────────────────
