@@ -93,7 +93,9 @@ function isMeaningfulImportedValue(value: DynamicInputValue): boolean {
   }
 
   if (typeof value === "string") {
-    return value.trim().length > 0;
+    // An empty string is a valid value to carry over: it should overwrite the
+    // target input (e.g. clearing a prompt), not be skipped.
+    return true;
   }
 
   if (typeof value === "number") {

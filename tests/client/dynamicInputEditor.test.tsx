@@ -6,6 +6,7 @@ import { DynamicInputEditor } from "../../src/client/features/inputs/DynamicInpu
 import { DynamicInputEditorView } from "../../src/client/features/inputs/DynamicInputEditor";
 import {
   applyExternalDraftValues,
+  applyImportedWorkflowInputs,
   applyOrderingOverlay,
   buildOverlayForSectionOrder,
   buildSectionsFromControls
@@ -468,5 +469,55 @@ describe("dynamic input editor", () => {
     }
 
     expect(result.reason).toContain("mismatch");
+  });
+
+  it("overwrites a target input with an empty source value when importing job inputs", () => {
+    const sourceWorkflow = {
+      "10": {
+        class_type: "Prompt",
+        inputs: {
+          title: "[Input1] Character.Prompt",
+          __input: {
+            kind: "text",
+            field: "text"
+          },
+          text: ""
+        }
+      }
+    };
+
+    const currentControls: DynamicInputControl[] = [
+      {
+        id: "local:text:prompt",
+        kind: "text",
+        inputIndex: 1,
+        fullTitle: "[Input1] Character.Prompt",
+        category: "Character",
+        name: "Prompt",
+        source: {
+          nodeId: "local",
+          titlePath: "local.inputs.title",
+          valuePath: ["text"]
+        },
+        constraints: {},
+        defaultValue: "",
+        orderKey: "000001:[Input1] Character.Prompt"
+      }
+    ];
+
+    const result = applyImportedWorkflowInputs({
+      sourceWorkflowRawJson: sourceWorkflow,
+      selectedCategories: ["Character"],
+      currentDraftValues: { "local:text:prompt": "existing prompt" },
+      currentControls
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+
+    expect(result.matchedControls).toBe(1);
+    expect(result.draftValues["local:text:prompt"]).toBe("");
   });
 });
