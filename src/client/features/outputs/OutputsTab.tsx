@@ -10,7 +10,7 @@ import "../../styles/jobsOutput.css";
 
 type OutputsGalleryMode = "per-job" | "all-images";
 type OutputsPinFilter = "all" | "pinned" | "unpinned";
-const MOBILE_OUTPUT_DENSITIES: readonly OutputDensity[] = ["compact", "balanced", "comfortable"];
+const MOBILE_OUTPUT_DENSITIES: readonly OutputDensity[] = ["compact", "comfortable"];
 const GALLERY_PAGE_SIZE = 12;
 const OUTPUTS_PIN_FILTER_STORAGE_KEY = "chara2imgOutputsPinFilter";
 const OUTPUTS_VIEW_MODE_STORAGE_KEY = "chara2imgOutputsViewMode";
@@ -101,7 +101,7 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
 
   useEffect(() => {
     if (!availableDensities.includes(gallery.density)) {
-      gallery.setDensity("balanced");
+      gallery.setDensity(availableDensities[0] ?? "comfortable");
     }
   }, [availableDensities, gallery]);
 
@@ -236,6 +236,7 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
     return (
       <JobOutputsView
         cluster={selectedJobCluster}
+        density={gallery.density}
         onBack={gallery.goBackToGallery}
         onPreviousJob={gallery.selectedClusterIndex > 0 ? gallery.goToPreviousJob : undefined}
         onNextJob={gallery.selectedClusterIndex >= 0 && gallery.selectedClusterIndex + 1 < clusters.length ? gallery.goToNextJob : undefined}

@@ -2,9 +2,11 @@ import { useMemo, useState } from "react";
 import type { RecentJobOutputCluster } from "../../../shared/contracts/jobs";
 import { formatOutputJobId } from "./formatOutputJobId";
 import { OutputLightbox } from "./OutputLightbox";
+import type { OutputDensity } from "./useOutputGallery";
 
 type JobOutputsViewProps = {
   cluster: RecentJobOutputCluster;
+  density?: OutputDensity;
   onBack: () => void;
   onPreviousJob?: () => void;
   onNextJob?: () => void;
@@ -49,7 +51,7 @@ function toRelativeTimestamp(isoValue: string | null): string {
   return `${deltaDays}d ago`;
 }
 
-export function JobOutputsView({ cluster, onBack, onPreviousJob, onNextJob, onRerun, onLoadInputs, onRemoveImage, onRemoveAllOutputs, onExportWorkflow, onTogglePinnedImage, canPinMore = true, pinningOutputIndices, img2imgInputAvailable = false, onLoadImageIntoImg2Img }: JobOutputsViewProps) {
+export function JobOutputsView({ cluster, density = "comfortable", onBack, onPreviousJob, onNextJob, onRerun, onLoadInputs, onRemoveImage, onRemoveAllOutputs, onExportWorkflow, onTogglePinnedImage, canPinMore = true, pinningOutputIndices, img2imgInputAvailable = false, onLoadImageIntoImg2Img }: JobOutputsViewProps) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const displayJobId = formatOutputJobId(cluster.jobId);
 
@@ -96,7 +98,7 @@ export function JobOutputsView({ cluster, onBack, onPreviousJob, onNextJob, onRe
         {displayJobId} | {toRelativeTimestamp(cluster.finishedAt ?? cluster.submittedAt)} | {cluster.workflowFileName ?? "Workflow unknown"}
       </p>
 
-      <div className="outputs-gallery outputs-gallery-comfortable">
+      <div className={`outputs-gallery outputs-gallery-${density}`}>
         <OutputLightbox
           images={cluster.outputs}
           imagePrefix={cluster.jobId}
