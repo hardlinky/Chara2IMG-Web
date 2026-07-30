@@ -189,7 +189,9 @@
 
 .jobs-pagination-input {
   /* Fit the largest possible page number: digit width + minimal padding. */
-  width: calc(var(--page-digits, 2) * 1ch + 1.25rem);
+  width: calc(var(--page-digits, 2) * 1ch + 1rem);
+  padding-left: 0.35rem;
+  padding-right: 0.35rem;
   text-align: center;
   -moz-appearance: textfield;
   appearance: textfield;
