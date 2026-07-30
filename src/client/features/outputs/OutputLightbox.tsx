@@ -1,11 +1,10 @@
-import { type MutableRefObject, type SyntheticEvent, useCallback, useEffect, useRef, useState } from "react";
-import { Gallery, Item, useGallery } from "react-photoswipe-gallery";
+import { type SyntheticEvent, useCallback, useEffect, useRef, useState } from "react";
+import { Item } from "react-photoswipe-gallery";
 import type PhotoSwipe from "photoswipe";
 import "photoswipe/dist/photoswipe.css";
 import type { RecentJobOutputImage } from "../../../shared/contracts/jobs";
+import { FToggleGallery, type GalleryApi } from "./GalleryFToggle";
 import { OutputImageCard } from "./OutputImageCard";
-
-type GalleryApi = { open: (index: number) => void; close: () => void };
 
 type OutputLightboxProps = {
   images: RecentJobOutputImage[];
@@ -24,12 +23,6 @@ type OutputLightboxProps = {
   onNextJob?: () => void;
   enableJobNav?: boolean;
 };
-
-// Bridges the Gallery's imperative open/close API up to the parent via ref.
-function GalleryApiBridge({ apiRef }: { apiRef: MutableRefObject<GalleryApi | null> }) {
-  apiRef.current = useGallery();
-  return null;
-}
 
 export function OutputLightbox({
   images,
@@ -176,7 +169,9 @@ export function OutputLightbox({
   };
 
   return (
-    <Gallery
+    <FToggleGallery
+      apiRef={galleryApiRef}
+      itemCount={visibleImages.length}
       onBeforeOpen={handleBeforeOpen}
       options={{
         loop: true,
@@ -190,7 +185,6 @@ export function OutputLightbox({
         wheelToZoom: true
       }}
     >
-      <GalleryApiBridge apiRef={galleryApiRef} />
       <div className="outputs-lightbox outputs-image-grid">
         {visibleImages.map((image, index) => {
           const dimensions = imageDimensions[index] ?? { width: 1024, height: 1024 };
@@ -232,6 +226,6 @@ export function OutputLightbox({
           );
         })}
       </div>
-    </Gallery>
+    </FToggleGallery>
   );
 }

@@ -1,7 +1,8 @@
 import { type SyntheticEvent, useEffect, useMemo, useState } from "react";
-import { Gallery, Item } from "react-photoswipe-gallery";
+import { Item } from "react-photoswipe-gallery";
 import type { RecentJobOutputCluster } from "../../../shared/contracts/jobs";
 import { formatOutputJobId } from "./formatOutputJobId";
+import { FToggleGallery } from "./GalleryFToggle";
 import { JobOutputsView } from "./JobOutputsView";
 import { OutputImageCard } from "./OutputImageCard";
 import { OUTPUT_DENSITIES, type OutputDensity, useOutputGallery } from "./useOutputGallery";
@@ -342,7 +343,8 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
       {paginationControls}
 
       {galleryMode === "per-job" ? (
-        <Gallery
+        <FToggleGallery
+          itemCount={pagedClusters.length}
           options={{
             loop: true,
             allowPanToNext: false,
@@ -401,9 +403,10 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
               })()
             ))}
           </div>
-        </Gallery>
+        </FToggleGallery>
       ) : (
-        <Gallery
+        <FToggleGallery
+          itemCount={pagedAllOutputImages.length}
           options={{
             loop: true,
             allowPanToNext: false,
@@ -461,7 +464,7 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
               })()
             ))}
           </div>
-        </Gallery>
+        </FToggleGallery>
       )}
 
       {paginationControls}
