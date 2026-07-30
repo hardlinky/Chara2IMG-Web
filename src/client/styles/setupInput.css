@@ -202,9 +202,9 @@
 }
 
 .input-category-icon-button.input-category-track-active {
-  color: var(--color-warning, #f5c542);
-  border-color: var(--color-warning, #f5c542);
-  background: color-mix(in srgb, var(--color-warning, #f5c542) 14%, transparent);
+  color: var(--color-accent-primary);
+  border-color: var(--color-accent-primary);
+  background: color-mix(in srgb, var(--color-accent-primary) 14%, transparent);
 }
 
 .input-category-columns {
