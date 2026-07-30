@@ -93,6 +93,12 @@
   line-height: 1;
 }
 
+.jobs-card-worker {
+  font-weight: 400;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
 .jobs-status-row {
   display: flex;
   flex-wrap: wrap;

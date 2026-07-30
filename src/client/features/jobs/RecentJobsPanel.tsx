@@ -297,6 +297,7 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
                 <div className="jobs-card-meta">
                   <strong className="jobs-card-id">
                     <span>{displayJobId}</span>
+                    {workerId ? <span className="jobs-card-worker">Worker: {workerId}</span> : null}
                     {isPinnedJob ? <span className="jobs-card-pinned-icon" aria-label="Pinned job" title="Pinned job">📌</span> : null}
                   </strong>
                   <time dateTime={completionTimestamp} title={timestampTooltip}>
@@ -304,7 +305,6 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
                   </time>
                 </div>
                 <span>Workflow: {job.provenance.workflowFileName ?? "Workflow unknown"}</span>
-                {workerId ? <span>Worker ID: {workerId}</span> : null}
                 <div className="jobs-status-row">
                   <span className="jobs-status-chip">Status: {job.lifecycle.status}</span>
                   {!job.lifecycle.isTerminal ? <span className="jobs-next-poll">Next poll in {formatNextPollCountdown(props.lastFetchedAt, now)}</span> : null}

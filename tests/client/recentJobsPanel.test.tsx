@@ -143,7 +143,7 @@ describe("RecentJobsPanel", () => {
       />
     );
 
-    expect(html).toContain("Worker ID: worker-42");
+    expect(html).toContain("Worker: worker-42");
   });
 
   it("shows export quick action only on completed jobs", () => {
