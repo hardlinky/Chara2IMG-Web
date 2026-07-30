@@ -1,8 +1,11 @@
-import { type SyntheticEvent, useState } from "react";
-import { Gallery, Item } from "react-photoswipe-gallery";
+import { type MutableRefObject, type SyntheticEvent, useCallback, useEffect, useRef, useState } from "react";
+import { Gallery, Item, useGallery } from "react-photoswipe-gallery";
+import type PhotoSwipe from "photoswipe";
 import "photoswipe/dist/photoswipe.css";
 import type { RecentJobOutputImage } from "../../../shared/contracts/jobs";
 import { OutputImageCard } from "./OutputImageCard";
+
+type GalleryApi = { open: (index: number) => void; close: () => void };
 
 type OutputLightboxProps = {
   images: RecentJobOutputImage[];
@@ -17,7 +20,16 @@ type OutputLightboxProps = {
   pinningOutputIndices?: Set<number>;
   img2imgInputAvailable?: boolean;
   onLoadImageIntoImg2Img?: (imageUrl: string) => void;
+  onPreviousJob?: () => void;
+  onNextJob?: () => void;
+  enableJobNav?: boolean;
 };
+
+// Bridges the Gallery's imperative open/close API up to the parent via ref.
+function GalleryApiBridge({ apiRef }: { apiRef: MutableRefObject<GalleryApi | null> }) {
+  apiRef.current = useGallery();
+  return null;
+}
 
 export function OutputLightbox({
   images,
@@ -31,10 +43,118 @@ export function OutputLightbox({
   canPinMore = true,
   pinningOutputIndices,
   img2imgInputAvailable = false,
-  onLoadImageIntoImg2Img
+  onLoadImageIntoImg2Img,
+  onPreviousJob,
+  onNextJob,
+  enableJobNav = false
 }: OutputLightboxProps) {
   const [imageDimensions, setImageDimensions] = useState<Record<number, { width: number; height: number }>>({});
   const visibleImages = images.slice(0, maxVisible);
+
+  const galleryApiRef = useRef<GalleryApi | null>(null);
+  const imagesRef = useRef(images);
+  imagesRef.current = images;
+
+  // Latest callbacks/flags for the imperative (open-time) keydown handler.
+  const onPreviousJobRef = useRef(onPreviousJob);
+  const onNextJobRef = useRef(onNextJob);
+  const enableJobNavRef = useRef(enableJobNav);
+  onPreviousJobRef.current = onPreviousJob;
+  onNextJobRef.current = onNextJob;
+  enableJobNavRef.current = enableJobNav;
+
+  // Reopen coordination: the lightbox must be fully closed AND the new job's
+  // images mounted before we reopen at index 0.
+  const awaitingReopenRef = useRef(false);
+  const closedRef = useRef(false);
+  const imagesReadyRef = useRef(false);
+  const currentJobRef = useRef(imagePrefix);
+
+  const tryReopen = useCallback(() => {
+    if (!awaitingReopenRef.current || !closedRef.current || !imagesReadyRef.current) {
+      return;
+    }
+    awaitingReopenRef.current = false;
+    closedRef.current = false;
+    imagesReadyRef.current = false;
+
+    const first = imagesRef.current[0];
+    if (!first) {
+      return;
+    }
+
+    // Resolve the new first image's natural size before opening so PhotoSwipe
+    // fits it correctly instead of stretching it to the previous aspect ratio.
+    const openFirst = () => requestAnimationFrame(() => galleryApiRef.current?.open(0));
+    const probe = new Image();
+    probe.onload = () => {
+      if (probe.naturalWidth > 0 && probe.naturalHeight > 0) {
+        setImageDimensions((current) => ({ ...current, 0: { width: probe.naturalWidth, height: probe.naturalHeight } }));
+        requestAnimationFrame(openFirst);
+      } else {
+        openFirst();
+      }
+    };
+    probe.onerror = openFirst;
+    probe.src = first.dataUrl;
+  }, []);
+
+  // On job change: drop stale per-index sizes and finish any pending reopen.
+  useEffect(() => {
+    if (currentJobRef.current === imagePrefix) {
+      return;
+    }
+    currentJobRef.current = imagePrefix;
+    setImageDimensions({});
+    if (awaitingReopenRef.current) {
+      imagesReadyRef.current = true;
+      tryReopen();
+    }
+  }, [imagePrefix, tryReopen]);
+
+  const requestJobSwitch = useCallback((direction: "prev" | "next") => {
+    const handler = direction === "prev" ? onPreviousJobRef.current : onNextJobRef.current;
+    if (!handler) {
+      return; // boundary reached — no looping between jobs
+    }
+    awaitingReopenRef.current = true;
+    closedRef.current = false;
+    imagesReadyRef.current = false;
+    galleryApiRef.current?.close();
+    handler();
+  }, []);
+
+  const handleKeyDown = useCallback(
+    (event: KeyboardEvent) => {
+      if (!enableJobNavRef.current) {
+        return;
+      }
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        requestJobSwitch("prev");
+      } else if (event.key === "ArrowDown") {
+        event.preventDefault();
+        requestJobSwitch("next");
+      }
+    },
+    [requestJobSwitch]
+  );
+
+  const handleBeforeOpen = useCallback(
+    (photoswipe: PhotoSwipe) => {
+      document.addEventListener("keydown", handleKeyDown, true);
+      photoswipe.on("destroy", () => {
+        document.removeEventListener("keydown", handleKeyDown, true);
+        if (awaitingReopenRef.current) {
+          closedRef.current = true;
+          tryReopen();
+        }
+      });
+    },
+    [handleKeyDown, tryReopen]
+  );
+
+  useEffect(() => () => document.removeEventListener("keydown", handleKeyDown, true), [handleKeyDown]);
 
   const handleImageLoad = (index: number, event: SyntheticEvent<HTMLImageElement>) => {
     const { naturalWidth, naturalHeight } = event.currentTarget;
@@ -57,6 +177,7 @@ export function OutputLightbox({
 
   return (
     <Gallery
+      onBeforeOpen={handleBeforeOpen}
       options={{
         loop: true,
         allowPanToNext: false,
@@ -69,6 +190,7 @@ export function OutputLightbox({
         wheelToZoom: true
       }}
     >
+      <GalleryApiBridge apiRef={galleryApiRef} />
       <div className="outputs-lightbox outputs-image-grid">
         {visibleImages.map((image, index) => {
           const dimensions = imageDimensions[index] ?? { width: 1024, height: 1024 };

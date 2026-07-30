@@ -112,6 +112,9 @@ export function JobOutputsView({ cluster, density = "comfortable", onBack, onPre
           pinningOutputIndices={pinningOutputIndices}
           img2imgInputAvailable={img2imgInputAvailable}
           onLoadImageIntoImg2Img={onLoadImageIntoImg2Img}
+          onPreviousJob={onPreviousJob}
+          onNextJob={onNextJob}
+          enableJobNav
         />
       </div>
 

@@ -10,7 +10,8 @@ vi.mock("react-photoswipe-gallery", async () => {
     Gallery: ({ children }: { children: React.ReactNode }) => <div data-gallery>{children}</div>,
     Item: ({ children }: { children: (args: { ref: null; open: () => void }) => React.ReactNode }) => (
       <>{children({ ref: null, open: () => undefined })}</>
-    )
+    ),
+    useGallery: () => ({ open: () => undefined, close: () => undefined })
   };
 });
 
