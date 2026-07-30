@@ -48,19 +48,6 @@ export function ActiveWorkflowTemplate({
 
   return (
     <section className="setup-card">
-      <h2>Active Workflow Template</h2>
-      <div className="setup-meta">
-        <p>Name: {activeTemplate.displayName}</p>
-        <p>Fingerprint: {activeTemplate.fingerprint}</p>
-        <p>Imported at: {new Date(activeTemplate.importedAt).toLocaleString()}</p>
-        <p>Shape valid: {activeTemplate.validation.shapeValid ? "Yes" : "No"}</p>
-        <p>Template valid: {activeTemplate.validation.templateValid ? "Yes" : "No"}</p>
-      </div>
-      <div className="setup-actions">
-        <button className="btn btn-destructive" type="button" onClick={onClear}>
-          Clear active template
-        </button>
-      </div>
       {recentTemplates.length > 1 ? (
         <div className="setup-meta">
           <h3>Recent Workflows</h3>
@@ -90,6 +77,19 @@ export function ActiveWorkflowTemplate({
           </div>
         </div>
       ) : null}
+      <h2>Active Workflow Template</h2>
+      <div className="setup-meta">
+        <p>Name: {activeTemplate.displayName}</p>
+        <p>Fingerprint: {activeTemplate.fingerprint}</p>
+        <p>Imported at: {new Date(activeTemplate.importedAt).toLocaleString()}</p>
+        <p>Shape valid: {activeTemplate.validation.shapeValid ? "Yes" : "No"}</p>
+        <p>Template valid: {activeTemplate.validation.templateValid ? "Yes" : "No"}</p>
+      </div>
+      <div className="setup-actions">
+        <button className="btn btn-destructive" type="button" onClick={onClear}>
+          Clear active template
+        </button>
+      </div>
     </section>
   );
 }
