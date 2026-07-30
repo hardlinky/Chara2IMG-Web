@@ -60,8 +60,26 @@
   --base-height: 320px;
 }
 
+/* Comfortable: exactly one card per row at every breakpoint. */
 .outputs-gallery-comfortable .outputs-cluster-card {
-  --base-height: 480px;
+  flex-basis: 100%;
+  max-width: 100%;
+  height: auto;
+  aspect-ratio: unset;
+}
+
+.outputs-gallery-comfortable .outputs-cluster-card > div,
+.outputs-gallery-comfortable .outputs-cluster-card .outputs-image-tile-wrapper,
+.outputs-gallery-comfortable .outputs-cluster-card .outputs-image-media,
+.outputs-gallery-comfortable .outputs-cluster-card .outputs-image-tile {
+  height: auto;
+}
+
+.outputs-gallery-comfortable .outputs-cluster-card .outputs-image-tile img {
+  height: auto;
+  width: 100%;
+  aspect-ratio: var(--image-aspect, 1);
+  object-fit: cover;
 }
 
 .outputs-cluster-card {
@@ -403,28 +421,5 @@
   /* Balanced: fixed-height rows on mobile (same justified-flex as desktop, smaller height) */
   .outputs-gallery-balanced .outputs-cluster-card {
     --base-height: 200px;
-  }
-
-  .outputs-gallery-comfortable .outputs-cluster-card {
-    flex-basis: 100%;
-    max-width: 100%;
-    height: auto;
-    aspect-ratio: unset;
-  }
-
-  /* Reset height:100% chain so image sizes naturally and caption bar isn't clipped */
-  .outputs-gallery-comfortable .outputs-cluster-card > div,
-  .outputs-gallery-comfortable .outputs-cluster-card .outputs-image-tile-wrapper,
-  .outputs-gallery-comfortable .outputs-cluster-card .outputs-image-media,
-  .outputs-gallery-comfortable .outputs-cluster-card .outputs-image-tile {
-    height: auto;
-  }
-
-  /* Image takes the aspect ratio; card height = image + info bar */
-  .outputs-gallery-comfortable .outputs-cluster-card .outputs-image-tile img {
-    height: auto;
-    width: 100%;
-    aspect-ratio: var(--image-aspect, 1);
-    object-fit: cover;
   }
 }
