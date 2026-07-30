@@ -10,6 +10,7 @@ import type {
 import type { WorkflowTemplateRecord } from "../../../shared/contracts/workflow";
 import { useDynamicInputEditor } from "./useDynamicInputEditor";
 import { buildVariableTokenParts, isNameField, getCategoriesWithName } from "./inputVariables";
+import { toggleCategoryTracked, useTrackedInputCategories } from "../../lib/inputTrackingStorage";
 import "../../styles/setupInput.css";
 
 type DynamicInputEditorViewProps = {
@@ -336,6 +337,7 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
   const sectionNamesByCategory = props.sectionNamesByCategory ?? {};
   const nameValidationErrorsByControlId = props.nameValidationErrorsByControlId ?? {};
   const categoriesWithName = useMemo(() => getCategoriesWithName(props.controls), [props.controls]);
+  const trackedCategories = useTrackedInputCategories();
   const [nextCategoryAtBottom, setNextCategoryAtBottom] = useState<string | null>(null);
   const [nextControlAtBottom, setNextControlAtBottom] = useState<{ id: string; name: string } | null>(null);
   const inlineErrorsByControlId = {
@@ -682,6 +684,16 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
             <div className="input-category-actions">
               <button
                 type="button"
+                className={`btn input-category-icon-button${trackedCategories.includes(category) ? " input-category-track-active" : " btn-secondary"}`}
+                onClick={() => toggleCategoryTracked(category)}
+                aria-pressed={trackedCategories.includes(category)}
+                aria-label={`${trackedCategories.includes(category) ? "Stop tracking" : "Track"} ${category} in job outputs`}
+                title="Show this category under job outputs"
+              >
+                <span aria-hidden="true">{trackedCategories.includes(category) ? "★" : "☆"}</span>
+              </button>
+              <button
+                type="button"
                 className="btn btn-secondary input-category-icon-button"
                 onClick={() => onMoveCategoryToOtherColumn(category)}
                 aria-label={`Move ${category} to ${
@@ -895,6 +907,16 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
                 </button>
               </div>
               <div className="input-category-actions">
+                <button
+                  type="button"
+                  className={`btn input-category-icon-button${trackedCategories.includes(nextCategoryAtBottom) ? " input-category-track-active" : " btn-secondary"}`}
+                  onClick={() => toggleCategoryTracked(nextCategoryAtBottom)}
+                  aria-pressed={trackedCategories.includes(nextCategoryAtBottom)}
+                  aria-label={`${trackedCategories.includes(nextCategoryAtBottom) ? "Stop tracking" : "Track"} ${nextCategoryAtBottom} in job outputs`}
+                  title="Show this category under job outputs"
+                >
+                  <span aria-hidden="true">{trackedCategories.includes(nextCategoryAtBottom) ? "★" : "☆"}</span>
+                </button>
                 <button
                   type="button"
                   className="btn btn-secondary input-category-icon-button"

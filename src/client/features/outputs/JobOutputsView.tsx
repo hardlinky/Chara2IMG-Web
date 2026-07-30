@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import type { RecentJobOutputCluster } from "../../../shared/contracts/jobs";
 import { formatOutputJobId } from "./formatOutputJobId";
 import { OutputLightbox } from "./OutputLightbox";
+import { TrackedInputsPanel } from "./TrackedInputsPanel";
 import type { OutputDensity } from "./useOutputGallery";
 
 type JobOutputsViewProps = {
@@ -125,6 +126,8 @@ export function JobOutputsView({ cluster, density = "comfortable", onBack, onPre
           </button>
         </div>
       ) : null}
+
+      <TrackedInputsPanel jobId={cluster.jobId} />
     </section>
   );
 }

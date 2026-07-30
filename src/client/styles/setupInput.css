@@ -201,6 +201,12 @@
   font-size: 0.9rem;
 }
 
+.input-category-icon-button.input-category-track-active {
+  color: var(--color-warning, #f5c542);
+  border-color: var(--color-warning, #f5c542);
+  background: color-mix(in srgb, var(--color-warning, #f5c542) 14%, transparent);
+}
+
 .input-category-columns {
   display: grid;
   grid-template-columns: minmax(0, var(--input-left-column-width, 50%)) 0.5rem minmax(0, calc(100% - var(--input-left-column-width, 50%)));
