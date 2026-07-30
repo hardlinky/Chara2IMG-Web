@@ -193,6 +193,17 @@ export function OutputLightbox({
             }
           : undefined
       }
+      onLoadImg2ImgCurrent={
+        img2imgInputAvailable && onLoadImageIntoImg2Img
+          ? (index) => {
+              const image = visibleImages[index];
+              if (image) {
+                onLoadImageIntoImg2Img(image.dataUrl);
+                galleryApiRef.current?.close();
+              }
+            }
+          : undefined
+      }
       options={{
         loop: true,
         allowPanToNext: false,

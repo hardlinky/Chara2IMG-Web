@@ -20,6 +20,7 @@ type FToggleGalleryProps = {
   onTogglePinCurrent?: (index: number) => void;
   onDeleteCurrent?: (index: number) => void;
   onViewJobCurrent?: (index: number) => void;
+  onLoadImg2ImgCurrent?: (index: number) => void;
 };
 
 // Wraps a PhotoSwipe Gallery and adds the "F" toggle: open the lightbox at the
@@ -33,7 +34,8 @@ export function FToggleGallery({
   onBeforeOpen,
   onTogglePinCurrent,
   onDeleteCurrent,
-  onViewJobCurrent
+  onViewJobCurrent,
+  onLoadImg2ImgCurrent
 }: FToggleGalleryProps) {
   const internalApiRef = useRef<GalleryApi | null>(null);
   const galleryApiRef = apiRef ?? internalApiRef;
@@ -51,6 +53,8 @@ export function FToggleGallery({
   onDeleteRef.current = onDeleteCurrent;
   const onViewJobRef = useRef(onViewJobCurrent);
   onViewJobRef.current = onViewJobCurrent;
+  const onLoadImg2ImgRef = useRef(onLoadImg2ImgCurrent);
+  onLoadImg2ImgRef.current = onLoadImg2ImgCurrent;
 
   const handleBeforeOpen = useCallback((photoswipe: PhotoSwipe) => {
     openRef.current = true;
@@ -109,6 +113,10 @@ export function FToggleGallery({
       } else if (key === "j" || key === "J") {
         event.preventDefault();
         onViewJobRef.current?.(currentIndex);
+      } else if (key === "i" || key === "I") {
+        // No-op when the active workflow has no IMG2IMG input (ref is undefined)
+        event.preventDefault();
+        onLoadImg2ImgRef.current?.(currentIndex);
       }
     };
 
