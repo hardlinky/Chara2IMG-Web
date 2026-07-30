@@ -651,3 +651,56 @@
   border-radius: var(--radius-sm);
 }
 
+.tracked-inputs-image-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.tracked-inputs-image-btn {
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: zoom-in;
+  line-height: 0;
+}
+
+.tracked-inputs-send-btn {
+  align-self: flex-start;
+}
+
+.tracked-inputs-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: rgba(10, 12, 15, 0.82);
+  backdrop-filter: blur(6px);
+  cursor: zoom-out;
+}
+
+.tracked-inputs-lightbox-image {
+  max-width: min(92vw, 1400px);
+  max-height: 90dvh;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+  cursor: default;
+}
+
+.tracked-inputs-lightbox-close {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  background: rgba(18, 23, 28, 0.85);
+  color: var(--color-text-primary);
+  font-size: 1rem;
+  cursor: pointer;
+}
+

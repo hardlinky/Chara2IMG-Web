@@ -127,7 +127,11 @@ export function JobOutputsView({ cluster, density = "comfortable", onBack, onPre
         </div>
       ) : null}
 
-      <TrackedInputsPanel jobId={cluster.jobId} />
+      <TrackedInputsPanel
+        jobId={cluster.jobId}
+        img2imgInputAvailable={img2imgInputAvailable}
+        onLoadImageIntoImg2Img={onLoadImageIntoImg2Img}
+      />
     </section>
   );
 }

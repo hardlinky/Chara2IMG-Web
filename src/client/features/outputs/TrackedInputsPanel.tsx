@@ -71,9 +71,31 @@ function isRenderable(control: DynamicInputControl): boolean {
   return true;
 }
 
-export function TrackedInputsPanel({ jobId }: { jobId: string }) {
+export function TrackedInputsPanel({
+  jobId,
+  img2imgInputAvailable = false,
+  onLoadImageIntoImg2Img
+}: {
+  jobId: string;
+  img2imgInputAvailable?: boolean;
+  onLoadImageIntoImg2Img?: (imageUrl: string) => void;
+}) {
   const trackedCategories = useTrackedInputCategories();
   const [sections, setSections] = useState<TrackedSection[]>([]);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (lightboxSrc === null) {
+      return;
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setLightboxSrc(null);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [lightboxSrc]);
 
   useEffect(() => {
     if (trackedCategories.length === 0) {
@@ -124,6 +146,7 @@ export function TrackedInputsPanel({ jobId }: { jobId: string }) {
   }
 
   return (
+    <>
     <div className="tracked-inputs-panel">
       {sections.map((section) => {
         const visibleControls = section.controls.filter(isRenderable);
@@ -148,11 +171,32 @@ export function TrackedInputsPanel({ jobId }: { jobId: string }) {
 
                 if (control.kind === "image") {
                   const src = toImageDataUrl(imageDataUrl(control));
+                  const canSend = Boolean(src && img2imgInputAvailable && onLoadImageIntoImg2Img);
                   return (
                     <div className="tracked-inputs-field tracked-inputs-field-block" key={control.id}>
                       <span className="tracked-inputs-field-label">{control.name}</span>
                       {src ? (
-                        <img className="tracked-inputs-image" alt={`${control.name} input`} src={src} />
+                        <div className="tracked-inputs-image-block">
+                          <button
+                            type="button"
+                            className="tracked-inputs-image-btn"
+                            onClick={() => setLightboxSrc(src)}
+                            aria-label={`Inspect ${control.name}`}
+                            title="Click to inspect"
+                          >
+                            <img className="tracked-inputs-image" alt={`${control.name} input`} src={src} />
+                          </button>
+                          {canSend ? (
+                            <button
+                              type="button"
+                              className="btn btn-secondary tracked-inputs-send-btn"
+                              onClick={() => onLoadImageIntoImg2Img?.(src)}
+                              title="Load this image into the IMG2IMG input"
+                            >
+                              Send to inputs
+                            </button>
+                          ) : null}
+                        </div>
                       ) : (
                         <span className="tracked-inputs-field-value">—</span>
                       )}
@@ -177,5 +221,30 @@ export function TrackedInputsPanel({ jobId }: { jobId: string }) {
         );
       })}
     </div>
+    {lightboxSrc ? (
+      <div
+        className="tracked-inputs-lightbox"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Base image preview"
+        onClick={() => setLightboxSrc(null)}
+      >
+        <button
+          type="button"
+          className="tracked-inputs-lightbox-close"
+          aria-label="Close preview"
+          onClick={() => setLightboxSrc(null)}
+        >
+          ✕
+        </button>
+        <img
+          className="tracked-inputs-lightbox-image"
+          src={lightboxSrc}
+          alt="Base image preview"
+          onClick={(event) => event.stopPropagation()}
+        />
+      </div>
+    ) : null}
+    </>
   );
 }
