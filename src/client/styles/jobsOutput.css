@@ -275,6 +275,33 @@
   object-fit: cover;
 }
 
+/* Job outputs gallery mirrors the density selected on the Outputs tab. */
+.outputs-gallery-compact .outputs-image-grid-item {
+  --base-height: 220px;
+}
+
+.outputs-gallery-balanced .outputs-image-grid-item {
+  --base-height: 460px;
+}
+
+/* Comfortable: exactly one image per row at every breakpoint, uncropped. */
+.outputs-gallery-comfortable .outputs-image-grid-item {
+  flex: 0 0 100%;
+  max-width: 100%;
+}
+
+.outputs-gallery-comfortable .outputs-image-grid-item .outputs-image-tile-wrapper,
+.outputs-gallery-comfortable .outputs-image-grid-item .outputs-image-media,
+.outputs-gallery-comfortable .outputs-image-grid-item .outputs-image-tile {
+  height: auto;
+}
+
+.outputs-gallery-comfortable .outputs-image-grid-item .outputs-image-tile img {
+  height: auto;
+  width: 100%;
+  object-fit: contain;
+}
+
 .outputs-image-grid > * {
   max-width: 100%;
   min-width: 0;
