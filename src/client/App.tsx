@@ -176,7 +176,7 @@ export function App() {
   const [isClearingCache, setIsClearingCache] = useState(false);
   const [clearCacheStatus, setClearCacheStatus] = useState("");
   const [storageStatus, setStorageStatus] = useState(
-    "Storage: cache unavailable | archive (you) unavailable | archive (all) unavailable | archive (cap) unavailable"
+    "Storage: cache unavailable | archive (all) unavailable"
   );
   const [editorApi, setEditorApi] = useState<{
     applyExternalDraftValues: (
@@ -284,13 +284,11 @@ export function App() {
       const browserUsedLabel = browserUsedBytes !== null ? formatBytes(browserUsedBytes) : "unavailable";
 
       const hasServerStats = isSystemStorageStats(serverStatsResult);
-      const serverUserUsedLabel = hasServerStats ? formatBytes(serverStatsResult.userUsedBytes) : "unavailable";
       const serverAllUsedLabel = hasServerStats ? formatBytes(serverStatsResult.allUsersUsedBytes) : "unavailable";
-      const serverCapacityLabel = hasServerStats ? formatBytes(serverStatsResult.totalCapacityBytes) : "unavailable";
       const serverErrorLabel = hasServerStats ? "" : describeStorageStatsError(serverStatsResult);
 
       setStorageStatus(
-        `Storage: cache ${browserUsedLabel} | archive (you) ${serverUserUsedLabel} | archive (all) ${serverAllUsedLabel} | archive (cap) ${serverCapacityLabel}${serverErrorLabel}`
+        `Storage: cache ${browserUsedLabel} | archive (all) ${serverAllUsedLabel}${serverErrorLabel}`
       );
     });
 
