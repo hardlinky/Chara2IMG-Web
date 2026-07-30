@@ -107,67 +107,6 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
     }
   }, [availableDensities, gallery]);
 
-  // Balanced density: PageUp/PageDown snap the window scroll to the previous/next
-  // image row (instant, no smooth animation). Images sharing a row share a top,
-  // so this naturally steps row by row.
-  useEffect(() => {
-    if (typeof window === "undefined" || gallery.density !== "balanced") {
-      return;
-    }
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "PageDown" && event.key !== "PageUp") {
-        return;
-      }
-      if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) {
-        return;
-      }
-      const target = event.target as HTMLElement | null;
-      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT" || target.isContentEditable)) {
-        return;
-      }
-      // Ignore while the PhotoSwipe lightbox owns navigation keys.
-      if (document.querySelector(".pswp")) {
-        return;
-      }
-
-      const items = Array.from(document.querySelectorAll<HTMLElement>(".outputs-cluster-card, .outputs-image-grid-item"));
-      if (items.length === 0) {
-        return;
-      }
-
-      const tops = items
-        .map((el) => Math.round(el.getBoundingClientRect().top + window.scrollY))
-        .sort((a, b) => a - b);
-
-      const current = Math.round(window.scrollY);
-      const epsilon = 2;
-      let destination: number | null = null;
-
-      if (event.key === "PageDown") {
-        destination = tops.find((top) => top > current + epsilon) ?? null;
-      } else {
-        for (const top of tops) {
-          if (top < current - epsilon) {
-            destination = top;
-          } else {
-            break;
-          }
-        }
-      }
-
-      if (destination === null) {
-        return;
-      }
-
-      event.preventDefault();
-      window.scrollTo({ top: destination, behavior: "auto" });
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [gallery.density]);
-
   const pinnedImageCount = useMemo(
     () => clusters.reduce((count, cluster) => count + cluster.outputs.filter((output) => output.isPinned).length, 0),
     [clusters]
