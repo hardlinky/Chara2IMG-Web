@@ -82,6 +82,7 @@ export function TrackedInputsPanel({
 }) {
   const trackedCategories = useTrackedInputCategories();
   const [sections, setSections] = useState<TrackedSection[]>([]);
+  const [loadedJobId, setLoadedJobId] = useState<string | null>(null);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   useEffect(() => {
@@ -107,6 +108,7 @@ export function TrackedInputsPanel({
   useEffect(() => {
     if (trackedCategories.length === 0) {
       setSections([]);
+      setLoadedJobId(jobId);
       return;
     }
 
@@ -120,6 +122,7 @@ export function TrackedInputsPanel({
         }
         if (!inputs) {
           setSections([]);
+          setLoadedJobId(jobId);
           return;
         }
 
@@ -136,9 +139,11 @@ export function TrackedInputsPanel({
           .filter((section) => section.controls.length > 0);
 
         setSections(built);
+        setLoadedJobId(jobId);
       } catch {
         if (!cancelled) {
           setSections([]);
+          setLoadedJobId(jobId);
         }
       }
     })();
@@ -148,7 +153,9 @@ export function TrackedInputsPanel({
     };
   }, [jobId, trackedCategories]);
 
-  if (trackedCategories.length === 0 || sections.length === 0) {
+  // Hide the panel until inputs for the current job have loaded, so switching
+  // jobs never flashes the previous job's tracked values.
+  if (trackedCategories.length === 0 || sections.length === 0 || loadedJobId !== jobId) {
     return null;
   }
 
