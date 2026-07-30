@@ -177,6 +177,7 @@
 .jobs-pagination {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: var(--space-2);
   flex-wrap: wrap;
 }
@@ -471,6 +472,15 @@
 }
 
 @media (max-width: 720px) {
+  .jobs-pagination {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .jobs-pagination-page {
+    justify-content: center;
+  }
+
   .jobs-actions .btn,
   .jobs-pagination .btn,
   .outputs-job-view-more .btn,
