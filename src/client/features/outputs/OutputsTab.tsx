@@ -268,7 +268,24 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
         >
           Prev page
         </button>
-        <span>{`Page ${galleryPage} / ${galleryPageCount}`}</span>
+        <span className="jobs-pagination-page">
+          Page
+          <input
+            className="input jobs-pagination-input"
+            type="number"
+            min={1}
+            max={galleryPageCount}
+            value={galleryPage}
+            onChange={(event) => {
+              const next = Number(event.target.value);
+              if (Number.isFinite(next)) {
+                setGalleryPage(Math.max(1, Math.min(galleryPageCount, Math.trunc(next))));
+              }
+            }}
+            aria-label="Go to page"
+          />
+          {`/ ${galleryPageCount}`}
+        </span>
         <button
           className="btn btn-secondary"
           type="button"

@@ -135,7 +135,8 @@ describe("OutputsTab", () => {
     expect(html).toContain(`${displayJobId} #1`);
     expect(html).toContain("2 images");
     expect(html).toContain(`View job outputs for ${displayJobId}`);
-    expect(html).toContain("Page 1 / 1");
+    expect(html).toContain('aria-label="Go to page"');
+    expect(html).toContain("/ 1");
     expect(html).not.toContain("Remove outputs");
   });
 

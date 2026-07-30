@@ -181,6 +181,17 @@
   flex-wrap: wrap;
 }
 
+.jobs-pagination-page {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.jobs-pagination-input {
+  width: 4rem;
+  text-align: center;
+}
+
 .outputs-provenance-line {
   color: var(--color-text-secondary);
   overflow-wrap: anywhere;
