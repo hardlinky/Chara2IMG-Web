@@ -107,16 +107,16 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
     }
   }, [availableDensities, gallery]);
 
-  // Balanced density: Up/Down snap the window scroll to the previous/next image
-  // row (instant, no smooth animation). Images sharing a row share a top, so
-  // this naturally steps row by row.
+  // Balanced density: PageUp/PageDown snap the window scroll to the previous/next
+  // image row (instant, no smooth animation). Images sharing a row share a top,
+  // so this naturally steps row by row.
   useEffect(() => {
     if (typeof window === "undefined" || gallery.density !== "balanced") {
       return;
     }
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "ArrowDown" && event.key !== "ArrowUp") {
+      if (event.key !== "PageDown" && event.key !== "PageUp") {
         return;
       }
       if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) {
@@ -126,7 +126,7 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
       if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT" || target.isContentEditable)) {
         return;
       }
-      // Ignore while the PhotoSwipe lightbox owns arrow keys.
+      // Ignore while the PhotoSwipe lightbox owns navigation keys.
       if (document.querySelector(".pswp")) {
         return;
       }
@@ -144,7 +144,7 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
       const epsilon = 2;
       let destination: number | null = null;
 
-      if (event.key === "ArrowDown") {
+      if (event.key === "PageDown") {
         destination = tops.find((top) => top > current + epsilon) ?? null;
       } else {
         for (const top of tops) {
