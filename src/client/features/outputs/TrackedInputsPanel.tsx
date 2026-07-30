@@ -3,6 +3,7 @@ import type { DynamicInputControl } from "../../../shared/contracts/inputs";
 import { deriveInputControls } from "../../../shared/workflow/deriveInputControls";
 import { getJobInputs } from "../../lib/api/jobsClient";
 import { useTrackedInputCategories } from "../../lib/inputTrackingStorage";
+import { looksLikeModelFile, stripModelExtension, toImageDataUrl } from "../../lib/modelAssets";
 
 type TrackedSection = {
   category: string;
@@ -27,7 +28,10 @@ function formatControlValue(control: DynamicInputControl): string {
   const value = control.defaultValue;
 
   switch (control.kind) {
-    case "text":
+    case "text": {
+      const text = typeof value === "string" ? value : "";
+      return looksLikeModelFile(text) ? stripModelExtension(text) : text;
+    }
     case "multiline":
       return typeof value === "string" ? value : "";
     case "number":
@@ -38,12 +42,6 @@ function formatControlValue(control: DynamicInputControl): string {
       if (value && typeof value === "object" && "width" in value && "height" in value) {
         const dimension = value as { width: number; height: number };
         return `${dimension.width} × ${dimension.height}`;
-      }
-      return "";
-    case "lora-row":
-      if (value && typeof value === "object" && "enabled" in value && "loraName" in value && "strength" in value) {
-        const lora = value as { enabled: boolean; loraName: string; strength: number };
-        return lora.enabled ? `<${lora.loraName}:${lora.strength}>` : "Off";
       }
       return "";
     default:
@@ -57,33 +55,6 @@ function imageDataUrl(control: DynamicInputControl): string {
     return String((value as { dataUrl: unknown }).dataUrl ?? "");
   }
   return "";
-}
-
-// Derived image values are often raw base64 (no data: prefix); sniff the
-// signature so the browser can render them.
-function toImageSrc(raw: string): string {
-  if (!raw) {
-    return "";
-  }
-  if (raw.startsWith("data:")) {
-    return raw;
-  }
-
-  let mimeType = "image/png";
-  if (raw.startsWith("/9j/")) {
-    mimeType = "image/jpeg";
-  } else if (raw.startsWith("R0lGOD")) {
-    mimeType = "image/gif";
-  } else if (raw.startsWith("UklGR")) {
-    mimeType = "image/webp";
-  }
-
-  return `data:${mimeType};base64,${raw}`;
-}
-
-function cleanLoraName(name: string): string {
-  const base = name.split(/[\\/]/).pop() ?? name;
-  return base.replace(/\.(safetensors|ckpt|pt|pth|bin)$/i, "");
 }
 
 function isEnabledLora(control: DynamicInputControl): boolean {
@@ -169,14 +140,14 @@ export function TrackedInputsPanel({ jobId }: { jobId: string }) {
                   const lora = control.defaultValue as { loraName: string; strength: number };
                   return (
                     <div className="tracked-inputs-field" key={control.id}>
-                      <span className="tracked-inputs-field-label">{cleanLoraName(lora.loraName)}</span>
+                      <span className="tracked-inputs-field-label">{stripModelExtension(lora.loraName)}</span>
                       <span className="tracked-inputs-field-value">{lora.strength}</span>
                     </div>
                   );
                 }
 
                 if (control.kind === "image") {
-                  const src = toImageSrc(imageDataUrl(control));
+                  const src = toImageDataUrl(imageDataUrl(control));
                   return (
                     <div className="tracked-inputs-field tracked-inputs-field-block" key={control.id}>
                       <span className="tracked-inputs-field-label">{control.name}</span>

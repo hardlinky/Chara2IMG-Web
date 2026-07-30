@@ -603,8 +603,10 @@
 
 .tracked-inputs-field {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: var(--space-2);
+  justify-content: space-between;
+  gap: 0.35rem var(--space-2);
   min-width: 0;
   padding: 0.35rem 0.55rem;
   border: 1px solid var(--color-border-subtle);
@@ -620,17 +622,26 @@
 }
 
 .tracked-inputs-field-label {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  min-width: 0;
   color: var(--color-text-muted);
   font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
 .tracked-inputs-field-value {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
+  margin-left: auto;
   min-width: 0;
   color: var(--color-text-primary);
+  text-align: right;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
+}
+
+.tracked-inputs-field-block .tracked-inputs-field-value {
+  margin-left: 0;
+  text-align: left;
 }
 
 .tracked-inputs-image {

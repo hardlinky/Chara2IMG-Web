@@ -11,6 +11,7 @@ import type { WorkflowTemplateRecord } from "../../../shared/contracts/workflow"
 import { useDynamicInputEditor } from "./useDynamicInputEditor";
 import { buildVariableTokenParts, isNameField, getCategoriesWithName } from "./inputVariables";
 import { toggleCategoryTracked, useTrackedInputCategories } from "../../lib/inputTrackingStorage";
+import { toImageDataUrl } from "../../lib/modelAssets";
 import "../../styles/setupInput.css";
 
 type DynamicInputEditorViewProps = {
@@ -250,7 +251,7 @@ function renderInputControl(
           <button className="btn btn-destructive" type="button" onClick={() => setValue(control.id, null)}>
             Remove
           </button>
-          {imageValue ? <img alt={`${control.name} preview`} src={imageValue} width={128} /> : null}
+          {imageValue ? <img alt={`${control.name} preview`} src={toImageDataUrl(imageValue)} width={128} /> : null}
         </div>
       );
     }
