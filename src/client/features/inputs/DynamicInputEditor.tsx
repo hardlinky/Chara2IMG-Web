@@ -87,7 +87,7 @@ type DynamicInputEditorViewProps = {
   warnings: DynamicInputWarning[];
   draftValues: DynamicInputDraftValues;
   hasDraftDiffFromTemplate: boolean;
-  hasUnsavedChangesSinceLastRun: boolean;
+  editedControlIds: Set<string>;
   inlineErrorsByControlId: Record<string, string>;
   runBlockingMessage: string | null;
   setValue: (controlId: string, value: DynamicInputValue) => void;
@@ -820,7 +820,7 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
               category === "Detailer" && control.kind === "lora-row" && animateDetailerLoraRows
                 ? "input-row-lora-reveal"
                 : ""
-            }`}
+            }${props.editedControlIds.has(control.id) ? " is-edited" : ""}`}
             ref={(node) => {
               controlRowRefs.current[control.id] = node;
             }}
@@ -917,9 +917,6 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
         <p role="alert" className="input-error">
           {props.runBlockingMessage}
         </p>
-      ) : null}
-      {props.hasUnsavedChangesSinceLastRun ? (
-        <p className="input-status">Unsaved changes since last successful run.</p>
       ) : null}
 
       {showTwoColumns ? (
@@ -1114,7 +1111,7 @@ export function DynamicInputEditor(props: DynamicInputEditorProps) {
       warnings={editor.warnings}
       draftValues={editor.draftValues}
       hasDraftDiffFromTemplate={editor.hasDraftDiffFromTemplate}
-      hasUnsavedChangesSinceLastRun={editor.hasUnsavedChangesSinceLastRun}
+      editedControlIds={editor.editedControlIds}
       inlineErrorsByControlId={editor.inlineErrorsByControlId}
       runBlockingMessage={editor.runBlockingMessage}
       setValue={editor.setValue}

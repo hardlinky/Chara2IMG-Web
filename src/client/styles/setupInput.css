@@ -242,6 +242,13 @@
   gap: var(--space-2);
 }
 
+/* Halo via box-shadow spread keeps the highlight from reflowing the layout. */
+.input-row.is-edited {
+  border-radius: var(--radius-md);
+  background: var(--color-surface-elevated);
+  box-shadow: 0 0 0 var(--space-2) var(--color-surface-elevated);
+}
+
 .input-row label {
   display: grid;
   gap: var(--space-2);

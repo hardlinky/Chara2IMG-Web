@@ -741,9 +741,10 @@ export function useDynamicInputEditor(activeTemplate: WorkflowTemplateRecord | n
     return result;
   }, [activeTemplate, derivation.controls, draftValues]);
 
-  const hasUnsavedChangesSinceLastRun = useMemo(() => {
+  const editedControlIds = useMemo(() => {
+    const edited = new Set<string>();
     if (!lastSuccessfulRunDraft) {
-      return false;
+      return edited;
     }
 
     const allControlIds = new Set([
@@ -753,11 +754,11 @@ export function useDynamicInputEditor(activeTemplate: WorkflowTemplateRecord | n
 
     for (const controlId of allControlIds) {
       if (JSON.stringify(lastSuccessfulRunDraft[controlId] ?? null) !== JSON.stringify(draftValues[controlId] ?? null)) {
-        return true;
+        edited.add(controlId);
       }
     }
 
-    return false;
+    return edited;
   }, [draftValues, lastSuccessfulRunDraft]);
 
   return {
@@ -774,7 +775,8 @@ export function useDynamicInputEditor(activeTemplate: WorkflowTemplateRecord | n
     setShowSourceMapping,
     inlineErrorsByControlId,
     runBlockingMessage,
-    hasUnsavedChangesSinceLastRun,
+    hasUnsavedChangesSinceLastRun: editedControlIds.size > 0,
+    editedControlIds,
     setValue,
     setOverlayPosition,
     moveSection,

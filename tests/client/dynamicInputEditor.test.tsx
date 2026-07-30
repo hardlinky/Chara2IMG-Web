@@ -76,7 +76,7 @@ describe("dynamic input editor", () => {
           [controls[1].id]: 30
         }}
         hasDraftDiffFromTemplate={true}
-        hasUnsavedChangesSinceLastRun={false}
+        editedControlIds={new Set()}
         inlineErrorsByControlId={{}}
         runBlockingMessage={null}
         setValue={vi.fn()}
@@ -144,7 +144,7 @@ describe("dynamic input editor", () => {
           "character:eyes": "gold"
         }}
         hasDraftDiffFromTemplate={false}
-        hasUnsavedChangesSinceLastRun={false}
+        editedControlIds={new Set()}
         inlineErrorsByControlId={{}}
         runBlockingMessage={null}
         setValue={vi.fn()}
@@ -242,7 +242,7 @@ describe("dynamic input editor", () => {
           [controls[1].id]: 30
         }}
         hasDraftDiffFromTemplate={false}
-        hasUnsavedChangesSinceLastRun={true}
+        editedControlIds={new Set([controls[0].id])}
         inlineErrorsByControlId={{
           [controls[0].id]: "Name is required"
         }}
@@ -257,7 +257,7 @@ describe("dynamic input editor", () => {
     );
 
     expect(html).toContain("Fix validation before running");
-    expect(html).toContain("Unsaved changes since last successful run.");
+    expect(html).toContain("is-edited");
     expect(html).toContain("input-run-fab");
     expect(html).toContain("input-category");
     expect(html).not.toContain("Show source mapping");
@@ -319,7 +319,7 @@ describe("dynamic input editor", () => {
           }
         }}
         hasDraftDiffFromTemplate={false}
-        hasUnsavedChangesSinceLastRun={false}
+        editedControlIds={new Set()}
         inlineErrorsByControlId={{}}
         runBlockingMessage={null}
         setValue={vi.fn()}
@@ -368,7 +368,7 @@ describe("dynamic input editor", () => {
           "detailer:boolean:toggle": true
         }}
         hasDraftDiffFromTemplate={false}
-        hasUnsavedChangesSinceLastRun={false}
+        editedControlIds={new Set()}
         inlineErrorsByControlId={{}}
         runBlockingMessage={null}
         setValue={vi.fn()}
