@@ -1,8 +1,8 @@
-import { type SyntheticEvent, useEffect, useMemo, useState } from "react";
+import { type SyntheticEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Item } from "react-photoswipe-gallery";
 import type { RecentJobOutputCluster } from "../../../shared/contracts/jobs";
 import { formatOutputJobId } from "./formatOutputJobId";
-import { FToggleGallery } from "./GalleryFToggle";
+import { FToggleGallery, type GalleryApi } from "./GalleryFToggle";
 import { JobOutputsView } from "./JobOutputsView";
 import { OutputImageCard } from "./OutputImageCard";
 import { OUTPUT_DENSITIES, type OutputDensity, useOutputGallery } from "./useOutputGallery";
@@ -73,6 +73,7 @@ export function resolveSelectedJobCluster(
 
 export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs, onRemoveOutputImage, onExportWorkflow, onToggleOutputPinned, canPinMore = true, onLoadOutputCluster, pinningImageKeys, img2imgInputAvailable = false, onLoadImageIntoImg2Img }: OutputsTabProps) {
   const gallery = useOutputGallery(clusters);
+  const galleryApiRef = useRef<GalleryApi | null>(null);
   const [galleryMode, setGalleryMode] = useState<OutputsGalleryMode>(() => getStoredOutputsViewMode());
   const [pinFilter, setPinFilter] = useState<OutputsPinFilter>(() => getStoredOutputsPinFilter());
   const [galleryPage, setGalleryPage] = useState(1);
@@ -344,6 +345,7 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
 
       {galleryMode === "per-job" ? (
         <FToggleGallery
+          apiRef={galleryApiRef}
           itemCount={pagedClusters.length}
           onTogglePinCurrent={
             onToggleOutputPinned
@@ -367,6 +369,17 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
               gallery.openJobOutputs(cluster.jobId);
             }
           }}
+          onLoadImg2ImgCurrent={
+            img2imgInputAvailable && onLoadImageIntoImg2Img
+              ? (index) => {
+                  const cluster = pagedClusters[index];
+                  if (cluster) {
+                    onLoadImageIntoImg2Img(cluster.representative.dataUrl);
+                    galleryApiRef.current?.close();
+                  }
+                }
+              : undefined
+          }
           options={{
             loop: true,
             allowPanToNext: false,
@@ -428,6 +441,7 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
         </FToggleGallery>
       ) : (
         <FToggleGallery
+          apiRef={galleryApiRef}
           itemCount={pagedAllOutputImages.length}
           onTogglePinCurrent={
             onToggleOutputPinned
@@ -451,6 +465,17 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
               gallery.openJobOutputs(outputImage.jobId);
             }
           }}
+          onLoadImg2ImgCurrent={
+            img2imgInputAvailable && onLoadImageIntoImg2Img
+              ? (index) => {
+                  const outputImage = pagedAllOutputImages[index];
+                  if (outputImage) {
+                    onLoadImageIntoImg2Img(outputImage.dataUrl);
+                    galleryApiRef.current?.close();
+                  }
+                }
+              : undefined
+          }
           options={{
             loop: true,
             allowPanToNext: false,
