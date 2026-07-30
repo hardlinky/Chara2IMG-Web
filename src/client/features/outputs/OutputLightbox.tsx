@@ -173,6 +173,26 @@ export function OutputLightbox({
       apiRef={galleryApiRef}
       itemCount={visibleImages.length}
       onBeforeOpen={handleBeforeOpen}
+      onTogglePinCurrent={
+        onTogglePinnedImage
+          ? (index) => {
+              const image = visibleImages[index];
+              if (image) {
+                onTogglePinnedImage(image.outputIndex, !image.isPinned);
+              }
+            }
+          : undefined
+      }
+      onDeleteCurrent={
+        onRemoveImage
+          ? (index) => {
+              const image = visibleImages[index];
+              if (image) {
+                onRemoveImage(image.outputIndex);
+              }
+            }
+          : undefined
+      }
       options={{
         loop: true,
         allowPanToNext: false,

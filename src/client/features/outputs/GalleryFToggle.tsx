@@ -17,37 +17,56 @@ type FToggleGalleryProps = {
   children: ReactNode;
   apiRef?: MutableRefObject<GalleryApi | null>;
   onBeforeOpen?: (photoswipe: PhotoSwipe) => void;
+  onTogglePinCurrent?: (index: number) => void;
+  onDeleteCurrent?: (index: number) => void;
+  onViewJobCurrent?: (index: number) => void;
 };
 
 // Wraps a PhotoSwipe Gallery and adds the "F" toggle: open the lightbox at the
 // last-viewed slide (or the first slide if never opened) and close it again.
-export function FToggleGallery({ options, itemCount, children, apiRef, onBeforeOpen }: FToggleGalleryProps) {
+// While open, "p"/"Delete"/"j" act on the current slide.
+export function FToggleGallery({
+  options,
+  itemCount,
+  children,
+  apiRef,
+  onBeforeOpen,
+  onTogglePinCurrent,
+  onDeleteCurrent,
+  onViewJobCurrent
+}: FToggleGalleryProps) {
   const internalApiRef = useRef<GalleryApi | null>(null);
   const galleryApiRef = apiRef ?? internalApiRef;
 
   const openRef = useRef(false);
   const lastIndexRef = useRef<number | null>(null);
+  const pswpRef = useRef<PhotoSwipe | null>(null);
   const itemCountRef = useRef(itemCount);
   itemCountRef.current = itemCount;
   const onBeforeOpenRef = useRef(onBeforeOpen);
   onBeforeOpenRef.current = onBeforeOpen;
+  const onTogglePinRef = useRef(onTogglePinCurrent);
+  onTogglePinRef.current = onTogglePinCurrent;
+  const onDeleteRef = useRef(onDeleteCurrent);
+  onDeleteRef.current = onDeleteCurrent;
+  const onViewJobRef = useRef(onViewJobCurrent);
+  onViewJobRef.current = onViewJobCurrent;
 
   const handleBeforeOpen = useCallback((photoswipe: PhotoSwipe) => {
     openRef.current = true;
+    pswpRef.current = photoswipe;
     photoswipe.on("change", () => {
       lastIndexRef.current = photoswipe.currIndex;
     });
     photoswipe.on("destroy", () => {
       openRef.current = false;
+      pswpRef.current = null;
     });
     onBeforeOpenRef.current?.(photoswipe);
   }, []);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "f" && event.key !== "F") {
-        return;
-      }
       if (event.ctrlKey || event.metaKey || event.altKey) {
         return;
       }
@@ -55,17 +74,42 @@ export function FToggleGallery({ options, itemCount, children, apiRef, onBeforeO
       if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT" || target.isContentEditable)) {
         return;
       }
-      event.preventDefault();
-      if (openRef.current) {
-        galleryApiRef.current?.close();
+
+      const key = event.key;
+
+      if (key === "f" || key === "F") {
+        event.preventDefault();
+        if (openRef.current) {
+          galleryApiRef.current?.close();
+          return;
+        }
+        const count = itemCountRef.current;
+        if (count <= 0) {
+          return;
+        }
+        const index = Math.min(Math.max(0, lastIndexRef.current ?? 0), count - 1);
+        galleryApiRef.current?.open(index);
         return;
       }
-      const count = itemCountRef.current;
-      if (count <= 0) {
+
+      if (!openRef.current) {
         return;
       }
-      const index = Math.min(Math.max(0, lastIndexRef.current ?? 0), count - 1);
-      galleryApiRef.current?.open(index);
+      const currentIndex = pswpRef.current?.currIndex ?? lastIndexRef.current;
+      if (currentIndex == null || currentIndex < 0) {
+        return;
+      }
+
+      if (key === "p" || key === "P") {
+        event.preventDefault();
+        onTogglePinRef.current?.(currentIndex);
+      } else if (key === "Delete") {
+        event.preventDefault();
+        onDeleteRef.current?.(currentIndex);
+      } else if (key === "j" || key === "J") {
+        event.preventDefault();
+        onViewJobRef.current?.(currentIndex);
+      }
     };
 
     document.addEventListener("keydown", onKeyDown);

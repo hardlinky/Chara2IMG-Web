@@ -345,6 +345,28 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
       {galleryMode === "per-job" ? (
         <FToggleGallery
           itemCount={pagedClusters.length}
+          onTogglePinCurrent={
+            onToggleOutputPinned
+              ? (index) => {
+                  const cluster = pagedClusters[index];
+                  if (cluster) {
+                    onToggleOutputPinned(cluster.jobId, cluster.representative.outputIndex, !cluster.representative.isPinned);
+                  }
+                }
+              : undefined
+          }
+          onDeleteCurrent={(index) => {
+            const cluster = pagedClusters[index];
+            if (cluster) {
+              onRemoveOutputImage(cluster.jobId, cluster.representative.outputIndex);
+            }
+          }}
+          onViewJobCurrent={(index) => {
+            const cluster = pagedClusters[index];
+            if (cluster) {
+              gallery.openJobOutputs(cluster.jobId);
+            }
+          }}
           options={{
             loop: true,
             allowPanToNext: false,
@@ -407,6 +429,28 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
       ) : (
         <FToggleGallery
           itemCount={pagedAllOutputImages.length}
+          onTogglePinCurrent={
+            onToggleOutputPinned
+              ? (index) => {
+                  const outputImage = pagedAllOutputImages[index];
+                  if (outputImage) {
+                    onToggleOutputPinned(outputImage.jobId, outputImage.outputIndex, !outputImage.isPinned);
+                  }
+                }
+              : undefined
+          }
+          onDeleteCurrent={(index) => {
+            const outputImage = pagedAllOutputImages[index];
+            if (outputImage) {
+              onRemoveOutputImage(outputImage.jobId, outputImage.outputIndex);
+            }
+          }}
+          onViewJobCurrent={(index) => {
+            const outputImage = pagedAllOutputImages[index];
+            if (outputImage) {
+              gallery.openJobOutputs(outputImage.jobId);
+            }
+          }}
           options={{
             loop: true,
             allowPanToNext: false,
