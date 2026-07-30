@@ -276,6 +276,7 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
             min={1}
             max={galleryPageCount}
             value={galleryPage}
+            style={{ "--page-digits": String(galleryPageCount).length } as React.CSSProperties}
             onChange={(event) => {
               const next = Number(event.target.value);
               if (Number.isFinite(next)) {
@@ -284,7 +285,7 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
             }}
             aria-label="Go to page"
           />
-          {`/ ${galleryPageCount}`}
+          <span className="jobs-pagination-total">/ {galleryPageCount}</span>
         </span>
         <button
           className="btn btn-secondary"
