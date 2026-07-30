@@ -74,6 +74,7 @@ export type RecentJobRecord = {
   lastResponse: Record<string, unknown> | null;
   outputImageCount?: number;
   lastError: string | null;
+  workerId?: string | null;
   hiddenOutputIndices?: number[];
   outputsHidden?: boolean;
   imageUnarchiveExpiries?: Record<string, string | null>; // mirrors JobRecord field; used by client projection
@@ -155,6 +156,7 @@ export type JobRecord = {
   terminalReason?: JobTerminalReason;
   imageCount: number;
   lastError: string | null;
+  workerId?: string | null;                               // RunPod worker that executed the job
   isArchived?: boolean;
   pinnedImageIndices?: number[];                          // indices of per-image pinned outputs
   deletedImageIndices?: number[];                        // indices permanently deleted via delete-image API

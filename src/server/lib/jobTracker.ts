@@ -182,6 +182,14 @@ async function pollTrackedJob(job: TrackedJob): Promise<PollResult> {
       jobUpdates.terminalReason = terminalReason;
     }
 
+    const workerId =
+      data !== null && typeof data === "object" && "workerId" in data
+        ? String((data as Record<string, unknown>)["workerId"] ?? "").trim()
+        : "";
+    if (workerId) {
+      jobUpdates.workerId = workerId;
+    }
+
     // Record when the job first enters execution so the UI can time from there.
     if (status === "IN_PROGRESS" && !existing?.startedAt) {
       jobUpdates.startedAt = new Date().toISOString();

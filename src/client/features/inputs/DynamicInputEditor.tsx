@@ -279,6 +279,15 @@ function renderInputControl(
               }}
             />
           </label>
+          <button
+            type="button"
+            className="input-dimension-swap"
+            aria-label="Swap width and height"
+            title="Swap width and height"
+            onClick={() => setValue(control.id, { width: dimensions.height, height: dimensions.width })}
+          >
+            ⇄
+          </button>
           <label className="field">
             Height
             <WheelNumberInput

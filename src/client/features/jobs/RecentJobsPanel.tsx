@@ -286,7 +286,7 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
             const isPinnedJob = Boolean(job.pinnedAt) || Boolean(job.pinnedOutputIndices?.length);
             const executionTime = formatExecutionTime(job, now);
             const failureSnippet = formatFailureSnippet(job);
-            const workerId = findWorkerId(job.lastResponse);
+            const workerId = job.workerId ?? findWorkerId(job.lastResponse);
             const completionTimestamp = job.lifecycle.finishedAt ?? job.submittedAt;
             const completionTimeLabel = props.formatSubmittedAtRelative(completionTimestamp);
             const showInlineDuration = Boolean(job.lifecycle.isTerminal && executionTime);
