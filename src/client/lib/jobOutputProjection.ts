@@ -69,8 +69,10 @@ export function projectJobOutputCluster(job: RecentJobRecord, options: Projectio
           cacheExpiresAt = undefined;
         }
       } else {
-        // Unpinned image: use job-level TTL (same as before)
-        cacheExpiresAt = jobLevelCacheExpiresAt;
+        // Unpinned image: prefer an active unarchive countdown (set at unpin time),
+        // falling back to the job-level TTL for never-pinned images.
+        const unarchiveIso = job.imageUnarchiveExpiries?.[String(index)];
+        cacheExpiresAt = unarchiveIso ? Date.parse(unarchiveIso) : jobLevelCacheExpiresAt;
       }
 
       return {
