@@ -74,3 +74,13 @@ export async function pruneExpiredImageCache(): Promise<void> {
 export async function deleteImage(cacheKey: string): Promise<void> {
   await db.images.delete(cacheKey);
 }
+
+/**
+ * Wipe every entry from the IndexedDB image cache. Purely local — images are
+ * re-fetched from the server on next render. Returns the number of entries removed.
+ */
+export async function clearImageCache(): Promise<number> {
+  const count = await db.images.count();
+  await db.images.clear();
+  return count;
+}

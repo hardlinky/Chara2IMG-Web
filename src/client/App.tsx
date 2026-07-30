@@ -16,6 +16,7 @@ import { WorkflowImport } from "./features/workflows/WorkflowImport";
 import { useActiveWorkflowTemplate } from "./features/workflows/useActiveWorkflowTemplate";
 import { fetchSystemConfig, fetchSystemStorageStats, ProxyRequestError, updateAppViaProxy } from "./lib/api/runpodProxyClient";
 import { getJobInputs } from "./lib/api/jobsClient";
+import { clearImageCache } from "./lib/imageCache";
 import { getStoredEndpointId, saveEndpointId } from "./lib/endpointStorage";
 import { APP_VERSION_LABEL } from "./lib/appVersion";
 import { submitRunAndPersistRecentJob } from "./lib/jobSubmission";
@@ -172,6 +173,8 @@ export function App() {
   const [jobActionError, setJobActionError] = useState("");
   const [isUpdatingApp, setIsUpdatingApp] = useState(false);
   const [updateStatus, setUpdateStatus] = useState("");
+  const [isClearingCache, setIsClearingCache] = useState(false);
+  const [clearCacheStatus, setClearCacheStatus] = useState("");
   const [storageStatus, setStorageStatus] = useState(
     "Storage: cache unavailable | archive (you) unavailable | archive (all) unavailable | archive (cap) unavailable"
   );
@@ -484,6 +487,20 @@ export function App() {
     }
   }
 
+  async function onClearImageCache(): Promise<void> {
+    setIsClearingCache(true);
+    setClearCacheStatus("Clearing image cache...");
+
+    try {
+      const removed = await clearImageCache();
+      setClearCacheStatus(`Cleared ${removed} cached image${removed === 1 ? "" : "s"}. Images will reload from the server.`);
+    } catch (error) {
+      setClearCacheStatus(`Clear failed: ${error instanceof Error ? error.message : "Unexpected error"}`);
+    } finally {
+      setIsClearingCache(false);
+    }
+  }
+
   async function onExportWorkflow(jobId: string): Promise<void> {
     const job = await recentJobs.loadJobInputs(jobId);
     if (!job) {
@@ -678,6 +695,12 @@ export function App() {
                   {isUpdatingApp ? "Updating..." : "Update App"}
                 </button>
                 {updateStatus ? <span>{updateStatus}</span> : null}
+              </div>
+              <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
+                <button className="btn btn-secondary" type="button" onClick={() => void onClearImageCache()} disabled={isClearingCache}>
+                  {isClearingCache ? "Clearing..." : "Clear Image Cache"}
+                </button>
+                {clearCacheStatus ? <span>{clearCacheStatus}</span> : null}
               </div>
             </section>
             <AdminTab enabled={adminGranted} />
