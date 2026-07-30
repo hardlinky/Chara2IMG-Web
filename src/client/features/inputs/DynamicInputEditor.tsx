@@ -14,6 +14,20 @@ import { toggleCategoryTracked, useTrackedInputCategories } from "../../lib/inpu
 import { toImageDataUrl } from "../../lib/modelAssets";
 import "../../styles/setupInput.css";
 
+// Integer-valued inputs step by 1; every other number spinner steps by 0.05.
+const INTEGER_NUMBER_FIELDS = new Set(["steps", "batch_size", "seed", "int"]);
+
+function resolveNumberStep(control: DynamicInputControl): number {
+  if (control.constraints.precision === 0) {
+    return 1;
+  }
+  const field = control.source.valuePath[control.source.valuePath.length - 1];
+  if (field && INTEGER_NUMBER_FIELDS.has(field)) {
+    return 1;
+  }
+  return 0.05;
+}
+
 type DynamicInputEditorViewProps = {
   controls: DynamicInputControl[];
   sections: DynamicInputSection[];
@@ -161,6 +175,7 @@ function renderInputControl(
         <input
           className={className}
           type="number"
+          step={resolveNumberStep(control)}
           value={typeof value === "number" || typeof value === "string" ? value : ""}
           onChange={(event) => {
             const rawValue = event.target.value;
@@ -202,6 +217,7 @@ function renderInputControl(
             <input
               className={className}
               type="number"
+              step={1}
               value={dimensions.width}
               onChange={(event) => {
                 setValue(control.id, {
@@ -216,6 +232,7 @@ function renderInputControl(
             <input
               className={className}
               type="number"
+              step={1}
               value={dimensions.height}
               onChange={(event) => {
                 setValue(control.id, {
