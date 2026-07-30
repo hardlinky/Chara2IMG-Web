@@ -257,6 +257,29 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
     );
   }
 
+  const paginationControls =
+    pageItemCount > 0 ? (
+      <div className="jobs-pagination">
+        <button
+          className="btn btn-secondary"
+          type="button"
+          onClick={() => setGalleryPage((current) => Math.max(1, current - 1))}
+          disabled={galleryPage <= 1}
+        >
+          Prev page
+        </button>
+        <span>{`Page ${galleryPage} / ${galleryPageCount}`}</span>
+        <button
+          className="btn btn-secondary"
+          type="button"
+          onClick={() => setGalleryPage((current) => Math.min(galleryPageCount, current + 1))}
+          disabled={galleryPage >= galleryPageCount}
+        >
+          Next page
+        </button>
+      </div>
+    ) : null;
+
   return (
     <section className="outputs-panel">
       <header className="outputs-toolbar">
@@ -297,6 +320,8 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
 
       {clusters.length === 0 ? <p>No completed job outputs yet.</p> : null}
       {clusters.length > 0 && filteredClusters.length === 0 ? <p>No outputs match the selected pin filter.</p> : null}
+
+      {paginationControls}
 
       {galleryMode === "per-job" ? (
         <Gallery
@@ -421,27 +446,7 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
         </Gallery>
       )}
 
-      {pageItemCount > 0 ? (
-        <div className="jobs-pagination">
-          <button
-            className="btn btn-secondary"
-            type="button"
-            onClick={() => setGalleryPage((current) => Math.max(1, current - 1))}
-            disabled={galleryPage <= 1}
-          >
-            Prev page
-          </button>
-          <span>{`Page ${galleryPage} / ${galleryPageCount}`}</span>
-          <button
-            className="btn btn-secondary"
-            type="button"
-            onClick={() => setGalleryPage((current) => Math.min(galleryPageCount, current + 1))}
-            disabled={galleryPage >= galleryPageCount}
-          >
-            Next page
-          </button>
-        </div>
-      ) : null}
+      {paginationControls}
     </section>
   );
 }
