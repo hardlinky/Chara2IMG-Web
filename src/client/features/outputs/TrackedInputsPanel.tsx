@@ -59,6 +59,47 @@ function imageDataUrl(control: DynamicInputControl): string {
   return "";
 }
 
+// Derived image values are often raw base64 (no data: prefix); sniff the
+// signature so the browser can render them.
+function toImageSrc(raw: string): string {
+  if (!raw) {
+    return "";
+  }
+  if (raw.startsWith("data:")) {
+    return raw;
+  }
+
+  let mimeType = "image/png";
+  if (raw.startsWith("/9j/")) {
+    mimeType = "image/jpeg";
+  } else if (raw.startsWith("R0lGOD")) {
+    mimeType = "image/gif";
+  } else if (raw.startsWith("UklGR")) {
+    mimeType = "image/webp";
+  }
+
+  return `data:${mimeType};base64,${raw}`;
+}
+
+function cleanLoraName(name: string): string {
+  const base = name.split(/[\\/]/).pop() ?? name;
+  return base.replace(/\.(safetensors|ckpt|pt|pth|bin)$/i, "");
+}
+
+function isEnabledLora(control: DynamicInputControl): boolean {
+  const value = control.defaultValue;
+  return Boolean(
+    value && typeof value === "object" && "enabled" in value && (value as { enabled: unknown }).enabled
+  );
+}
+
+function isRenderable(control: DynamicInputControl): boolean {
+  if (control.kind === "lora-row") {
+    return isEnabledLora(control);
+  }
+  return true;
+}
+
 export function TrackedInputsPanel({ jobId }: { jobId: string }) {
   const trackedCategories = useTrackedInputCategories();
   const [sections, setSections] = useState<TrackedSection[]>([]);
@@ -113,40 +154,57 @@ export function TrackedInputsPanel({ jobId }: { jobId: string }) {
 
   return (
     <div className="tracked-inputs-panel">
-      {sections.map((section) => (
-        <div className="tracked-inputs-category" key={section.category}>
-          <h4 className="tracked-inputs-category-title">{section.category}</h4>
-          <div className="tracked-inputs-fields">
-            {section.controls.map((control) => {
-              if (control.kind === "image") {
-                const dataUrl = imageDataUrl(control);
+      {sections.map((section) => {
+        const visibleControls = section.controls.filter(isRenderable);
+        if (visibleControls.length === 0) {
+          return null;
+        }
+
+        return (
+          <div className="tracked-inputs-category" key={section.category}>
+            <h4 className="tracked-inputs-category-title">{section.category}</h4>
+            <div className="tracked-inputs-fields">
+              {visibleControls.map((control) => {
+                if (control.kind === "lora-row") {
+                  const lora = control.defaultValue as { loraName: string; strength: number };
+                  return (
+                    <div className="tracked-inputs-field" key={control.id}>
+                      <span className="tracked-inputs-field-label">{cleanLoraName(lora.loraName)}</span>
+                      <span className="tracked-inputs-field-value">{lora.strength}</span>
+                    </div>
+                  );
+                }
+
+                if (control.kind === "image") {
+                  const src = toImageSrc(imageDataUrl(control));
+                  return (
+                    <div className="tracked-inputs-field tracked-inputs-field-block" key={control.id}>
+                      <span className="tracked-inputs-field-label">{control.name}</span>
+                      {src ? (
+                        <img className="tracked-inputs-image" alt={`${control.name} input`} src={src} />
+                      ) : (
+                        <span className="tracked-inputs-field-value">—</span>
+                      )}
+                    </div>
+                  );
+                }
+
+                const text = formatControlValue(control);
+                const isBlock = control.kind === "multiline";
                 return (
-                  <div className="tracked-inputs-field tracked-inputs-field-block" key={control.id}>
+                  <div
+                    className={`tracked-inputs-field${isBlock ? " tracked-inputs-field-block" : ""}`}
+                    key={control.id}
+                  >
                     <span className="tracked-inputs-field-label">{control.name}</span>
-                    {dataUrl ? (
-                      <img className="tracked-inputs-image" alt={`${control.name} input`} src={dataUrl} />
-                    ) : (
-                      <span className="tracked-inputs-field-value">—</span>
-                    )}
+                    <span className="tracked-inputs-field-value">{text.length > 0 ? text : "—"}</span>
                   </div>
                 );
-              }
-
-              const text = formatControlValue(control);
-              const isBlock = control.kind === "multiline";
-              return (
-                <div
-                  className={`tracked-inputs-field${isBlock ? " tracked-inputs-field-block" : ""}`}
-                  key={control.id}
-                >
-                  <span className="tracked-inputs-field-label">{control.name}</span>
-                  <span className="tracked-inputs-field-value">{text.length > 0 ? text : "—"}</span>
-                </div>
-              );
-            })}
+              })}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
