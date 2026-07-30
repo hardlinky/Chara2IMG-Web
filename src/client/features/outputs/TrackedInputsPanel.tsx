@@ -91,11 +91,18 @@ export function TrackedInputsPanel({
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setLightboxSrc(null);
+        return;
+      }
+      if (event.key === "i" || event.key === "I") {
+        if (img2imgInputAvailable && onLoadImageIntoImg2Img) {
+          onLoadImageIntoImg2Img(lightboxSrc);
+          setLightboxSrc(null);
+        }
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [lightboxSrc]);
+  }, [lightboxSrc, img2imgInputAvailable, onLoadImageIntoImg2Img]);
 
   useEffect(() => {
     if (trackedCategories.length === 0) {
