@@ -187,9 +187,11 @@
   gap: var(--space-1);
 }
 
-.jobs-pagination-input {
-  /* Fit the largest possible page number: digit width + minimal padding. */
-  width: calc(var(--page-digits, 2) * 1ch + 1rem);
+.jobs-pagination-page .jobs-pagination-input {
+  /* Higher specificity than `.input { width: 100% }` so this width sticks.
+     Fit the largest possible page number: digit width + minimal padding. */
+  width: calc(var(--page-digits, 2) * 1ch + 0.9rem);
+  min-width: 0;
   padding-left: 0.35rem;
   padding-right: 0.35rem;
   text-align: center;
