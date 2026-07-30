@@ -188,9 +188,18 @@
 }
 
 .jobs-pagination-input {
-  /* Fit the largest possible page number: digit width + padding + spinner. */
-  width: calc(var(--page-digits, 2) * 1ch + 2.75rem);
+  /* Fit the largest possible page number: digit width + minimal padding. */
+  width: calc(var(--page-digits, 2) * 1ch + 1.25rem);
   text-align: center;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.jobs-pagination-input::-webkit-outer-spin-button,
+.jobs-pagination-input::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .jobs-pagination-total {
