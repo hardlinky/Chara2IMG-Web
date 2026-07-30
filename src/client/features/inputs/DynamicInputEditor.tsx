@@ -1,4 +1,4 @@
-import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, InputHTMLAttributes, useEffect, useMemo, useRef, useState } from "react";
 import type {
   DynamicInputControl,
   DynamicInputDraftValues,
@@ -26,6 +26,54 @@ function resolveNumberStep(control: DynamicInputControl): number {
     return 1;
   }
   return 0.05;
+}
+
+function stepDecimals(step: number): number {
+  if (Number.isInteger(step)) {
+    return 0;
+  }
+  const text = String(step);
+  const dotIndex = text.indexOf(".");
+  return dotIndex === -1 ? 0 : text.length - dotIndex - 1;
+}
+
+// Number input that also steps on mouse wheel while hovered. Uses a non-passive
+// native listener because React's synthetic onWheel cannot preventDefault.
+function WheelNumberInput({
+  wheelStep,
+  currentValue,
+  onWheelStep,
+  ...inputProps
+}: {
+  wheelStep: number;
+  currentValue: number;
+  onWheelStep: (next: number) => void;
+} & InputHTMLAttributes<HTMLInputElement>) {
+  const ref = useRef<HTMLInputElement | null>(null);
+  const stateRef = useRef({ wheelStep, currentValue, onWheelStep });
+  stateRef.current = { wheelStep, currentValue, onWheelStep };
+
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) {
+      return;
+    }
+    const onWheel = (event: WheelEvent) => {
+      if (event.deltaY === 0) {
+        return;
+      }
+      event.preventDefault();
+      const state = stateRef.current;
+      const base = Number.isFinite(state.currentValue) ? state.currentValue : 0;
+      const direction = event.deltaY < 0 ? 1 : -1;
+      const next = Number((base + direction * state.wheelStep).toFixed(stepDecimals(state.wheelStep)));
+      state.onWheelStep(next);
+    };
+    element.addEventListener("wheel", onWheel, { passive: false });
+    return () => element.removeEventListener("wheel", onWheel);
+  }, []);
+
+  return <input ref={ref} type="number" step={wheelStep} {...inputProps} />;
 }
 
 type DynamicInputEditorViewProps = {
@@ -170,12 +218,14 @@ function renderInputControl(
           onChange={(event) => setValue(control.id, event.target.value)}
         />
       );
-    case "number":
+    case "number": {
+      const numericValue = typeof value === "number" ? value : Number(value);
       return (
-        <input
+        <WheelNumberInput
           className={className}
-          type="number"
-          step={resolveNumberStep(control)}
+          wheelStep={resolveNumberStep(control)}
+          currentValue={Number.isFinite(numericValue) ? numericValue : 0}
+          onWheelStep={(next) => setValue(control.id, next)}
           value={typeof value === "number" || typeof value === "string" ? value : ""}
           onChange={(event) => {
             const rawValue = event.target.value;
@@ -195,6 +245,7 @@ function renderInputControl(
           }}
         />
       );
+    }
     case "boolean":
       return (
         <input
@@ -214,10 +265,11 @@ function renderInputControl(
         <div className="input-dimension-grid">
           <label className="field">
             Width
-            <input
+            <WheelNumberInput
               className={className}
-              type="number"
-              step={1}
+              wheelStep={1}
+              currentValue={dimensions.width}
+              onWheelStep={(next) => setValue(control.id, { width: next, height: dimensions.height })}
               value={dimensions.width}
               onChange={(event) => {
                 setValue(control.id, {
@@ -229,10 +281,11 @@ function renderInputControl(
           </label>
           <label className="field">
             Height
-            <input
+            <WheelNumberInput
               className={className}
-              type="number"
-              step={1}
+              wheelStep={1}
+              currentValue={dimensions.height}
+              onWheelStep={(next) => setValue(control.id, { width: dimensions.width, height: next })}
               value={dimensions.height}
               onChange={(event) => {
                 setValue(control.id, {
@@ -303,11 +356,17 @@ function renderInputControl(
 
             <label className="input-lora-strength-field" htmlFor={`${control.id}-strength`}>
               Strength
-              <input
+              <WheelNumberInput
                 id={`${control.id}-strength`}
                 className={className}
-                type="number"
-                step={sliderStep}
+                wheelStep={sliderStep}
+                currentValue={loraValue.strength}
+                onWheelStep={(next) =>
+                  setValue(control.id, {
+                    ...loraValue,
+                    strength: next
+                  })
+                }
                 value={loraValue.strength}
                 onChange={(event) =>
                   setValue(control.id, {
