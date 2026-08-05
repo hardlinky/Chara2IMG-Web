@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "./components/app-shell/AppShell";
 import type { AppTabDefinition } from "./components/app-shell/TopTabRail";
 import { AdminGate } from "./features/access/AdminGate";
@@ -18,6 +18,7 @@ import { fetchSystemConfig, fetchSystemStorageStats, ProxyRequestError, updateAp
 import { getJobInputs } from "./lib/api/jobsClient";
 import { clearImageCache } from "./lib/imageCache";
 import { getStoredEndpointId, saveEndpointId } from "./lib/endpointStorage";
+import { getRoute, navigate, useRoute } from "./lib/appRouter";
 import { APP_VERSION_LABEL } from "./lib/appVersion";
 import { submitRunAndPersistRecentJob } from "./lib/jobSubmission";
 import { getRunpodKey } from "./lib/runpodKeyStorage";
@@ -27,6 +28,21 @@ import type { SystemStorageStats } from "./lib/api/runpodProxyClient";
 import { deriveInputControls } from "../shared/workflow/deriveInputControls";
 
 const APP_ACTIVE_TAB_STORAGE_KEY = "chara2imgActiveTab";
+
+type AppTabId = "setup" | "input" | "jobs" | "output" | "admin";
+
+function isAppTabId(value: string | null): value is AppTabId {
+  return value === "setup" || value === "input" || value === "jobs" || value === "output" || value === "admin";
+}
+
+function getInitialActiveTab(): AppTabId {
+  const routeTab = getRoute().tab;
+  if (isAppTabId(routeTab)) {
+    return routeTab;
+  }
+
+  return getStoredActiveTab();
+}
 
 function toRunpodWorkflowInput(payload: Record<string, unknown>): Record<string, unknown> {
   if ("workflow" in payload) {
@@ -163,7 +179,9 @@ async function resolveImageDataUrl(imageUrl: string): Promise<string | null> {
 }
 
 export function App() {
-  const [activeTab, setActiveTab] = useState<"setup" | "input" | "jobs" | "output" | "admin">(() => getStoredActiveTab());
+  const [activeTab, setActiveTab] = useState<AppTabId>(() => getInitialActiveTab());
+  const route = useRoute();
+  const isFirstRouteSyncRef = useRef(true);
   const [invited, setInvited] = useState(false);
   const [adminGranted, setAdminGranted] = useState(false);
   const [runpodKey, setRunpodKey] = useState(getRunpodKey());
@@ -259,7 +277,19 @@ export function App() {
 
   useEffect(() => {
     persistActiveTab(activeTab);
+    if (getRoute().tab !== activeTab) {
+      navigate({ tab: activeTab }, isFirstRouteSyncRef.current ? "replace" : "push");
+    }
+    isFirstRouteSyncRef.current = false;
   }, [activeTab]);
+
+  useEffect(() => {
+    if (isAppTabId(route.tab) && route.tab !== activeTab) {
+      setActiveTab(route.tab);
+    }
+    // Only react to URL changes (e.g. browser back/forward); activeTab is intentionally omitted.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [route.tab]);
 
   useEffect(() => {
     if (!invited) {
@@ -649,11 +679,7 @@ export function App() {
               onExportWorkflow={(jobId) => void onExportWorkflow(jobId)}
               onRemoveVisible={(jobId) => void recentJobs.removeVisibleJob(jobId)}
               onViewOutputs={(jobId) => {
-                setActiveTab("output");
-                setTimeout(() => {
-                  // @ts-ignore: OutputsTab uses useOutputGallery, which exposes openJobOutputs on window for this hack
-                  if (window.__openJobOutputs) window.__openJobOutputs(jobId);
-                }, 0);
+                navigate({ tab: "output", jobId }, "push");
               }}
               formatSubmittedAtRelative={formatSubmittedAtRelative}
               lastFetchedAt={recentJobs.lastFetchedAt}
@@ -662,6 +688,7 @@ export function App() {
         ),
         output: (
           <OutputsTab
+            active={activeTab === "output"}
             clusters={recentJobs.completedOutputClusters}
             onLoadOutputCluster={(jobId) => recentJobs.loadOutputCluster(jobId)}
             onRerun={(jobId) => void recentJobs.rerunJob(jobId)}

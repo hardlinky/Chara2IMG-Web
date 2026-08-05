@@ -6,6 +6,7 @@ import { FToggleGallery, type GalleryApi } from "./GalleryFToggle";
 import { JobOutputsView } from "./JobOutputsView";
 import { OutputImageCard } from "./OutputImageCard";
 import { OUTPUT_DENSITIES, type OutputDensity, useOutputGallery } from "./useOutputGallery";
+import { getRoute, navigate, useRoute } from "../../lib/appRouter";
 import "./outputsGallery.css";
 import "../../styles/jobsOutput.css";
 
@@ -35,6 +36,7 @@ function getStoredOutputsViewMode(): OutputsGalleryMode {
 }
 
 type OutputsTabProps = {
+  active?: boolean;
   clusters: RecentJobOutputCluster[];
   onRerun: (jobId: string) => void;
   onLoadInputs: (jobId: string) => void;
@@ -71,8 +73,9 @@ export function resolveSelectedJobCluster(
   return hydratedJobClusters[selectedJobId] ?? gallerySelectedCluster;
 }
 
-export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs, onRemoveOutputImage, onExportWorkflow, onToggleOutputPinned, canPinMore = true, onLoadOutputCluster, pinningImageKeys, img2imgInputAvailable = false, onLoadImageIntoImg2Img }: OutputsTabProps) {
+export function OutputsTab({ active = true, clusters, onRerun, onLoadInputs, onRemoveJobOutputs, onRemoveOutputImage, onExportWorkflow, onToggleOutputPinned, canPinMore = true, onLoadOutputCluster, pinningImageKeys, img2imgInputAvailable = false, onLoadImageIntoImg2Img }: OutputsTabProps) {
   const gallery = useOutputGallery(clusters);
+  const route = useRoute();
   const galleryApiRef = useRef<GalleryApi | null>(null);
   const [galleryMode, setGalleryMode] = useState<OutputsGalleryMode>(() => getStoredOutputsViewMode());
   const [pinFilter, setPinFilter] = useState<OutputsPinFilter>(() => getStoredOutputsPinFilter());
@@ -228,11 +231,32 @@ export function OutputsTab({ clusters, onRerun, onLoadInputs, onRemoveJobOutputs
     window.localStorage.setItem(OUTPUTS_VIEW_MODE_STORAGE_KEY, galleryMode);
   }, [galleryMode]);
 
-  // Expose openJobOutputs globally for cross-tab hack
-  if (typeof window !== "undefined") {
-    // @ts-ignore
-    window.__openJobOutputs = gallery.openJobOutputs;
-  }
+  // Sync the open job with the URL `job` param. Reconcile URL -> gallery view
+  // (deep links, browser back/forward) and gallery view -> URL (user opening/
+  // closing/switching jobs). Only the active tab owns the `job` param.
+  useEffect(() => {
+    if (!active) {
+      return;
+    }
+
+    const viewJobId = gallery.view.mode === "job" ? gallery.view.jobId : null;
+    if (route.jobId && route.jobId !== viewJobId) {
+      gallery.openJobOutputs(route.jobId);
+    } else if (!route.jobId && viewJobId) {
+      gallery.goBackToGallery();
+    }
+  }, [active, route.jobId, gallery.view, gallery.openJobOutputs, gallery.goBackToGallery]);
+
+  useEffect(() => {
+    if (!active) {
+      return;
+    }
+
+    const viewJobId = gallery.view.mode === "job" ? gallery.view.jobId : null;
+    if (getRoute().jobId !== viewJobId) {
+      navigate({ jobId: viewJobId }, "push");
+    }
+  }, [active, gallery.view]);
 
   if (gallery.view.mode === "job" && selectedJobCluster) {
     return (
