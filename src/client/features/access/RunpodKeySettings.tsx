@@ -1,5 +1,6 @@
 import { FormEvent, useMemo, useState } from "react";
 import { clearRunpodKey, getRunpodKey, setRunpodKey } from "../../lib/runpodKeyStorage";
+import { confirmDeletion } from "../../lib/confirmDelete";
 
 type RunpodKeySettingsProps = {
   onKeyChanged: (apiKey: string) => void;
@@ -92,7 +93,15 @@ export function RunpodKeySettings(props: RunpodKeySettingsProps) {
           <button className="btn btn-primary" type="submit">
             Save key
           </button>
-          <button className="btn btn-destructive" type="button" onClick={onClear}>
+          <button
+            className="btn btn-destructive"
+            type="button"
+            onClick={() => {
+              void confirmDeletion({ message: "Clear your saved RunPod API key from this browser?", confirmLabel: "Clear key" }).then((ok) => {
+                if (ok) onClear();
+              });
+            }}
+          >
             Clear key
           </button>
         </div>

@@ -117,6 +117,9 @@ describe("ReconciliationPanel", () => {
     const row = document.querySelector(".reconcile-row") as HTMLElement;
     fireEvent.click(within(row).getByText("Delete"));
 
+    const dialog = await screen.findByRole("dialog", { name: "Confirm deletion" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Delete" }));
+
     await waitFor(() => expect(deleteServerImageMock).toHaveBeenCalledWith("jobA", 1));
     await waitFor(() => expect(document.querySelectorAll(".reconcile-row").length).toBe(0));
   });
@@ -163,6 +166,9 @@ describe("ReconciliationPanel", () => {
     const row = document.querySelector(".reconcile-row") as HTMLElement;
     const deleteButton = within(row).getByText("Delete") as HTMLButtonElement;
     fireEvent.click(deleteButton);
+
+    const dialog = await screen.findByRole("dialog", { name: "Confirm deletion" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Delete" }));
 
     await waitFor(() => expect(deleteButton.disabled).toBe(true));
 

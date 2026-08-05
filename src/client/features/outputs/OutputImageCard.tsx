@@ -3,6 +3,7 @@ import type { MouseEventHandler, ReactNode, SyntheticEvent } from "react";
 import type { RecentJobOutputImage } from "../../../shared/contracts/jobs";
 import { JOB_IMAGE_TTL_MS } from "../../../shared/contracts/jobs";
 import { getImage, storeImage } from "../../lib/imageCache";
+import { confirmDeletion } from "../../lib/confirmDelete";
 import { AlbumStarButton } from "../albums/AlbumStarButton";
 import type { AlbumStarProps } from "../albums/albumStar";
 
@@ -18,6 +19,8 @@ type OutputImageCardProps = {
   onOpen: MouseEventHandler<HTMLButtonElement>;
   onImageLoad?: (event: SyntheticEvent<HTMLImageElement>) => void;
   onRemoveImage?: () => void;
+  removeConfirmMessage?: string;
+  removeConfirmLabel?: string;
   onTogglePin?: () => void;
   onExportWorkflow?: () => void;
   onLoadInputs?: () => void;
@@ -95,6 +98,8 @@ export function OutputImageCard({
   onOpen,
   onImageLoad,
   onRemoveImage,
+  removeConfirmMessage,
+  removeConfirmLabel,
   onTogglePin,
   onExportWorkflow,
   onLoadInputs,
@@ -107,6 +112,16 @@ export function OutputImageCard({
   albumStar
 }: OutputImageCardProps) {
   const showBottomActions = Boolean(onExportWorkflow || onLoadInputs || onViewJobOutputs || onLoadIntoImg2Img);
+  function handleRemove(): void {
+    if (!onRemoveImage) return;
+    const remove = onRemoveImage;
+    void confirmDeletion({
+      message: removeConfirmMessage ?? "Delete this image? This can't be undone.",
+      confirmLabel: removeConfirmLabel ?? "Delete"
+    }).then((ok) => {
+      if (ok) remove();
+    });
+  }
   const isArchived = image.isPinned && !image.cacheExpiresAt;
   const [imgBroken, setImgBroken] = useState(false);
   const isUrlBased = isJobApiImageUrl(image.dataUrl);
@@ -336,7 +351,7 @@ export function OutputImageCard({
             className="outputs-image-remove-btn"
             aria-label={`Remove ${displayPrefix} image ${imageLabel}`}
             title={`Remove ${displayPrefix} image ${imageLabel}`}
-            onClick={onRemoveImage}
+            onClick={handleRemove}
           >
             ✕
           </button>

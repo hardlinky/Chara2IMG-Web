@@ -5,6 +5,7 @@ import "photoswipe/dist/photoswipe.css";
 import type { RecentJobOutputImage } from "../../../shared/contracts/jobs";
 import { FToggleGallery, type GalleryApi } from "./GalleryFToggle";
 import { OutputImageCard } from "./OutputImageCard";
+import { confirmDeletion } from "../../lib/confirmDelete";
 import { buildAlbumStarProps, type AlbumStarContext } from "../albums/albumStar";
 
 // When provided, the gallery renders in album mode: each image carries its own
@@ -60,6 +61,8 @@ export function OutputLightbox({
 }: OutputLightboxProps) {
   const [imageDimensions, setImageDimensions] = useState<Record<number, { width: number; height: number }>>({});
   const visibleImages = images.slice(0, maxVisible);
+  const removeConfirmMessage = perImageActions ? "Remove this image from the album?" : "Delete this image? This can't be undone.";
+  const removeConfirmLabel = perImageActions ? "Remove" : "Delete";
 
   const galleryApiRef = useRef<GalleryApi | null>(null);
   const imagesRef = useRef(images);
@@ -216,14 +219,19 @@ export function OutputLightbox({
           ? (index) => {
               const image = visibleImages[index];
               if (image) {
-                perImageActions.onRemove(index);
+                void confirmDeletion({ message: removeConfirmMessage, confirmLabel: removeConfirmLabel }).then((ok) => {
+                  if (ok) perImageActions.onRemove(index);
+                });
               }
             }
           : onRemoveImage
             ? (index) => {
+                const remove = onRemoveImage;
                 const image = visibleImages[index];
                 if (image) {
-                  onRemoveImage(image.outputIndex);
+                  void confirmDeletion({ message: removeConfirmMessage, confirmLabel: removeConfirmLabel }).then((ok) => {
+                    if (ok) remove(image.outputIndex);
+                  });
                 }
               }
             : undefined
@@ -289,6 +297,8 @@ export function OutputLightbox({
                           ? () => onRemoveImage(image.outputIndex)
                           : undefined
                     }
+                    removeConfirmMessage={removeConfirmMessage}
+                    removeConfirmLabel={removeConfirmLabel}
                     onTogglePin={
                       perImageActions?.onTogglePin
                         ? () => perImageActions.onTogglePin?.(index, !image.isPinned)

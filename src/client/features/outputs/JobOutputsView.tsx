@@ -3,6 +3,7 @@ import type { RecentJobOutputCluster } from "../../../shared/contracts/jobs";
 import { formatOutputJobId } from "./formatOutputJobId";
 import { OutputLightbox } from "./OutputLightbox";
 import { TrackedInputsPanel } from "./TrackedInputsPanel";
+import { confirmDeletion } from "../../lib/confirmDelete";
 import type { OutputDensity } from "./useOutputGallery";
 import type { AlbumStarContext } from "../albums/albumStar";
 
@@ -91,7 +92,15 @@ export function JobOutputsView({ cluster, density = "comfortable", onBack, onPre
           </div>
         </div>
         <div className="outputs-job-actions-row-2">
-          <button className="btn btn-destructive" type="button" onClick={onRemoveAllOutputs}>
+          <button
+            className="btn btn-destructive"
+            type="button"
+            onClick={() => {
+              void confirmDeletion({ message: "Remove all outputs for this job? This can't be undone.", confirmLabel: "Remove all" }).then((ok) => {
+                if (ok) onRemoveAllOutputs();
+              });
+            }}
+          >
             Remove all outputs
           </button>
         </div>

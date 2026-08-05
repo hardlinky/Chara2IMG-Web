@@ -5,6 +5,7 @@ import { formatOutputJobId } from "./formatOutputJobId";
 import { FToggleGallery, type GalleryApi } from "./GalleryFToggle";
 import { JobOutputsView } from "./JobOutputsView";
 import { OutputImageCard } from "./OutputImageCard";
+import { confirmDeletion } from "../../lib/confirmDelete";
 import { OUTPUT_DENSITIES, type OutputDensity, useOutputGallery } from "./useOutputGallery";
 import { getRoute, navigate, useRoute } from "../../lib/appRouter";
 import { buildAlbumStarProps, type AlbumStarContext } from "../albums/albumStar";
@@ -393,7 +394,9 @@ export function OutputsTab({ active = true, clusters, onRerun, onLoadInputs, onR
           onDeleteCurrent={(index) => {
             const cluster = pagedClusters[index];
             if (cluster) {
-              onRemoveOutputImage(cluster.jobId, cluster.representative.outputIndex);
+              void confirmDeletion({ message: "Delete this image? This can't be undone.", confirmLabel: "Delete" }).then((ok) => {
+                if (ok) onRemoveOutputImage(cluster.jobId, cluster.representative.outputIndex);
+              });
             }
           }}
           onViewJobCurrent={(index) => {
@@ -490,7 +493,9 @@ export function OutputsTab({ active = true, clusters, onRerun, onLoadInputs, onR
           onDeleteCurrent={(index) => {
             const outputImage = pagedAllOutputImages[index];
             if (outputImage) {
-              onRemoveOutputImage(outputImage.jobId, outputImage.outputIndex);
+              void confirmDeletion({ message: "Delete this image? This can't be undone.", confirmLabel: "Delete" }).then((ok) => {
+                if (ok) onRemoveOutputImage(outputImage.jobId, outputImage.outputIndex);
+              });
             }
           }}
           onViewJobCurrent={(index) => {

@@ -1,4 +1,5 @@
 import type { WorkflowTemplateRecord } from "../../../shared/contracts/workflow";
+import { confirmDeletion } from "../../lib/confirmDelete";
 
 type ActiveWorkflowTemplateProps = {
   activeTemplate: WorkflowTemplateRecord | null;
@@ -66,7 +67,11 @@ export function ActiveWorkflowTemplate({
                   <button
                     className="btn btn-destructive"
                     type="button"
-                    onClick={() => onRemoveRecentTemplate(template.fingerprint)}
+                    onClick={() => {
+                      void confirmDeletion({ message: `Remove "${template.displayName}" from recent workflows?`, confirmLabel: "Remove" }).then((ok) => {
+                        if (ok) onRemoveRecentTemplate(template.fingerprint);
+                      });
+                    }}
                     aria-label={`Remove ${template.displayName} from recent workflows`}
                     title={`Remove ${template.displayName} from recent workflows`}
                   >

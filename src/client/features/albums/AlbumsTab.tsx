@@ -3,6 +3,7 @@ import type { Album } from "../../../shared/contracts/albums";
 import type { RecentJobOutputImage } from "../../../shared/contracts/jobs";
 import { OutputLightbox } from "../outputs/OutputLightbox";
 import { formatOutputJobId } from "../outputs/formatOutputJobId";
+import { confirmDeletion } from "../../lib/confirmDelete";
 import "../../styles/albums.css";
 
 type AlbumsTabProps = {
@@ -172,7 +173,9 @@ function AlbumView({
                   className="btn btn-destructive"
                   type="button"
                   onClick={() => {
-                    void onDeleteAlbum(album.id).then(onBack);
+                    void confirmDeletion({ message: "Delete this album? This can't be undone.", confirmLabel: "Delete album" }).then((ok) => {
+                      if (ok) void onDeleteAlbum(album.id).then(onBack);
+                    });
                   }}
                 >
                   Delete album

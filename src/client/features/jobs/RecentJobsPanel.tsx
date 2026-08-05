@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { RecentJobRecord } from "../../../shared/contracts/jobs";
 import { formatOutputJobId } from "../outputs/formatOutputJobId";
+import { confirmDeletion } from "../../lib/confirmDelete";
 import { JOB_POLL_INTERVAL_MS } from "./jobStatus";
 import type { RecentJobStatusFilter } from "./useRecentJobs";
 import "../../styles/jobsOutput.css";
@@ -324,7 +325,11 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
                     <button
                       className="btn btn-destructive jobs-cancel-remove-btn"
                       type="button"
-                      onClick={() => props.onRemoveVisible(job.jobId)}
+                      onClick={() => {
+                        void confirmDeletion({ message: "Delete this job from your history? This can't be undone.", confirmLabel: "Delete job" }).then((ok) => {
+                          if (ok) props.onRemoveVisible(job.jobId);
+                        });
+                      }}
                     >
                       Remove
                     </button>

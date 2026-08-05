@@ -7,6 +7,7 @@ import {
   recacheImageFromServer
 } from "../../lib/api/adminManifestClient";
 import { deleteImage, listCachedImages } from "../../lib/imageCache";
+import { confirmDeletion } from "../../lib/confirmDelete";
 
 type ClientEntry = { cacheKey: string; expiresAt: number };
 
@@ -168,6 +169,11 @@ export function ReconciliationPanel() {
   }
 
   async function handleDelete(row: ReconcileRow): Promise<void> {
+    const ok = await confirmDeletion({
+      message: "Delete this image from the server? This can't be undone.",
+      confirmLabel: "Delete"
+    });
+    if (!ok) return;
     setBusyKey(row.key);
     setError(null);
     try {
