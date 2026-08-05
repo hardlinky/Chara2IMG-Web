@@ -24,6 +24,7 @@ import { getStoredEndpointId, saveEndpointId } from "./lib/endpointStorage";
 import { getRoute, navigate, useRoute } from "./lib/appRouter";
 import { APP_VERSION, APP_VERSION_LABEL } from "./lib/appVersion";
 import { submitRunAndPersistRecentJob } from "./lib/jobSubmission";
+import { showToast } from "./lib/toast";
 import { getRunpodKey } from "./lib/runpodKeyStorage";
 import { sanitizeWorkflowForExport } from "./lib/workflowExport";
 import type { DynamicInputDraftValues } from "../shared/contracts/inputs";
@@ -219,8 +220,6 @@ export function App() {
   const [runEndpointId, setRunEndpointId] = useState(() => getStoredEndpointId() ?? "");
   const [runError, setRunError] = useState("");
   const [isSubmittingRun, setIsSubmittingRun] = useState(false);
-  const [runNotice, setRunNotice] = useState("");
-  const runNoticeTimerRef = useRef<number | null>(null);
   const [jobActionError, setJobActionError] = useState("");
   const [isUpdatingApp, setIsUpdatingApp] = useState(false);
   const [updateStatus, setUpdateStatus] = useState("");
@@ -331,15 +330,6 @@ export function App() {
     document.title = transientJobsCount > 0 ? `(${transientJobsCount}) Chara2Img Web` : "Chara2Img Web";
   }, [transientJobsCount]);
 
-  useEffect(
-    () => () => {
-      if (runNoticeTimerRef.current !== null) {
-        window.clearTimeout(runNoticeTimerRef.current);
-      }
-    },
-    []
-  );
-
   useEffect(() => {
     persistActiveTab(activeTab);
     if (getRoute().tab !== activeTab) {
@@ -409,7 +399,6 @@ export function App() {
 
     try {
       setRunError("");
-      setRunNotice("");
       setIsSubmittingRun(true);
       await submitRunAndPersistRecentJob({
         endpointId: runEndpointId,
@@ -423,15 +412,20 @@ export function App() {
         }
       });
       await recentJobs.handleNewSubmission();
-      if (runNoticeTimerRef.current !== null) {
-        window.clearTimeout(runNoticeTimerRef.current);
-      }
-      setRunNotice("Job submitted \u2014 it will appear in Jobs shortly.");
-      runNoticeTimerRef.current = window.setTimeout(() => setRunNotice(""), 5000);
+      showToast("Job submitted \u2014 it will appear in Jobs shortly.", { tone: "success" });
     } catch (submitError) {
       setRunError(submitError instanceof Error ? submitError.message : "Run submission failed.");
     } finally {
       setIsSubmittingRun(false);
+    }
+  }
+
+  async function handleRerun(jobId: string): Promise<void> {
+    try {
+      await recentJobs.rerunJob(jobId);
+      showToast("Job resubmitted \u2014 it will appear in Jobs shortly.", { tone: "success" });
+    } catch (rerunError) {
+      showToast(rerunError instanceof Error ? rerunError.message : "Rerun failed.", { tone: "error" });
     }
   }
 
@@ -727,11 +721,6 @@ export function App() {
                 {runError}
               </p>
             ) : null}
-            {runNotice ? (
-              <p role="status" className="status-inline" data-tone="success">
-                {runNotice}
-              </p>
-            ) : null}
           </div>
         ),
         jobs: (
@@ -754,7 +743,7 @@ export function App() {
               onStatusFilterChange={recentJobs.setStatusFilter}
               onPageChange={recentJobs.setPage}
               onCancel={(jobId) => void recentJobs.cancelJob(jobId)}
-              onRerun={(jobId) => void recentJobs.rerunJob(jobId)}
+              onRerun={(jobId) => void handleRerun(jobId)}
               onLoadInputs={(jobId) => void onLoadInputs(jobId)}
               onExportWorkflow={(jobId) => void onExportWorkflow(jobId)}
               onRemoveVisible={(jobId) => void recentJobs.removeVisibleJob(jobId)}
@@ -771,7 +760,7 @@ export function App() {
             active={activeTab === "output"}
             clusters={recentJobs.completedOutputClusters}
             onLoadOutputCluster={(jobId) => recentJobs.loadOutputCluster(jobId)}
-            onRerun={(jobId) => void recentJobs.rerunJob(jobId)}
+            onRerun={(jobId) => void handleRerun(jobId)}
             onLoadInputs={(jobId) => void onLoadInputs(jobId)}
             onRemoveJobOutputs={(jobId) => void recentJobs.removeJobOutputs(jobId)}
             onRemoveOutputImage={(jobId, outputIndex) => void recentJobs.removeOutputImage(jobId, outputIndex)}

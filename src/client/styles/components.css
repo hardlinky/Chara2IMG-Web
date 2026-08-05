@@ -163,6 +163,49 @@
   color: var(--color-error-text);
 }
 
+.toast-container {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  cursor: pointer;
+  max-width: min(360px, calc(100vw - 2rem));
+  padding: 0.6rem 0.85rem;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  box-shadow: var(--shadow-md);
+  font-size: var(--font-size-sm);
+  background: var(--color-surface-elevated);
+  color: var(--color-text-primary);
+  opacity: 0;
+  transform: translateY(0.5rem);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.toast--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.toast[data-tone="success"] {
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
+  border-color: var(--color-success-text);
+}
+
+.toast[data-tone="error"] {
+  background: var(--color-error-bg);
+  color: var(--color-error-text);
+}
+
 .input-invalid {
   border-color: var(--color-danger-border);
   box-shadow: 0 0 0 1px rgba(163, 75, 77, 0.32);
