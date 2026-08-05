@@ -159,6 +159,7 @@ export type JobRecord = {
   availableImageIndices?: number[];                       // image indices whose files exist on disk right now (computed at API read time, not persisted)
   lastError: string | null;
   workerId?: string | null;                               // RunPod worker that executed the job
+  createdBy?: string | null;                              // reserved for future per-user scoping; always null while jobs are global
   isArchived?: boolean;
   pinnedImageIndices?: number[];                          // indices of per-image pinned outputs
   deletedImageIndices?: number[];                        // indices permanently deleted via delete-image API

@@ -10,6 +10,8 @@ import { formatSubmittedAtRelative } from "./features/jobs/jobStatus";
 import { RecentJobsPanel } from "./features/jobs/RecentJobsPanel";
 import { useRecentJobs } from "./features/jobs/useRecentJobs";
 import { OutputsTab } from "./features/outputs/OutputsTab";
+import { AlbumsTab } from "./features/albums/AlbumsTab";
+import { useAlbums } from "./features/albums/useAlbums";
 import { formatOutputJobId } from "./features/outputs/formatOutputJobId";
 import { ActiveWorkflowTemplate } from "./features/workflows/ActiveWorkflowTemplate";
 import { WorkflowImport } from "./features/workflows/WorkflowImport";
@@ -30,7 +32,7 @@ import { deriveInputControls } from "../shared/workflow/deriveInputControls";
 const APP_ACTIVE_TAB_STORAGE_KEY = "chara2imgActiveTab";
 const APP_VERSION_STORAGE_KEY = "chara2imgAppVersion";
 
-type AppTabId = "setup" | "input" | "jobs" | "output" | "admin";
+type AppTabId = "setup" | "input" | "jobs" | "output" | "albums" | "admin";
 
 // A new app build clears transient navigation (active tab + URL tab/job params)
 // so stale, possibly-expired job references don't resurrect on load.
@@ -49,6 +51,7 @@ function resetTransientStateOnVersionChange(): void {
   const params = new URLSearchParams(window.location.search);
   params.delete("tab");
   params.delete("job");
+  params.delete("album");
   const search = params.toString();
   const url = `${window.location.pathname}${search ? `?${search}` : ""}${window.location.hash}`;
   window.history.replaceState(null, "", url);
@@ -57,7 +60,7 @@ function resetTransientStateOnVersionChange(): void {
 resetTransientStateOnVersionChange();
 
 function isAppTabId(value: string | null): value is AppTabId {
-  return value === "setup" || value === "input" || value === "jobs" || value === "output" || value === "admin";
+  return value === "setup" || value === "input" || value === "jobs" || value === "output" || value === "albums" || value === "admin";
 }
 
 function getInitialActiveTab(): AppTabId {
@@ -159,21 +162,22 @@ const BASE_APP_TABS: AppTabDefinition[] = [
   { id: "setup", label: "Setup" },
   { id: "input", label: "Input" },
   { id: "jobs", label: "Jobs" },
-  { id: "output", label: "Output" }
+  { id: "output", label: "Output" },
+  { id: "albums", label: "Albums" }
 ];
 
 const SERVER_MANAGED_RUNPOD_KEY = "__SERVER_MANAGED_RUNPOD_KEY__";
 
-function getStoredActiveTab(): "setup" | "input" | "jobs" | "output" | "admin" {
+function getStoredActiveTab(): "setup" | "input" | "jobs" | "output" | "albums" | "admin" {
   if (typeof window === "undefined") {
     return "setup";
   }
 
   const stored = window.localStorage.getItem(APP_ACTIVE_TAB_STORAGE_KEY);
-  return stored === "setup" || stored === "input" || stored === "jobs" || stored === "output" || stored === "admin" ? stored : "setup";
+  return stored === "setup" || stored === "input" || stored === "jobs" || stored === "output" || stored === "albums" || stored === "admin" ? stored : "setup";
 }
 
-function persistActiveTab(tabId: "setup" | "input" | "jobs" | "output" | "admin"): void {
+function persistActiveTab(tabId: "setup" | "input" | "jobs" | "output" | "albums" | "admin"): void {
   if (typeof window === "undefined") {
     return;
   }
@@ -287,6 +291,8 @@ export function App() {
   });
 
   const transientJobsCount = recentJobs.transientJobsCount;
+
+  const albums = useAlbums(activeTab === "albums");
 
   const appTabs = useMemo<AppTabDefinition[]>(
     () =>
@@ -733,6 +739,18 @@ export function App() {
             pinningImageKeys={recentJobs.pinningImageKeys}
             img2imgInputAvailable={Boolean(editorApi?.img2imgInputAvailable)}
             onLoadImageIntoImg2Img={(imageUrl) => void onLoadImageIntoImg2Img(imageUrl)}
+          />
+        ),
+        albums: (
+          <AlbumsTab
+            albums={albums.albums}
+            isLoading={albums.isLoading}
+            error={albums.error}
+            selectedAlbumId={route.albumId}
+            onSelectAlbum={(albumId) => navigate({ tab: "albums", albumId }, "push")}
+            onUpdateAlbum={albums.updateAlbum}
+            onDeleteAlbum={albums.deleteAlbum}
+            onRemoveImage={albums.removeImageFromAlbum}
           />
         ),
         admin: (

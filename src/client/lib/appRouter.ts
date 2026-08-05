@@ -7,11 +7,13 @@ import { useEffect, useState } from "react";
 export type AppRoute = {
   tab: string | null;
   jobId: string | null;
+  albumId: string | null;
 };
 
 type RouteUpdate = {
   tab?: string;
   jobId?: string | null;
+  albumId?: string | null;
 };
 
 type Listener = () => void;
@@ -26,11 +28,11 @@ function notify(): void {
 
 export function getRoute(): AppRoute {
   if (typeof window === "undefined") {
-    return { tab: null, jobId: null };
+    return { tab: null, jobId: null, albumId: null };
   }
 
   const params = new URLSearchParams(window.location.search);
-  return { tab: params.get("tab"), jobId: params.get("job") };
+  return { tab: params.get("tab"), jobId: params.get("job"), albumId: params.get("album") };
 }
 
 export function navigate(update: RouteUpdate, mode: "push" | "replace" = "push"): void {
@@ -49,6 +51,14 @@ export function navigate(update: RouteUpdate, mode: "push" | "replace" = "push")
       params.set("job", update.jobId);
     } else {
       params.delete("job");
+    }
+  }
+
+  if (update.albumId !== undefined) {
+    if (update.albumId) {
+      params.set("album", update.albumId);
+    } else {
+      params.delete("album");
     }
   }
 

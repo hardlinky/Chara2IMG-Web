@@ -23,6 +23,7 @@ describe("app shell navigation", () => {
           input: <p>Input panel</p>,
           jobs: <p>Jobs panel</p>,
           output: <p>Output panel</p>,
+          albums: <p>Albums panel</p>,
           admin: <p>Admin panel</p>
         }}
       />
@@ -53,6 +54,7 @@ describe("app shell navigation", () => {
           input: <p>Input panel</p>,
           jobs: <p>Jobs panel</p>,
           output: <p>Output panel</p>,
+          albums: <p>Albums panel</p>,
           admin: <p>Admin panel</p>
         }}
       />
@@ -84,6 +86,7 @@ describe("app shell navigation", () => {
           input: <p>Input panel</p>,
           jobs: <p>Jobs panel</p>,
           output: <p>Output panel</p>,
+          albums: <p>Albums panel</p>,
           admin: <p>Admin panel</p>
         }}
       />

@@ -80,6 +80,7 @@ export function registerRunpodProxyRoutes(app: Hono): void {
                 isTerminal: false,
                 imageCount: 0,
                 lastError: null,
+                createdBy: null,
               },
               {
                 draftValues: (meta?.draftValues ?? {}) as import("../../shared/contracts/inputs").DynamicInputDraftValues,
