@@ -48,9 +48,6 @@ export function OutputLightbox({
   const imagesRef = useRef(images);
   imagesRef.current = images;
 
-  // Live PhotoSwipe instance, captured on open, for A/D image navigation.
-  const pswpRef = useRef<PhotoSwipe | null>(null);
-
   // Latest callbacks/flags for the imperative (open-time) keydown handler.
   const onPreviousJobRef = useRef(onPreviousJob);
   const onNextJobRef = useRef(onNextJob);
@@ -122,23 +119,12 @@ export function OutputLightbox({
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
-      const lower = event.key.toLowerCase();
-
-      // A/D mirror PhotoSwipe's Left/Right image navigation (always available).
-      if (lower === "a") {
-        event.preventDefault();
-        pswpRef.current?.prev();
-        return;
-      }
-      if (lower === "d") {
-        event.preventDefault();
-        pswpRef.current?.next();
-        return;
-      }
-
+      // A/D image navigation is handled by FToggleGallery; this handler only
+      // owns W/S job switching to avoid double-stepping images.
       if (!enableJobNavRef.current) {
         return;
       }
+      const lower = event.key.toLowerCase();
       // W/S mirror Up/Down job navigation.
       if (event.key === "ArrowUp" || lower === "w") {
         event.preventDefault();
@@ -153,10 +139,8 @@ export function OutputLightbox({
 
   const handleBeforeOpen = useCallback(
     (photoswipe: PhotoSwipe) => {
-      pswpRef.current = photoswipe;
       document.addEventListener("keydown", handleKeyDown, true);
       photoswipe.on("destroy", () => {
-        pswpRef.current = null;
         document.removeEventListener("keydown", handleKeyDown, true);
         if (awaitingReopenRef.current) {
           closedRef.current = true;
