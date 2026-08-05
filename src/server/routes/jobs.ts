@@ -3,6 +3,7 @@ import { join } from "node:path";
 import type { Hono } from "hono";
 import { requireInvitedSession } from "../middleware/session";
 import { listJobs, readJob, readJobAnywhere, deleteJob, deleteJobImage, getJobTmpDir, getJobArchiveDir, pinImage, unpinImage, listPresentImageIndices } from "../lib/jobStore";
+import { removeImageFromAllAlbums } from "../lib/albumStore";
 
 export function registerJobsRoutes(app: Hono): void {
   app.use("/api/jobs/*", requireInvitedSession);
@@ -114,6 +115,7 @@ export function registerJobsRoutes(app: Hono): void {
       return c.json({ ok: false, error: "Invalid index" }, 400);
     }
     await deleteJobImage(jobId, index);
+    await removeImageFromAllAlbums(jobId, index);
     return c.json({ ok: true });
   });
 

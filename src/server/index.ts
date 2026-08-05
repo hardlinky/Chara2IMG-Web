@@ -4,6 +4,7 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import { fileURLToPath } from "node:url";
 import { registerAccessRoutes } from "./routes/access";
 import { registerAdminRoutes } from "./routes/admin";
+import { registerAlbumRoutes } from "./routes/albums";
 import { registerJobsRoutes } from "./routes/jobs";
 import { registerPinnedImageRoutes } from "./routes/pinnedImages";
 import { registerRunpodProxyRoutes } from "./routes/runpodProxy";
@@ -32,6 +33,7 @@ export function createServerApp(): Hono {
   applySecurityMiddleware(app);
   registerAccessRoutes(app);
   registerAdminRoutes(app);
+  registerAlbumRoutes(app);
   registerJobsRoutes(app);
   registerPinnedImageRoutes(app);
   registerRunpodProxyRoutes(app);
