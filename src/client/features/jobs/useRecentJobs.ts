@@ -295,13 +295,27 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
   }, []);
 
   const removeJobOutputs = useCallback(async (jobId: string) => {
+    const job = jobs.find((j) => j.jobId === jobId);
+    const indices =
+      job?.availableImageIndices ??
+      ((job?.outputImageCount ?? 0) > 0
+        ? Array.from({ length: job!.outputImageCount! }, (_, i) => i)
+        : []);
+    // Optimistically hide immediately.
     setJobs((prev) =>
       prev.map((j) => {
         if (j.jobId !== jobId) return j;
         return { ...j, outputsHidden: true };
       })
     );
-  }, []);
+    // Delete every present image on the server, then refresh from source of truth.
+    try {
+      await Promise.all(indices.map((index) => deleteServerImage(jobId, index)));
+      if (fetchJobsRef.current) await fetchJobsRef.current();
+    } catch {
+      // Ignore — outputs will reappear on next poll if deletion failed.
+    }
+  }, [jobs]);
 
   const loadOutputCluster = useCallback(
     async (jobId: string) => {
