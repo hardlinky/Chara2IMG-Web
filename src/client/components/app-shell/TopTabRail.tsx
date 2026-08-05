@@ -16,7 +16,10 @@ type TopTabRailProps = {
 
 export function TopTabRail({ tabs, activeTab, onTabChange }: TopTabRailProps) {
   function onTabKeyDown(event: KeyboardEvent<HTMLButtonElement>, currentIndex: number): void {
-    if (event.key !== "ArrowRight" && event.key !== "ArrowLeft" && event.key !== "Home" && event.key !== "End") {
+    const lower = event.key.toLowerCase();
+    const isPrev = event.key === "ArrowLeft" || lower === "a";
+    const isNext = event.key === "ArrowRight" || lower === "d";
+    if (!isPrev && !isNext && event.key !== "Home" && event.key !== "End") {
       return;
     }
 
@@ -32,7 +35,7 @@ export function TopTabRail({ tabs, activeTab, onTabChange }: TopTabRailProps) {
       return;
     }
 
-    const direction = event.key === "ArrowRight" ? 1 : -1;
+    const direction = isNext ? 1 : -1;
     const nextIndex = (currentIndex + direction + tabs.length) % tabs.length;
     onTabChange(tabs[nextIndex].id);
   }
