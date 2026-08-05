@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { RecentJobRecord } from "../../../shared/contracts/jobs";
 import { formatOutputJobId } from "../outputs/formatOutputJobId";
+import { TrackedInputsPanel } from "../outputs/TrackedInputsPanel";
 import { confirmDeletion } from "../../lib/confirmDelete";
 import { JOB_POLL_INTERVAL_MS } from "./jobStatus";
 import type { RecentJobStatusFilter } from "./useRecentJobs";
@@ -242,6 +243,22 @@ function formatNextPollCountdown(lastFetchedAt: number | null, now: number): str
   return `${remainingSeconds}s`;
 }
 
+// Fetches inputs only after first expansion to avoid one request per job on load.
+function JobInputsDisclosure({ jobId }: { jobId: string }) {
+  const [opened, setOpened] = useState(false);
+  return (
+    <details
+      className="jobs-inputs-disclosure"
+      onToggle={(event) => {
+        if ((event.currentTarget as HTMLDetailsElement).open) setOpened(true);
+      }}
+    >
+      <summary>Inputs</summary>
+      {opened ? <TrackedInputsPanel jobId={jobId} showAllCategories /> : null}
+    </details>
+  );
+}
+
 export function RecentJobsPanel(props: RecentJobsPanelProps) {
   const [now, setNow] = useState(() => Date.now());
   const filteredJobCount = props.filteredJobCount ?? props.jobs.length;
@@ -382,6 +399,7 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
                   ) : null}
                   </div>
                 </div>
+                <JobInputsDisclosure jobId={job.jobId} />
               </li>
             );
           })}

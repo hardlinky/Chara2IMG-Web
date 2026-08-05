@@ -74,11 +74,13 @@ function isRenderable(control: DynamicInputControl): boolean {
 export function TrackedInputsPanel({
   jobId,
   img2imgInputAvailable = false,
-  onLoadImageIntoImg2Img
+  onLoadImageIntoImg2Img,
+  showAllCategories = false
 }: {
   jobId: string;
   img2imgInputAvailable?: boolean;
   onLoadImageIntoImg2Img?: (imageUrl: string) => void;
+  showAllCategories?: boolean;
 }) {
   const trackedCategories = useTrackedInputCategories();
   const [sections, setSections] = useState<TrackedSection[]>([]);
@@ -106,7 +108,7 @@ export function TrackedInputsPanel({
   }, [lightboxSrc, img2imgInputAvailable, onLoadImageIntoImg2Img]);
 
   useEffect(() => {
-    if (trackedCategories.length === 0) {
+    if (!showAllCategories && trackedCategories.length === 0) {
       setSections([]);
       setLoadedJobId(jobId);
       return;
@@ -129,7 +131,7 @@ export function TrackedInputsPanel({
         const derivation = deriveInputControls(normalizeWorkflowSource(inputs.submittedInput));
         const controlsById = new Map(derivation.controls.map((control) => [control.id, control]));
         const built = derivation.sections
-          .filter((section) => trackedCategories.includes(section.category))
+          .filter((section) => showAllCategories || trackedCategories.includes(section.category))
           .map((section) => ({
             category: section.category,
             controls: section.controlIds
@@ -151,11 +153,18 @@ export function TrackedInputsPanel({
     return () => {
       cancelled = true;
     };
-  }, [jobId, trackedCategories]);
+  }, [jobId, trackedCategories, showAllCategories]);
 
   // Hide the panel until inputs for the current job have loaded, so switching
   // jobs never flashes the previous job's tracked values.
-  if (trackedCategories.length === 0 || sections.length === 0 || loadedJobId !== jobId) {
+  if (loadedJobId !== jobId) {
+    return null;
+  }
+  if (showAllCategories) {
+    if (sections.length === 0) {
+      return <p className="tracked-inputs-empty">No inputs recorded for this job.</p>;
+    }
+  } else if (trackedCategories.length === 0 || sections.length === 0) {
     return null;
   }
 
