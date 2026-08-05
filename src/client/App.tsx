@@ -19,7 +19,7 @@ import { getJobInputs } from "./lib/api/jobsClient";
 import { clearImageCache } from "./lib/imageCache";
 import { getStoredEndpointId, saveEndpointId } from "./lib/endpointStorage";
 import { getRoute, navigate, useRoute } from "./lib/appRouter";
-import { APP_VERSION_LABEL } from "./lib/appVersion";
+import { APP_VERSION, APP_VERSION_LABEL } from "./lib/appVersion";
 import { submitRunAndPersistRecentJob } from "./lib/jobSubmission";
 import { getRunpodKey } from "./lib/runpodKeyStorage";
 import { sanitizeWorkflowForExport } from "./lib/workflowExport";
@@ -28,8 +28,33 @@ import type { SystemStorageStats } from "./lib/api/runpodProxyClient";
 import { deriveInputControls } from "../shared/workflow/deriveInputControls";
 
 const APP_ACTIVE_TAB_STORAGE_KEY = "chara2imgActiveTab";
+const APP_VERSION_STORAGE_KEY = "chara2imgAppVersion";
 
 type AppTabId = "setup" | "input" | "jobs" | "output" | "admin";
+
+// A new app build clears transient navigation (active tab + URL tab/job params)
+// so stale, possibly-expired job references don't resurrect on load.
+function resetTransientStateOnVersionChange(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  if (window.localStorage.getItem(APP_VERSION_STORAGE_KEY) === APP_VERSION) {
+    return;
+  }
+
+  window.localStorage.setItem(APP_VERSION_STORAGE_KEY, APP_VERSION);
+  window.localStorage.removeItem(APP_ACTIVE_TAB_STORAGE_KEY);
+
+  const params = new URLSearchParams(window.location.search);
+  params.delete("tab");
+  params.delete("job");
+  const search = params.toString();
+  const url = `${window.location.pathname}${search ? `?${search}` : ""}${window.location.hash}`;
+  window.history.replaceState(null, "", url);
+}
+
+resetTransientStateOnVersionChange();
 
 function isAppTabId(value: string | null): value is AppTabId {
   return value === "setup" || value === "input" || value === "jobs" || value === "output" || value === "admin";
