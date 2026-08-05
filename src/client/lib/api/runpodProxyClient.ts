@@ -119,7 +119,7 @@ function toSystemStorageStats(data: unknown): SystemStorageStats | null {
 }
 
 export async function fetchSystemConfig(): Promise<SystemConfig> {
-  const response = await fetch("/api/system/config");
+  const response = await fetch("/api/system/config", { cache: "no-store" });
   if (!response.ok) {
     return { endpointId: null, hasRunpodApiKey: false };
   }

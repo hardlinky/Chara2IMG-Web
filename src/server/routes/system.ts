@@ -76,6 +76,8 @@ export function registerSystemRoutes(app: Hono): void {
   app.use("/api/system/*", requireInvitedSession);
 
   app.get("/api/system/config", (c) => {
+    // Env-derived config must never be cached; a redeploy can change these values.
+    c.header("Cache-Control", "no-store");
     return c.json({
       endpointId: getDefaultEndpointId(),
       hasRunpodApiKey: hasDefaultRunpodApiKey()
