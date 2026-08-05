@@ -307,7 +307,7 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
                 </div>
                 <span>Workflow: {job.provenance.workflowFileName ?? "Workflow unknown"}</span>
                 <div className="jobs-status-row">
-                  <span className="jobs-status-chip">Status: {job.lifecycle.status}</span>
+                  <span className="jobs-status-chip" data-status={job.lifecycle.status}>Status: {job.lifecycle.status}</span>
                   {!job.lifecycle.isTerminal ? <span className="jobs-next-poll">Next poll in {formatNextPollCountdown(props.lastFetchedAt, now)}</span> : null}
                   {props.warningJobIds.includes(job.jobId) ? (
                     <span className="jobs-status-chip jobs-warning-chip">Polling warning</span>

@@ -113,6 +113,43 @@
   font-size: var(--font-size-sm);
 }
 
+/* Per-status coloring for job status chips. */
+.jobs-status-chip[data-status="IN_QUEUE"] {
+  border-color: rgba(117, 160, 238, 0.5);
+  background: rgba(26, 45, 77, 0.55);
+  color: #cfe0ff;
+}
+
+.jobs-status-chip[data-status="IN_PROGRESS"] {
+  border-color: rgba(235, 196, 91, 0.55);
+  background: rgba(58, 47, 15, 0.62);
+  color: #f5dd9e;
+}
+
+.jobs-status-chip[data-status="COMPLETED"] {
+  border-color: rgba(96, 190, 138, 0.55);
+  background: rgba(25, 49, 38, 0.8);
+  color: var(--color-success-text);
+}
+
+.jobs-status-chip[data-status="FAILED"] {
+  border-color: rgba(214, 108, 110, 0.6);
+  background: rgba(78, 35, 36, 0.82);
+  color: var(--color-error-text);
+}
+
+.jobs-status-chip[data-status="CANCELLED"] {
+  border-color: rgba(140, 152, 166, 0.45);
+  background: rgba(38, 45, 54, 0.72);
+  color: var(--color-text-secondary);
+}
+
+.jobs-status-chip[data-status="TIMED_OUT"] {
+  border-color: rgba(214, 148, 90, 0.6);
+  background: rgba(74, 46, 22, 0.78);
+  color: #f3c79a;
+}
+
 .jobs-warning-chip {
   border-color: rgba(229, 188, 111, 0.45);
   color: var(--color-warning-text);
