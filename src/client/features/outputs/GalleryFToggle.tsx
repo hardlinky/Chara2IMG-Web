@@ -107,6 +107,13 @@ export function FToggleGallery({
       if (key === "p" || key === "P") {
         event.preventDefault();
         onTogglePinRef.current?.(currentIndex);
+      } else if (key === "a" || key === "A") {
+        // Mirror PhotoSwipe's Left/Right image navigation.
+        event.preventDefault();
+        pswpRef.current?.prev();
+      } else if (key === "d" || key === "D") {
+        event.preventDefault();
+        pswpRef.current?.next();
       } else if (key === "Delete") {
         event.preventDefault();
         onDeleteRef.current?.(currentIndex);
