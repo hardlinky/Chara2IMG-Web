@@ -25,18 +25,28 @@ export function projectJobOutputCluster(job: RecentJobRecord, options: Projectio
     return null;
   }
 
-  let extractedImages: Array<{ dataUrl: string; mimeType: JobOutputImageMimeType; sourcePath: string }>;
+  let extractedImages: Array<{ dataUrl: string; mimeType: JobOutputImageMimeType; sourcePath: string; outputIndex?: number }>;
 
   if (job.lastResponse) {
     extractedImages = extractRunpodOutputImages(job.lastResponse);
-  } else if ((job.outputImageCount ?? 0) > 0) {
-    extractedImages = Array.from({ length: job.outputImageCount! }, (_, i) => ({
-      dataUrl: `/api/jobs/${job.jobId}/images/${i}`,
-      mimeType: "image/png" as JobOutputImageMimeType,
-      sourcePath: `/api/jobs/${job.jobId}/images/${i}`,
-    }));
   } else {
-    return null;
+    // Prefer the server's list of image indices that actually exist on disk so we
+    // never request URLs for images the backend has already purged. Fall back to a
+    // contiguous range only for older payloads that carry just a count.
+    const indices =
+      job.availableImageIndices ??
+      ((job.outputImageCount ?? 0) > 0
+        ? Array.from({ length: job.outputImageCount! }, (_, i) => i)
+        : []);
+    if (indices.length === 0) {
+      return null;
+    }
+    extractedImages = indices.map((imageIndex) => ({
+      dataUrl: `/api/jobs/${job.jobId}/images/${imageIndex}`,
+      mimeType: "image/png" as JobOutputImageMimeType,
+      sourcePath: `/api/jobs/${job.jobId}/images/${imageIndex}`,
+      outputIndex: imageIndex,
+    }));
   }
 
   if (extractedImages.length === 0) {
@@ -54,13 +64,14 @@ export function projectJobOutputCluster(job: RecentJobRecord, options: Projectio
 
   const allVisibleOutputs: RecentJobOutputImage[] = extractedImages
     .map((image, index) => {
-      const isPinned = pinnedSet.has(index);
+      const outputIndex = image.outputIndex ?? index;
+      const isPinned = pinnedSet.has(outputIndex);
 
       let cacheExpiresAt: number | undefined;
 
       if (isPinned) {
         // Check for an active unarchive expiry (image was unpinned and is counting down)
-        const unarchiveIso = job.imageUnarchiveExpiries?.[String(index)];
+        const unarchiveIso = job.imageUnarchiveExpiries?.[String(outputIndex)];
         if (unarchiveIso) {
           // Unpin countdown: show progress bar until this expiry
           cacheExpiresAt = Date.parse(unarchiveIso);
@@ -71,7 +82,7 @@ export function projectJobOutputCluster(job: RecentJobRecord, options: Projectio
       } else {
         // Unpinned image: prefer an active unarchive countdown (set at unpin time),
         // falling back to the job-level TTL for never-pinned images.
-        const unarchiveIso = job.imageUnarchiveExpiries?.[String(index)];
+        const unarchiveIso = job.imageUnarchiveExpiries?.[String(outputIndex)];
         cacheExpiresAt = unarchiveIso ? Date.parse(unarchiveIso) : jobLevelCacheExpiresAt;
       }
 
@@ -79,7 +90,7 @@ export function projectJobOutputCluster(job: RecentJobRecord, options: Projectio
         dataUrl: image.dataUrl,
         mimeType: image.mimeType,
         sourcePath: image.sourcePath,
-        outputIndex: index,
+        outputIndex,
         isPinned,
         cacheExpiresAt,
       };

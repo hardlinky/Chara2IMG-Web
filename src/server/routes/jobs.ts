@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Hono } from "hono";
 import { requireInvitedSession } from "../middleware/session";
-import { listJobs, readJob, readJobAnywhere, deleteJob, deleteJobImage, getJobTmpDir, getJobArchiveDir, pinImage, unpinImage } from "../lib/jobStore";
+import { listJobs, readJob, readJobAnywhere, deleteJob, deleteJobImage, getJobTmpDir, getJobArchiveDir, pinImage, unpinImage, listPresentImageIndices } from "../lib/jobStore";
 
 export function registerJobsRoutes(app: Hono): void {
   app.use("/api/jobs/*", requireInvitedSession);
@@ -18,7 +18,8 @@ export function registerJobsRoutes(app: Hono): void {
     if (job === null) {
       return c.json({ ok: false, error: "Not found" }, 404);
     }
-    return c.json({ ok: true, job });
+    const availableImageIndices = await listPresentImageIndices(jobId, job.displayName);
+    return c.json({ ok: true, job: { ...job, availableImageIndices } });
   });
 
   app.get("/api/jobs/:jobId/inputs", async (c) => {

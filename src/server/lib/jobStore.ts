@@ -164,8 +164,17 @@ export async function listJobs(): Promise<JobRecord[]> {
     if (record !== null) byJobId.set(record.jobId, record);
   }
 
-  return Array.from(byJobId.values()).sort(
+  const sorted = Array.from(byJobId.values()).sort(
     (a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime(),
+  );
+
+  // Attach the real on-disk image indices so the client never derives URLs for
+  // images that have been purged. imageCount alone can outlive the files.
+  return Promise.all(
+    sorted.map(async (record) => ({
+      ...record,
+      availableImageIndices: await listPresentImageIndices(record.jobId, record.displayName),
+    })),
   );
 }
 
@@ -408,6 +417,25 @@ function parseImageFileName(
     return { index: Number.parseInt(indexStr, 10), ext };
   }
   return null;
+}
+
+/** Scan tmp ∪ archive for a job and return the sorted image indices whose files actually exist on disk. */
+export async function listPresentImageIndices(jobId: string, displayName: string): Promise<number[]> {
+  const present = new Set<number>();
+  for (const base of [JOB_TMP_BASE, JOB_ARCHIVE_BASE]) {
+    let files: string[];
+    try {
+      files = await readdir(join(base, "jobs", jobId));
+    } catch (err: unknown) {
+      if ((err as NodeJS.ErrnoException).code === "ENOENT") continue;
+      throw err;
+    }
+    for (const fileName of files) {
+      const parsed = parseImageFileName(fileName, displayName);
+      if (parsed) present.add(parsed.index);
+    }
+  }
+  return Array.from(present).sort((a, b) => a - b);
 }
 
 /**

@@ -73,6 +73,7 @@ export type RecentJobRecord = {
   provenance: RecentJobProvenance;
   lastResponse: Record<string, unknown> | null;
   outputImageCount?: number;
+  availableImageIndices?: number[]; // actual image indices present on the server; projection uses this instead of a raw count
   lastError: string | null;
   workerId?: string | null;
   hiddenOutputIndices?: number[];
@@ -155,6 +156,7 @@ export type JobRecord = {
   isTerminal: boolean;
   terminalReason?: JobTerminalReason;
   imageCount: number;
+  availableImageIndices?: number[];                       // image indices whose files exist on disk right now (computed at API read time, not persisted)
   lastError: string | null;
   workerId?: string | null;                               // RunPod worker that executed the job
   isArchived?: boolean;
