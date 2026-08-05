@@ -1,5 +1,3 @@
-import { KeyboardEvent } from "react";
-
 export type AppTabId = "setup" | "input" | "jobs" | "output" | "admin";
 
 export type AppTabDefinition = {
@@ -15,34 +13,9 @@ type TopTabRailProps = {
 };
 
 export function TopTabRail({ tabs, activeTab, onTabChange }: TopTabRailProps) {
-  function onTabKeyDown(event: KeyboardEvent<HTMLButtonElement>, currentIndex: number): void {
-    const lower = event.key.toLowerCase();
-    const isPrev = event.key === "ArrowLeft" || lower === "a";
-    const isNext = event.key === "ArrowRight" || lower === "d";
-    if (!isPrev && !isNext && event.key !== "Home" && event.key !== "End") {
-      return;
-    }
-
-    event.preventDefault();
-
-    if (event.key === "Home") {
-      onTabChange(tabs[0].id);
-      return;
-    }
-
-    if (event.key === "End") {
-      onTabChange(tabs[tabs.length - 1].id);
-      return;
-    }
-
-    const direction = isNext ? 1 : -1;
-    const nextIndex = (currentIndex + direction + tabs.length) % tabs.length;
-    onTabChange(tabs[nextIndex].id);
-  }
-
   return (
     <div className="tab-rail" role="tablist" aria-label="Primary navigation">
-      {tabs.map((tab, index) => {
+      {tabs.map((tab) => {
         const selected = tab.id === activeTab;
 
         return (
@@ -56,7 +29,6 @@ export function TopTabRail({ tabs, activeTab, onTabChange }: TopTabRailProps) {
             tabIndex={selected ? 0 : -1}
             className={`tab-pill interactive ${selected ? "tab-pill-active" : "tab-pill-inactive"}`}
             onClick={() => onTabChange(tab.id)}
-            onKeyDown={(event) => onTabKeyDown(event, index)}
           >
             <span>{tab.label}</span>
             {tab.badge != null && tab.badge > 0 ? <span className="tab-badge">{tab.badge}</span> : null}
