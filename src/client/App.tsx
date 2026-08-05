@@ -325,6 +325,10 @@ export function App() {
   );
 
   useEffect(() => {
+    document.title = transientJobsCount > 0 ? `(${transientJobsCount}) Chara2Img Web` : "Chara2Img Web";
+  }, [transientJobsCount]);
+
+  useEffect(() => {
     persistActiveTab(activeTab);
     if (getRoute().tab !== activeTab) {
       navigate({ tab: activeTab }, isFirstRouteSyncRef.current ? "replace" : "push");
