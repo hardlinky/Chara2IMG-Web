@@ -34,7 +34,7 @@ import { deriveInputControls } from "../shared/workflow/deriveInputControls";
 const APP_ACTIVE_TAB_STORAGE_KEY = "chara2imgActiveTab";
 const APP_VERSION_STORAGE_KEY = "chara2imgAppVersion";
 
-type AppTabId = "setup" | "input" | "jobs" | "output" | "albums" | "admin";
+type AppTabId = "input" | "jobs" | "output" | "albums" | "admin";
 
 // A new app build clears transient navigation (active tab + URL tab/job params)
 // so stale, possibly-expired job references don't resurrect on load.
@@ -62,7 +62,7 @@ function resetTransientStateOnVersionChange(): void {
 resetTransientStateOnVersionChange();
 
 function isAppTabId(value: string | null): value is AppTabId {
-  return value === "setup" || value === "input" || value === "jobs" || value === "output" || value === "albums" || value === "admin";
+  return value === "input" || value === "jobs" || value === "output" || value === "albums" || value === "admin";
 }
 
 function getInitialActiveTab(): AppTabId {
@@ -161,7 +161,6 @@ function describeStorageStatsError(error: unknown): string {
 }
 
 const BASE_APP_TABS: AppTabDefinition[] = [
-  { id: "setup", label: "Setup" },
   { id: "input", label: "Input" },
   { id: "jobs", label: "Jobs" },
   { id: "output", label: "Output" },
@@ -170,16 +169,16 @@ const BASE_APP_TABS: AppTabDefinition[] = [
 
 const SERVER_MANAGED_RUNPOD_KEY = "__SERVER_MANAGED_RUNPOD_KEY__";
 
-function getStoredActiveTab(): "setup" | "input" | "jobs" | "output" | "albums" | "admin" {
+function getStoredActiveTab(): "input" | "jobs" | "output" | "albums" | "admin" {
   if (typeof window === "undefined") {
-    return "setup";
+    return "input";
   }
 
   const stored = window.localStorage.getItem(APP_ACTIVE_TAB_STORAGE_KEY);
-  return stored === "setup" || stored === "input" || stored === "jobs" || stored === "output" || stored === "albums" || stored === "admin" ? stored : "setup";
+  return stored === "input" || stored === "jobs" || stored === "output" || stored === "albums" || stored === "admin" ? stored : "input";
 }
 
-function persistActiveTab(tabId: "setup" | "input" | "jobs" | "output" | "albums" | "admin"): void {
+function persistActiveTab(tabId: "input" | "jobs" | "output" | "albums" | "admin"): void {
   if (typeof window === "undefined") {
     return;
   }
@@ -659,28 +658,6 @@ export function App() {
         </>
       }
       panels={{
-        setup: (
-          <div className="section-stack">
-            {hasServerRunpodApiKey ? (
-              <section className="setup-card">
-                <h2>Runpod API Key</h2>
-                <p>Managed by pod environment variable `RUNPOD_API_KEY`.</p>
-              </section>
-            ) : (
-              <RunpodKeySettings onKeyChanged={setRunpodKey} />
-            )}
-            <section className="card field">
-              <label htmlFor="run-endpoint-id">Run Endpoint ID</label>
-              <input
-                className="input"
-                id="run-endpoint-id"
-                value={runEndpointId}
-                onChange={(event) => updateEndpointId(event.target.value)}
-              />
-            </section>
-            {/* Workflow import and recent-workflow controls moved to Input tab */}
-          </div>
-        ),
         input: (
           <div className="section-stack">
             <details className="workflow-controls" aria-label="Workflow controls" >
@@ -714,7 +691,7 @@ export function App() {
                 onEditorReady={(api) => setEditorApi(api)}
               />
             ) : (
-              <p>Import a workflow in Setup before editing inputs.</p>
+              <p>Import a workflow using the Workflow controls above before editing inputs.</p>
             )}
             {runError ? (
               <p role="alert" className="status-inline" data-tone="error">
@@ -804,6 +781,23 @@ export function App() {
         ),
         admin: (
           <div className="section-stack">
+            {hasServerRunpodApiKey ? (
+              <section className="setup-card">
+                <h2>Runpod API Key</h2>
+                <p>Managed by pod environment variable `RUNPOD_API_KEY`.</p>
+              </section>
+            ) : (
+              <RunpodKeySettings onKeyChanged={setRunpodKey} />
+            )}
+            <section className="card field">
+              <label htmlFor="run-endpoint-id">Run Endpoint ID</label>
+              <input
+                className="input"
+                id="run-endpoint-id"
+                value={runEndpointId}
+                onChange={(event) => updateEndpointId(event.target.value)}
+              />
+            </section>
             <section className="setup-card">
               <h2>Admin Maintenance</h2>
               <p>Use this section for privileged operations.</p>

@@ -1,4 +1,4 @@
-export type AppTabId = "setup" | "input" | "jobs" | "output" | "albums" | "admin";
+export type AppTabId = "input" | "jobs" | "output" | "albums" | "admin";
 
 export type AppTabDefinition = {
   id: AppTabId;
