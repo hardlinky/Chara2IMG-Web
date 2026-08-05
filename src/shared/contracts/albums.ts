@@ -2,6 +2,8 @@ export type AlbumImageRef = {
   jobId: string;
   imageIndex: number;
   addedAt: string;
+  // Read-only enrichment from the server (present in API responses, never persisted).
+  isPinned?: boolean;
 };
 
 export type Album = {

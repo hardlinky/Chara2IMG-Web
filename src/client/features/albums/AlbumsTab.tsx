@@ -1,5 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Album } from "../../../shared/contracts/albums";
+import type { RecentJobOutputImage } from "../../../shared/contracts/jobs";
+import { OutputLightbox } from "../outputs/OutputLightbox";
+import { formatOutputJobId } from "../outputs/formatOutputJobId";
 import "../../styles/albums.css";
 
 type AlbumsTabProps = {
@@ -11,6 +14,8 @@ type AlbumsTabProps = {
   onUpdateAlbum: (id: string, updates: { name?: string; description?: string }) => Promise<Album>;
   onDeleteAlbum: (id: string) => Promise<void>;
   onRemoveImage: (id: string, jobId: string, imageIndex: number) => Promise<Album | null>;
+  onViewJob: (jobId: string) => void;
+  onTogglePinImage: (jobId: string, imageIndex: number, pinned: boolean) => Promise<{ ok: boolean }>;
 };
 
 function imageUrl(jobId: string, imageIndex: number): string {
@@ -60,23 +65,76 @@ function AlbumView({
   onBack,
   onUpdateAlbum,
   onDeleteAlbum,
-  onRemoveImage
+  onRemoveImage,
+  onViewJob,
+  onTogglePinImage,
+  onPreviousAlbum,
+  onNextAlbum
 }: {
   album: Album;
   onBack: () => void;
   onUpdateAlbum: AlbumsTabProps["onUpdateAlbum"];
   onDeleteAlbum: AlbumsTabProps["onDeleteAlbum"];
   onRemoveImage: AlbumsTabProps["onRemoveImage"];
+  onViewJob: AlbumsTabProps["onViewJob"];
+  onTogglePinImage: AlbumsTabProps["onTogglePinImage"];
+  onPreviousAlbum?: () => void;
+  onNextAlbum?: () => void;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [nameDraft, setNameDraft] = useState(album.name);
   const [descDraft, setDescDraft] = useState(album.description);
+  const [pinningKeys, setPinningKeys] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     setNameDraft(album.name);
     setDescDraft(album.description);
     setIsEditing(false);
   }, [album.id, album.name, album.description]);
+
+  const images = useMemo<RecentJobOutputImage[]>(
+    () =>
+      album.images.map((ref) => ({
+        dataUrl: imageUrl(ref.jobId, ref.imageIndex),
+        mimeType: "image/png",
+        sourcePath: `${ref.jobId}:${ref.imageIndex}`,
+        outputIndex: ref.imageIndex,
+        isPinned: ref.isPinned ?? false
+      })),
+    [album.images]
+  );
+
+  async function togglePin(jobId: string, imageIndex: number, pinned: boolean): Promise<void> {
+    const key = `${jobId}:${imageIndex}`;
+    setPinningKeys((prev) => new Set(prev).add(key));
+    try {
+      await onTogglePinImage(jobId, imageIndex, pinned);
+    } finally {
+      setPinningKeys((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+    }
+  }
+
+  const perImageActions = {
+    jobId: (index: number) => album.images[index]!.jobId,
+    displayPrefix: (index: number) => formatOutputJobId(album.images[index]!.jobId),
+    onViewJob: (index: number) => onViewJob(album.images[index]!.jobId),
+    onRemove: (index: number) => {
+      const ref = album.images[index]!;
+      void onRemoveImage(album.id, ref.jobId, ref.imageIndex);
+    },
+    onTogglePin: (index: number, pinned: boolean) => {
+      const ref = album.images[index]!;
+      void togglePin(ref.jobId, ref.imageIndex, pinned);
+    },
+    isPinningAt: (index: number) => {
+      const ref = album.images[index]!;
+      return pinningKeys.has(`${ref.jobId}:${ref.imageIndex}`);
+    }
+  };
 
   async function saveEdits(): Promise<void> {
     const name = nameDraft.trim();
@@ -151,22 +209,16 @@ function AlbumView({
       {album.images.length === 0 ? (
         <p className="albums-empty">This album is empty.</p>
       ) : (
-        <ul className="album-images-grid">
-          {album.images.map((ref) => (
-            <li key={`${ref.jobId}:${ref.imageIndex}`} className="album-image-cell">
-              <img src={imageUrl(ref.jobId, ref.imageIndex)} alt="" loading="lazy" />
-              <button
-                className="album-image-remove"
-                type="button"
-                aria-label="Remove from album"
-                title="Remove from album"
-                onClick={() => void onRemoveImage(album.id, ref.jobId, ref.imageIndex)}
-              >
-                ✕
-              </button>
-            </li>
-          ))}
-        </ul>
+        <div className="outputs-gallery outputs-gallery-comfortable">
+          <OutputLightbox
+            images={images}
+            imagePrefix={album.id}
+            perImageActions={perImageActions}
+            onPreviousJob={onPreviousAlbum}
+            onNextJob={onNextAlbum}
+            enableJobNav
+          />
+        </div>
       )}
     </div>
   );
@@ -180,11 +232,16 @@ export function AlbumsTab({
   onSelectAlbum,
   onUpdateAlbum,
   onDeleteAlbum,
-  onRemoveImage
+  onRemoveImage,
+  onViewJob,
+  onTogglePinImage
 }: AlbumsTabProps) {
   const selectedAlbum = selectedAlbumId ? albums.find((album) => album.id === selectedAlbumId) ?? null : null;
 
   if (selectedAlbum) {
+    const currentIndex = albums.findIndex((album) => album.id === selectedAlbum.id);
+    const previousAlbum = currentIndex > 0 ? albums[currentIndex - 1] : undefined;
+    const nextAlbum = currentIndex >= 0 && currentIndex + 1 < albums.length ? albums[currentIndex + 1] : undefined;
     return (
       <AlbumView
         album={selectedAlbum}
@@ -192,6 +249,10 @@ export function AlbumsTab({
         onUpdateAlbum={onUpdateAlbum}
         onDeleteAlbum={onDeleteAlbum}
         onRemoveImage={onRemoveImage}
+        onViewJob={onViewJob}
+        onTogglePinImage={onTogglePinImage}
+        onPreviousAlbum={previousAlbum ? () => onSelectAlbum(previousAlbum.id) : undefined}
+        onNextAlbum={nextAlbum ? () => onSelectAlbum(nextAlbum.id) : undefined}
       />
     );
   }

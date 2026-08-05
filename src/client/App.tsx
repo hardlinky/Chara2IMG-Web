@@ -770,6 +770,16 @@ export function App() {
             onUpdateAlbum={albums.updateAlbum}
             onDeleteAlbum={albums.deleteAlbum}
             onRemoveImage={albums.removeImageFromAlbum}
+            onViewJob={(jobId) => navigate({ tab: "output", jobId }, "push")}
+            onTogglePinImage={async (jobId, imageIndex, pinned) => {
+              const result = await recentJobs.togglePinnedImage(jobId, imageIndex, pinned);
+              if (result.ok) {
+                await albums.refresh();
+              } else {
+                setJobActionError(result.reason);
+              }
+              return { ok: result.ok };
+            }}
           />
         ),
         admin: (
