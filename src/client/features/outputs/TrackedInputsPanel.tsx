@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import type { DynamicInputControl } from "../../../shared/contracts/inputs";
 import { deriveInputControls } from "../../../shared/workflow/deriveInputControls";
 import { getJobInputs } from "../../lib/api/jobsClient";
+import { getInputOrderingOverlay } from "../../lib/inputEditorStorage";
+import { applyOrderingOverlay, buildSectionsFromControls } from "../inputs/useDynamicInputEditor";
 import { useTrackedInputCategories } from "../../lib/inputTrackingStorage";
 import { looksLikeModelFile, stripModelExtension, toImageDataUrl } from "../../lib/modelAssets";
 
@@ -74,13 +76,11 @@ function isRenderable(control: DynamicInputControl): boolean {
 export function TrackedInputsPanel({
   jobId,
   img2imgInputAvailable = false,
-  onLoadImageIntoImg2Img,
-  showAllCategories = false
+  onLoadImageIntoImg2Img
 }: {
   jobId: string;
   img2imgInputAvailable?: boolean;
   onLoadImageIntoImg2Img?: (imageUrl: string) => void;
-  showAllCategories?: boolean;
 }) {
   const trackedCategories = useTrackedInputCategories();
   const [sections, setSections] = useState<TrackedSection[]>([]);
@@ -108,7 +108,7 @@ export function TrackedInputsPanel({
   }, [lightboxSrc, img2imgInputAvailable, onLoadImageIntoImg2Img]);
 
   useEffect(() => {
-    if (!showAllCategories && trackedCategories.length === 0) {
+    if (trackedCategories.length === 0) {
       setSections([]);
       setLoadedJobId(jobId);
       return;
@@ -129,9 +129,17 @@ export function TrackedInputsPanel({
         }
 
         const derivation = deriveInputControls(normalizeWorkflowSource(inputs.submittedInput));
-        const controlsById = new Map(derivation.controls.map((control) => [control.id, control]));
-        const built = derivation.sections
-          .filter((section) => showAllCategories || trackedCategories.includes(section.category))
+        // Apply the same ordering overlay the inputs tab uses so categories and
+        // controls appear in the user's configured order.
+        const overlay = await getInputOrderingOverlay();
+        if (cancelled) {
+          return;
+        }
+        const orderedControls = applyOrderingOverlay(derivation.controls, overlay);
+        const orderedSections = buildSectionsFromControls(orderedControls);
+        const controlsById = new Map(orderedControls.map((control) => [control.id, control]));
+        const built = orderedSections
+          .filter((section) => trackedCategories.includes(section.category))
           .map((section) => ({
             category: section.category,
             controls: section.controlIds
@@ -153,18 +161,11 @@ export function TrackedInputsPanel({
     return () => {
       cancelled = true;
     };
-  }, [jobId, trackedCategories, showAllCategories]);
+  }, [jobId, trackedCategories]);
 
   // Hide the panel until inputs for the current job have loaded, so switching
   // jobs never flashes the previous job's tracked values.
-  if (loadedJobId !== jobId) {
-    return null;
-  }
-  if (showAllCategories) {
-    if (sections.length === 0) {
-      return <p className="tracked-inputs-empty">No inputs recorded for this job.</p>;
-    }
-  } else if (trackedCategories.length === 0 || sections.length === 0) {
+  if (trackedCategories.length === 0 || sections.length === 0 || loadedJobId !== jobId) {
     return null;
   }
 

@@ -172,12 +172,6 @@
   margin-bottom: var(--space-2);
 }
 
-.jobs-inputs-disclosure .tracked-inputs-empty {
-  margin: 0 0 var(--space-2);
-  font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
-}
-
 .jobs-icon-actions {
   margin-left: auto;
   display: inline-flex;
