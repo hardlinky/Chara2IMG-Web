@@ -95,7 +95,7 @@
 }
 
 .confirm-dialog {
-  z-index: 2000;
+  z-index: 100010;
 }
 
 .confirm-dialog-card {
