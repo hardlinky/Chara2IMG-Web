@@ -115,9 +115,9 @@
 
 /* Per-status coloring for job status chips. */
 .jobs-status-chip[data-status="IN_QUEUE"] {
-  border-color: rgba(117, 160, 238, 0.5);
-  background: rgba(26, 45, 77, 0.55);
-  color: #cfe0ff;
+  border-color: rgba(140, 152, 166, 0.45);
+  background: rgba(38, 45, 54, 0.72);
+  color: var(--color-text-secondary);
 }
 
 .jobs-status-chip[data-status="IN_PROGRESS"] {
