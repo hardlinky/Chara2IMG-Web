@@ -3,6 +3,8 @@ import type { MouseEventHandler, ReactNode, SyntheticEvent } from "react";
 import type { RecentJobOutputImage } from "../../../shared/contracts/jobs";
 import { JOB_IMAGE_TTL_MS } from "../../../shared/contracts/jobs";
 import { getImage, storeImage } from "../../lib/imageCache";
+import { AlbumStarButton } from "../albums/AlbumStarButton";
+import type { AlbumStarProps } from "../albums/albumStar";
 
 function isJobApiImageUrl(value: string): boolean {
   return value.startsWith("/api/jobs/");
@@ -25,6 +27,7 @@ type OutputImageCardProps = {
   isPinning?: boolean;
   maxVisible?: boolean;
   badge?: ReactNode;
+  albumStar?: AlbumStarProps;
 };
 
 function triggerDownload(image: RecentJobOutputImage, imagePrefix: string, imageLabel: string): void {
@@ -100,7 +103,8 @@ export function OutputImageCard({
   canPinMore = true,
   isPinning = false,
   maxVisible = true,
-  badge
+  badge,
+  albumStar
 }: OutputImageCardProps) {
   const showBottomActions = Boolean(onExportWorkflow || onLoadInputs || onViewJobOutputs || onLoadIntoImg2Img);
   const isArchived = image.isPinned && !image.cacheExpiresAt;
@@ -258,6 +262,15 @@ export function OutputImageCard({
         >
           {isPinning ? "⏳" : image.isPinned ? "📌" : "📍"}
         </button>
+        {albumStar ? (
+          <AlbumStarButton
+            albums={albumStar.albums}
+            memberAlbumIds={albumStar.memberAlbumIds}
+            onToggleAlbum={albumStar.onToggleAlbum}
+            onCreateAlbum={albumStar.onCreateAlbum}
+            label={`Add ${displayPrefix} image ${imageLabel} to album`}
+          />
+        ) : null}
         {showBottomActions ? (
           <button
             type="button"

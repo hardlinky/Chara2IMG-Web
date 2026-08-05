@@ -5,6 +5,7 @@ import "photoswipe/dist/photoswipe.css";
 import type { RecentJobOutputImage } from "../../../shared/contracts/jobs";
 import { FToggleGallery, type GalleryApi } from "./GalleryFToggle";
 import { OutputImageCard } from "./OutputImageCard";
+import { buildAlbumStarProps, type AlbumStarContext } from "../albums/albumStar";
 
 type OutputLightboxProps = {
   images: RecentJobOutputImage[];
@@ -22,6 +23,7 @@ type OutputLightboxProps = {
   onPreviousJob?: () => void;
   onNextJob?: () => void;
   enableJobNav?: boolean;
+  albumStarContext?: AlbumStarContext;
 };
 
 export function OutputLightbox({
@@ -39,7 +41,8 @@ export function OutputLightbox({
   onLoadImageIntoImg2Img,
   onPreviousJob,
   onNextJob,
-  enableJobNav = false
+  enableJobNav = false,
+  albumStarContext
 }: OutputLightboxProps) {
   const [imageDimensions, setImageDimensions] = useState<Record<number, { width: number; height: number }>>({});
   const visibleImages = images.slice(0, maxVisible);
@@ -254,6 +257,7 @@ export function OutputLightbox({
                     onLoadIntoImg2Img={img2imgInputAvailable && onLoadImageIntoImg2Img ? () => onLoadImageIntoImg2Img(image.dataUrl) : undefined}
                     canPinMore={canPinMore}
                     isPinning={pinningOutputIndices?.has(image.outputIndex) ?? false}
+                    albumStar={buildAlbumStarProps(albumStarContext, imagePrefix, image.outputIndex)}
                   />
                 </div>
               )}

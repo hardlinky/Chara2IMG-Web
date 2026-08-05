@@ -4,6 +4,7 @@ import { formatOutputJobId } from "./formatOutputJobId";
 import { OutputLightbox } from "./OutputLightbox";
 import { TrackedInputsPanel } from "./TrackedInputsPanel";
 import type { OutputDensity } from "./useOutputGallery";
+import type { AlbumStarContext } from "../albums/albumStar";
 
 type JobOutputsViewProps = {
   cluster: RecentJobOutputCluster;
@@ -21,6 +22,7 @@ type JobOutputsViewProps = {
   pinningOutputIndices?: Set<number>;
   img2imgInputAvailable?: boolean;
   onLoadImageIntoImg2Img?: (imageUrl: string) => void;
+  albumStarContext?: AlbumStarContext;
 };
 
 const PAGE_SIZE = 24;
@@ -52,7 +54,7 @@ function toRelativeTimestamp(isoValue: string | null): string {
   return `${deltaDays}d ago`;
 }
 
-export function JobOutputsView({ cluster, density = "comfortable", onBack, onPreviousJob, onNextJob, onRerun, onLoadInputs, onRemoveImage, onRemoveAllOutputs, onExportWorkflow, onTogglePinnedImage, canPinMore = true, pinningOutputIndices, img2imgInputAvailable = false, onLoadImageIntoImg2Img }: JobOutputsViewProps) {
+export function JobOutputsView({ cluster, density = "comfortable", onBack, onPreviousJob, onNextJob, onRerun, onLoadInputs, onRemoveImage, onRemoveAllOutputs, onExportWorkflow, onTogglePinnedImage, canPinMore = true, pinningOutputIndices, img2imgInputAvailable = false, onLoadImageIntoImg2Img, albumStarContext }: JobOutputsViewProps) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const displayJobId = formatOutputJobId(cluster.jobId);
 
@@ -116,6 +118,7 @@ export function JobOutputsView({ cluster, density = "comfortable", onBack, onPre
           onPreviousJob={onPreviousJob}
           onNextJob={onNextJob}
           enableJobNav
+          albumStarContext={albumStarContext}
         />
       </div>
 

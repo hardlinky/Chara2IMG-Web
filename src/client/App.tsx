@@ -12,6 +12,7 @@ import { useRecentJobs } from "./features/jobs/useRecentJobs";
 import { OutputsTab } from "./features/outputs/OutputsTab";
 import { AlbumsTab } from "./features/albums/AlbumsTab";
 import { useAlbums } from "./features/albums/useAlbums";
+import type { AlbumStarContext } from "./features/albums/albumStar";
 import { formatOutputJobId } from "./features/outputs/formatOutputJobId";
 import { ActiveWorkflowTemplate } from "./features/workflows/ActiveWorkflowTemplate";
 import { WorkflowImport } from "./features/workflows/WorkflowImport";
@@ -292,7 +293,24 @@ export function App() {
 
   const transientJobsCount = recentJobs.transientJobsCount;
 
-  const albums = useAlbums(activeTab === "albums");
+  const albums = useAlbums(activeTab === "albums" || activeTab === "output");
+
+  const albumStarContext = useMemo<AlbumStarContext>(
+    () => ({
+      albums: albums.albums,
+      onToggleImageInAlbum: (albumId, jobId, imageIndex, next) => {
+        if (next) {
+          void albums.addImageToAlbum(albumId, jobId, imageIndex);
+        } else {
+          void albums.removeImageFromAlbum(albumId, jobId, imageIndex);
+        }
+      },
+      onCreateAlbumWithImage: (name, jobId, imageIndex) => {
+        void albums.createAlbum({ name, jobId, imageIndex });
+      }
+    }),
+    [albums.albums, albums.addImageToAlbum, albums.removeImageFromAlbum, albums.createAlbum]
+  );
 
   const appTabs = useMemo<AppTabDefinition[]>(
     () =>
@@ -739,6 +757,7 @@ export function App() {
             pinningImageKeys={recentJobs.pinningImageKeys}
             img2imgInputAvailable={Boolean(editorApi?.img2imgInputAvailable)}
             onLoadImageIntoImg2Img={(imageUrl) => void onLoadImageIntoImg2Img(imageUrl)}
+            albumStarContext={albumStarContext}
           />
         ),
         albums: (

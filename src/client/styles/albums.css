@@ -152,3 +152,122 @@
 .album-image-remove:hover {
   background: rgba(120, 40, 40, 0.9);
 }
+
+/* ── Star affordance (output image → album picker) ───────────────────────── */
+
+.album-star {
+  position: absolute;
+  top: 0.4rem;
+  left: 2.35rem;
+  z-index: 5;
+}
+
+.album-star-btn {
+  width: 1.6rem;
+  height: 1.6rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-text-primary);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+  transition: opacity 140ms ease, color 140ms ease, transform 140ms ease;
+}
+
+.outputs-image-tile-wrapper:hover .album-star-btn,
+.outputs-image-tile-wrapper:focus-within .album-star-btn {
+  opacity: 1;
+  background: rgba(28, 24, 12, 0.82);
+  border-color: rgba(235, 196, 91, 0.5);
+}
+
+.album-star-btn:hover {
+  color: #f5dd9e;
+  transform: translateY(-1px);
+}
+
+.album-star-btn.is-member {
+  color: #f5dd9e;
+  opacity: 1;
+}
+
+.album-star-popover {
+  position: absolute;
+  top: 2rem;
+  left: 0;
+  width: 220px;
+  max-width: 60vw;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: rgba(18, 24, 33, 0.98);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  display: grid;
+  gap: var(--space-2);
+  cursor: default;
+}
+
+.album-star-popover-title {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.album-star-empty {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.album-star-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.15rem;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.album-star-option {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.2rem 0.25rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.album-star-option:hover {
+  background: rgba(40, 52, 68, 0.6);
+}
+
+.album-star-option span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.album-star-create {
+  display: flex;
+  gap: 0.35rem;
+  border-top: 1px solid var(--color-border-subtle);
+  padding-top: var(--space-2);
+}
+
+.album-star-create .input {
+  flex: 1;
+  min-width: 0;
+}
+
+.album-star-create .btn {
+  flex-shrink: 0;
+}
+

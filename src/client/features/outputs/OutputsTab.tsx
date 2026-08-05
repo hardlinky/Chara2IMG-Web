@@ -7,6 +7,7 @@ import { JobOutputsView } from "./JobOutputsView";
 import { OutputImageCard } from "./OutputImageCard";
 import { OUTPUT_DENSITIES, type OutputDensity, useOutputGallery } from "./useOutputGallery";
 import { getRoute, navigate, useRoute } from "../../lib/appRouter";
+import { buildAlbumStarProps, type AlbumStarContext } from "../albums/albumStar";
 import "./outputsGallery.css";
 import "../../styles/jobsOutput.css";
 
@@ -49,6 +50,7 @@ type OutputsTabProps = {
   pinningImageKeys?: Set<string>;
   img2imgInputAvailable?: boolean;
   onLoadImageIntoImg2Img?: (imageUrl: string) => void;
+  albumStarContext?: AlbumStarContext;
 };
 
 function getGalleryClassName(density: (typeof OUTPUT_DENSITIES)[number]): string {
@@ -73,7 +75,7 @@ export function resolveSelectedJobCluster(
   return hydratedJobClusters[selectedJobId] ?? gallerySelectedCluster;
 }
 
-export function OutputsTab({ active = true, clusters, onRerun, onLoadInputs, onRemoveJobOutputs, onRemoveOutputImage, onExportWorkflow, onToggleOutputPinned, canPinMore = true, onLoadOutputCluster, pinningImageKeys, img2imgInputAvailable = false, onLoadImageIntoImg2Img }: OutputsTabProps) {
+export function OutputsTab({ active = true, clusters, onRerun, onLoadInputs, onRemoveJobOutputs, onRemoveOutputImage, onExportWorkflow, onToggleOutputPinned, canPinMore = true, onLoadOutputCluster, pinningImageKeys, img2imgInputAvailable = false, onLoadImageIntoImg2Img, albumStarContext }: OutputsTabProps) {
   const gallery = useOutputGallery(clusters);
   const route = useRoute();
   const galleryApiRef = useRef<GalleryApi | null>(null);
@@ -285,6 +287,7 @@ export function OutputsTab({ active = true, clusters, onRerun, onLoadInputs, onR
         pinningOutputIndices={pinningImageKeys ? new Set([...pinningImageKeys].filter((k) => k.startsWith(`${selectedJobCluster.jobId}:`)).map((k) => Number(k.split(":")[1]))) : undefined}
         img2imgInputAvailable={img2imgInputAvailable}
         onLoadImageIntoImg2Img={onLoadImageIntoImg2Img}
+        albumStarContext={albumStarContext}
       />
     );
   }
@@ -459,6 +462,7 @@ export function OutputsTab({ active = true, clusters, onRerun, onLoadInputs, onR
                         canPinMore={canPinMore}
                         isPinning={pinningImageKeys?.has(`${cluster.jobId}:${cluster.representative.outputIndex}`) ?? false}
                         badge={`${cluster.outputCount} images`}
+                        albumStar={buildAlbumStarProps(albumStarContext, cluster.jobId, cluster.representative.outputIndex)}
                       />
                     </div>
                   )}
@@ -554,6 +558,7 @@ export function OutputsTab({ active = true, clusters, onRerun, onLoadInputs, onR
                         onTogglePin={onToggleOutputPinned ? () => onToggleOutputPinned(outputImage.jobId, outputImage.outputIndex, !outputImage.isPinned) : undefined}
                         canPinMore={canPinMore}
                         isPinning={pinningImageKeys?.has(`${outputImage.jobId}:${outputImage.outputIndex}`) ?? false}
+                        albumStar={buildAlbumStarProps(albumStarContext, outputImage.jobId, outputImage.outputIndex)}
                       />
                     </div>
                   )}
