@@ -328,7 +328,7 @@ export function App() {
   );
 
   useEffect(() => {
-    document.title = transientJobsCount > 0 ? `(${transientJobsCount}) Chara2Img Web` : "Chara2Img Web";
+    document.title = transientJobsCount > 0 ? `[${transientJobsCount}] Chara2Img Web` : "Chara2Img Web";
   }, [transientJobsCount]);
 
   useEffect(
