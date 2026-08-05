@@ -784,7 +784,7 @@ export function App() {
             {hasServerRunpodApiKey ? (
               <section className="setup-card">
                 <h2>Runpod API Key</h2>
-                <p>Managed by pod environment variable `RUNPOD_API_KEY`.</p>
+                <p>Managed by pod environment variable `SERVER_RUNPOD_API_KEY`.</p>
               </section>
             ) : (
               <RunpodKeySettings onKeyChanged={setRunpodKey} />

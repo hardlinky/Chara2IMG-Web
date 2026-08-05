@@ -69,7 +69,8 @@ function getDefaultEndpointId(): string | null {
 }
 
 function hasDefaultRunpodApiKey(): boolean {
-  return Boolean(process.env.RUNPOD_API_KEY?.trim());
+  // Dedicated name avoids RunPod's auto-injected pod-scoped RUNPOD_API_KEY.
+  return Boolean(process.env.SERVER_RUNPOD_API_KEY?.trim());
 }
 
 export function registerSystemRoutes(app: Hono): void {

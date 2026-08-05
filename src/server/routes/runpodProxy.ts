@@ -10,7 +10,8 @@ import { formatJobDisplayName } from "../../shared/jobDisplay";
 import { logServerError, logServerWarning } from "../lib/logger";
 
 function resolveRunpodApiKey(requestApiKey: string): string {
-  const serverApiKey = process.env.RUNPOD_API_KEY?.trim();
+  // Dedicated name avoids RunPod's auto-injected pod-scoped RUNPOD_API_KEY.
+  const serverApiKey = process.env.SERVER_RUNPOD_API_KEY?.trim();
   if (serverApiKey) {
     return serverApiKey;
   }

@@ -29,12 +29,12 @@ describe("Runpod proxy boundary", () => {
   });
 
   afterEach(() => {
-    delete process.env.RUNPOD_API_KEY;
+    delete process.env.SERVER_RUNPOD_API_KEY;
     vi.unstubAllGlobals();
   });
 
-  it("uses RUNPOD_API_KEY from environment when configured", async () => {
-    process.env.RUNPOD_API_KEY = "rp_env_key";
+  it("uses SERVER_RUNPOD_API_KEY from environment when configured", async () => {
+    process.env.SERVER_RUNPOD_API_KEY = "rp_env_key";
     const app = createServerApp();
 
     const inviteResponse = await app.request("http://localhost/api/access/verify-invite", {
