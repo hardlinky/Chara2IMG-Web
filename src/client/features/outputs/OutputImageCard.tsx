@@ -109,12 +109,15 @@ export function OutputImageCard({
   const [isLoading, setIsLoading] = useState(isUrlBased);
   const [isAuthError, setIsAuthError] = useState(false);
   const [resolvedSrc, setResolvedSrc] = useState<string | null>(null);
+  // Download progress 0-100 while streaming; null means length unknown (indeterminate).
+  const [loadProgress, setLoadProgress] = useState<number | null>(null);
 
   useEffect(() => {
     if (!isUrlBased) return;
     setIsLoading(true);
     setIsAuthError(false);
     setResolvedSrc(null);
+    setLoadProgress(null);
     let cancelled = false;
 
     (async () => {
@@ -128,7 +131,7 @@ export function OutputImageCard({
         }
       }
 
-      // 2. Cache miss (or archived) — fetch from server silently
+      // 2. Cache miss (or archived) — fetch from server, streaming to report progress
       try {
         const res = await fetch(image.dataUrl, { credentials: "include" });
         if (cancelled) return;
@@ -142,8 +145,39 @@ export function OutputImageCard({
           setIsLoading(false);
           return;
         }
-        const blob = await res.blob();
+
+        const contentType = res.headers.get("Content-Type") || "image/png";
+        const totalBytes = Number(res.headers.get("Content-Length") ?? "0");
+        const bodyReader = res.body?.getReader();
+
+        let blob: Blob;
+        if (bodyReader) {
+          const chunks: Uint8Array[] = [];
+          let receivedBytes = 0;
+          if (totalBytes > 0) {
+            setLoadProgress(0);
+          }
+          for (;;) {
+            const { done, value } = await bodyReader.read();
+            if (done) break;
+            if (cancelled) {
+              void bodyReader.cancel();
+              return;
+            }
+            if (value) {
+              chunks.push(value);
+              receivedBytes += value.length;
+              if (totalBytes > 0) {
+                setLoadProgress(Math.min(100, Math.round((receivedBytes / totalBytes) * 100)));
+              }
+            }
+          }
+          blob = new Blob(chunks as BlobPart[], { type: contentType });
+        } else {
+          blob = await res.blob();
+        }
         if (cancelled) return;
+
         const reader = new FileReader();
         reader.onload = () => {
           if (cancelled) return;
@@ -183,7 +217,27 @@ export function OutputImageCard({
               : <div className="outputs-image-broken" aria-label={`Image ${imageLabel} unavailable`}>⚠ Not available</div>
           ) : (
             <>
-              {isLoading && isUrlBased ? <div className="outputs-image-loading" aria-label="Loading image" /> : null}
+              {isLoading && isUrlBased ? (
+                <div
+                  className="outputs-image-loading"
+                  aria-label="Loading image"
+                  role="progressbar"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={loadProgress ?? undefined}
+                >
+                  {loadProgress === null ? (
+                    <div className="outputs-image-loading-spinner" />
+                  ) : (
+                    <>
+                      <div className="outputs-image-loading-track">
+                        <div className="outputs-image-loading-fill" style={{ width: `${loadProgress}%` }} />
+                      </div>
+                      <span className="outputs-image-loading-pct">{loadProgress}%</span>
+                    </>
+                  )}
+                </div>
+              ) : null}
               <img
                 src={isUrlBased ? (resolvedSrc ?? "") : image.dataUrl}
                 alt={`${displayPrefix} ${imageLabel}`}
