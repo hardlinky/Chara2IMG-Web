@@ -96,6 +96,7 @@ type DynamicInputEditorViewProps = {
   setColumnsSplitRatio: (ratio: number) => void;
   resetToTemplateDefaults: () => void | Promise<void>;
   onRun: () => void;
+  isSubmitting?: boolean;
 };
 
 function formatWarning(warning: DynamicInputWarning): string {
@@ -1036,8 +1037,15 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
         </div>
       ) : null}
 
-      <button className="btn btn-primary input-run-fab" type="button" onClick={props.onRun} aria-label="Run with current inputs">
-        Run
+      <button
+        className="btn btn-primary input-run-fab"
+        type="button"
+        onClick={props.onRun}
+        disabled={props.isSubmitting}
+        aria-busy={props.isSubmitting}
+        aria-label="Run with current inputs"
+      >
+        {props.isSubmitting ? "Submitting\u2026" : "Run"}
       </button>
     </section>
   );
@@ -1046,6 +1054,7 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
 type DynamicInputEditorProps = {
   activeTemplate: WorkflowTemplateRecord;
   isActive?: boolean;
+  isSubmitting?: boolean;
   onRunPayloadBuilt?: (snapshot: {
     payload: Record<string, unknown>;
     draftValues: DynamicInputDraftValues;
@@ -1129,6 +1138,7 @@ export function DynamicInputEditor(props: DynamicInputEditorProps) {
       setColumnsSplitRatio={editor.setColumnsSplitRatio}
       resetToTemplateDefaults={editor.resetToTemplateDefaults}
       onRun={onRun}
+      isSubmitting={props.isSubmitting}
     />
   );
 }

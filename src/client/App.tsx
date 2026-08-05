@@ -218,6 +218,9 @@ export function App() {
   const [hasServerRunpodApiKey, setHasServerRunpodApiKey] = useState(false);
   const [runEndpointId, setRunEndpointId] = useState(() => getStoredEndpointId() ?? "");
   const [runError, setRunError] = useState("");
+  const [isSubmittingRun, setIsSubmittingRun] = useState(false);
+  const [runNotice, setRunNotice] = useState("");
+  const runNoticeTimerRef = useRef<number | null>(null);
   const [jobActionError, setJobActionError] = useState("");
   const [isUpdatingApp, setIsUpdatingApp] = useState(false);
   const [updateStatus, setUpdateStatus] = useState("");
@@ -328,6 +331,15 @@ export function App() {
     document.title = transientJobsCount > 0 ? `(${transientJobsCount}) Chara2Img Web` : "Chara2Img Web";
   }, [transientJobsCount]);
 
+  useEffect(
+    () => () => {
+      if (runNoticeTimerRef.current !== null) {
+        window.clearTimeout(runNoticeTimerRef.current);
+      }
+    },
+    []
+  );
+
   useEffect(() => {
     persistActiveTab(activeTab);
     if (getRoute().tab !== activeTab) {
@@ -397,6 +409,8 @@ export function App() {
 
     try {
       setRunError("");
+      setRunNotice("");
+      setIsSubmittingRun(true);
       await submitRunAndPersistRecentJob({
         endpointId: runEndpointId,
         apiKey: effectiveRunpodKey,
@@ -409,8 +423,15 @@ export function App() {
         }
       });
       await recentJobs.handleNewSubmission();
+      if (runNoticeTimerRef.current !== null) {
+        window.clearTimeout(runNoticeTimerRef.current);
+      }
+      setRunNotice("Job submitted \u2014 it will appear in Jobs shortly.");
+      runNoticeTimerRef.current = window.setTimeout(() => setRunNotice(""), 5000);
     } catch (submitError) {
       setRunError(submitError instanceof Error ? submitError.message : "Run submission failed.");
+    } finally {
+      setIsSubmittingRun(false);
     }
   }
 
@@ -694,6 +715,7 @@ export function App() {
               <DynamicInputEditor
                 activeTemplate={activeTemplate}
                 isActive={activeTab === "input"}
+                isSubmitting={isSubmittingRun}
                 onRunPayloadBuilt={onRunPayloadBuilt}
                 onEditorReady={(api) => setEditorApi(api)}
               />
@@ -703,6 +725,11 @@ export function App() {
             {runError ? (
               <p role="alert" className="status-inline" data-tone="error">
                 {runError}
+              </p>
+            ) : null}
+            {runNotice ? (
+              <p role="status" className="status-inline" data-tone="success">
+                {runNotice}
               </p>
             ) : null}
           </div>
