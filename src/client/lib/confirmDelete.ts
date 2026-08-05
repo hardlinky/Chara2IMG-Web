@@ -51,7 +51,7 @@ export function confirmDeletion(options: ConfirmDeleteOptions = {}): Promise<boo
     overlay.append(card);
 
     function cleanup(result: boolean): void {
-      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("keydown", onKey, true);
       overlay.remove();
       resolve(result);
     }
@@ -63,7 +63,16 @@ export function confirmDeletion(options: ConfirmDeleteOptions = {}): Promise<boo
       cleanup(false);
     }
     function onKey(event: KeyboardEvent): void {
-      if (event.key === "Escape") onCancel();
+      // Capture phase + stopPropagation so an open lightbox (PhotoSwipe) never sees these keys.
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        onCancel();
+      } else if (event.key === "Enter") {
+        event.preventDefault();
+        event.stopPropagation();
+        onConfirm();
+      }
     }
 
     cancelBtn.addEventListener("click", onCancel);
@@ -71,7 +80,9 @@ export function confirmDeletion(options: ConfirmDeleteOptions = {}): Promise<boo
     overlay.addEventListener("mousedown", (event) => {
       if (event.target === overlay) onCancel();
     });
-    document.addEventListener("keydown", onKey);
+    // Keep focus inside the dialog instead of PhotoSwipe's focus trap reclaiming it.
+    overlay.addEventListener("focusin", (event) => event.stopPropagation());
+    document.addEventListener("keydown", onKey, true);
 
     document.body.append(overlay);
     confirmBtn.focus();
