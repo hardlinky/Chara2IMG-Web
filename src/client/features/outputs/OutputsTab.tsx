@@ -231,21 +231,26 @@ export function OutputsTab({ active = true, clusters, onRerun, onLoadInputs, onR
     window.localStorage.setItem(OUTPUTS_VIEW_MODE_STORAGE_KEY, galleryMode);
   }, [galleryMode]);
 
-  // Sync the open job with the URL `job` param. Reconcile URL -> gallery view
-  // (deep links, browser back/forward) and gallery view -> URL (user opening/
-  // closing/switching jobs). Only the active tab owns the `job` param.
+  // Sync the open job with the URL `job` param. Only the active tab owns it.
+  // Reader reacts solely to URL changes (deep links, back/forward, cross-tab);
+  // writer reflects view changes into the URL. Keeping the reader off view
+  // changes avoids a lag-window feedback loop between the two effects.
+  const galleryViewRef = useRef(gallery.view);
+  galleryViewRef.current = gallery.view;
+
   useEffect(() => {
     if (!active) {
       return;
     }
 
-    const viewJobId = gallery.view.mode === "job" ? gallery.view.jobId : null;
+    const viewJobId = galleryViewRef.current.mode === "job" ? galleryViewRef.current.jobId : null;
     if (route.jobId && route.jobId !== viewJobId) {
       gallery.openJobOutputs(route.jobId);
     } else if (!route.jobId && viewJobId) {
       gallery.goBackToGallery();
     }
-  }, [active, route.jobId, gallery.view, gallery.openJobOutputs, gallery.goBackToGallery]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, route.jobId]);
 
   useEffect(() => {
     if (!active) {
@@ -256,6 +261,7 @@ export function OutputsTab({ active = true, clusters, onRerun, onLoadInputs, onR
     if (getRoute().jobId !== viewJobId) {
       navigate({ jobId: viewJobId }, "push");
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, gallery.view]);
 
   if (gallery.view.mode === "job" && selectedJobCluster) {
