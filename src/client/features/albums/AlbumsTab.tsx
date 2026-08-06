@@ -4,6 +4,7 @@ import type { RecentJobOutputImage } from "../../../shared/contracts/jobs";
 import { OutputLightbox } from "../outputs/OutputLightbox";
 import { formatOutputJobId } from "../outputs/formatOutputJobId";
 import { confirmDeletion } from "../../lib/confirmDelete";
+import { filterJobsByOwner, type RecentJobOwnerFilter } from "../jobs/useRecentJobs";
 import "../../styles/albums.css";
 
 type AlbumsTabProps = {
@@ -258,6 +259,7 @@ export function AlbumsTab({
   onTogglePinImage,
   currentUser
 }: AlbumsTabProps) {
+  const [ownerFilter, setOwnerFilter] = useState<RecentJobOwnerFilter>("all");
   const selectedAlbum = selectedAlbumId ? albums.find((album) => album.id === selectedAlbumId) ?? null : null;
 
   if (selectedAlbum) {
@@ -280,10 +282,20 @@ export function AlbumsTab({
     );
   }
 
+  const filteredAlbums = filterJobsByOwner(albums, ownerFilter, currentUser);
+
   return (
     <div className="albums-panel">
       <div className="albums-panel-header">
         <h2>Albums</h2>
+        <label className="field">
+          Owner
+          <select className="select" value={ownerFilter} onChange={(event) => setOwnerFilter(event.target.value as RecentJobOwnerFilter)}>
+            <option value="all">All</option>
+            <option value="own">Mine</option>
+            <option value="anonymous">Anonymous</option>
+          </select>
+        </label>
       </div>
       {error ? (
         <p role="alert" className="status-inline" data-tone="error">
@@ -292,12 +304,14 @@ export function AlbumsTab({
       ) : null}
       {isLoading && albums.length === 0 ? (
         <p className="albums-empty">Loading albums…</p>
-      ) : albums.length === 0 ? (
+      ) : filteredAlbums.length === 0 ? (
         <p className="albums-empty">
-          No albums yet. Add images to an album using the ⭐ button in the Output view.
+          {albums.length === 0
+            ? "No albums yet. Add images to an album using the ⭐ button in the Output view."
+            : "No albums match the selected owner filter."}
         </p>
       ) : (
-        <AlbumGrid albums={albums} onSelectAlbum={onSelectAlbum} />
+        <AlbumGrid albums={filteredAlbums} onSelectAlbum={onSelectAlbum} />
       )}
     </div>
   );
