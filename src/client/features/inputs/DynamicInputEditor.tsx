@@ -904,13 +904,16 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
       <h2>Dynamic Inputs</h2>
       <p>Edit the workflow-derived input values below.</p>
 
-      {props.hasDraftDiffFromTemplate ? (
-        <div className="input-actions">
-          <button className="btn btn-secondary" type="button" onClick={() => void props.resetToTemplateDefaults()}>
-            Reset to template defaults
-          </button>
-        </div>
-      ) : null}
+      <div className="input-actions">
+        <button
+          className="btn btn-secondary"
+          type="button"
+          onClick={() => void props.resetToTemplateDefaults()}
+          disabled={!props.hasDraftDiffFromTemplate}
+        >
+          Reset to template defaults
+        </button>
+      </div>
 
       {props.warnings.length > 0 ? (
         <div className="input-warnings">
