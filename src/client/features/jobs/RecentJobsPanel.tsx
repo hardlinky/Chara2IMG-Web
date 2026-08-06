@@ -5,7 +5,7 @@ import { TrackedInputsPanel } from "../outputs/TrackedInputsPanel";
 import { useTrackedInputCategories } from "../../lib/inputTrackingStorage";
 import { confirmDeletion } from "../../lib/confirmDelete";
 import { JOB_POLL_INTERVAL_MS } from "./jobStatus";
-import type { RecentJobStatusFilter } from "./useRecentJobs";
+import type { RecentJobOwnerFilter, RecentJobStatusFilter } from "./useRecentJobs";
 import "../../styles/jobsOutput.css";
 
 type RecentJobsPanelProps = {
@@ -15,10 +15,13 @@ type RecentJobsPanelProps = {
   warningJobIds: string[];
   cancelingJobIds: string[];
   statusFilter: RecentJobStatusFilter;
+  ownerFilter: RecentJobOwnerFilter;
+  currentUser: string | null;
   page: number;
   pageCount: number;
   pageNumbers: number[];
   onStatusFilterChange: (next: RecentJobStatusFilter) => void;
+  onOwnerFilterChange: (next: RecentJobOwnerFilter) => void;
   onPageChange: (next: number) => void;
   onCancel: (jobId: string) => void;
   onRerun: (jobId: string) => void;
@@ -297,6 +300,14 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
               <option value="TIMED_OUT">Timed Out</option>
             </select>
           </label>
+          <label className="field">
+            Owner
+            <select className="select" value={props.ownerFilter} onChange={(event) => props.onOwnerFilterChange(event.target.value as RecentJobOwnerFilter)}>
+              <option value="all">All</option>
+              <option value="own">Mine</option>
+              <option value="anonymous">Anonymous</option>
+            </select>
+          </label>
         </div>
       </header>
 
@@ -330,6 +341,9 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
                 <span>Workflow: {job.provenance.workflowFileName ?? "Workflow unknown"}</span>
                 <div className="jobs-status-row">
                   <span className="jobs-status-chip" data-status={job.lifecycle.status}>{job.lifecycle.status}</span>
+                  <span className="jobs-owner-chip" data-owner={(job.createdBy ?? null) === null ? "anonymous" : job.createdBy === props.currentUser ? "you" : "other"}>
+                    {(job.createdBy ?? null) === null ? "Anonymous" : job.createdBy === props.currentUser ? "You" : job.createdBy}
+                  </span>
                   {!job.lifecycle.isTerminal ? <span className="jobs-next-poll">Next poll in {formatNextPollCountdown(props.lastFetchedAt, now)}</span> : null}
                   {props.warningJobIds.includes(job.jobId) ? (
                     <span className="jobs-status-chip jobs-warning-chip">Polling warning</span>

@@ -30,7 +30,7 @@ export async function createAlbum(input: {
 
 export async function updateAlbum(
   id: string,
-  updates: { name?: string; description?: string }
+  updates: { name?: string; description?: string; isPublished?: boolean }
 ): Promise<Album> {
   const res = await fetch(`/api/albums/${encodeURIComponent(id)}`, {
     method: "PATCH",

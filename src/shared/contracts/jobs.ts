@@ -58,6 +58,7 @@ export type RecentJobOutputCluster = {
   finishedAt: string | null;
   workflowFileName?: string;
   outputCount: number;
+  createdBy?: string | null;
   representative: RecentJobOutputImage;
   outputs: RecentJobOutputImage[];
 };
@@ -78,6 +79,7 @@ export type RecentJobRecord = {
   workerId?: string | null;
   hiddenOutputIndices?: number[];
   outputsHidden?: boolean;
+  createdBy?: string | null;
   imageUnarchiveExpiries?: Record<string, string | null>; // mirrors JobRecord field; used by client projection
 };
 

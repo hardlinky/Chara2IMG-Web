@@ -9,6 +9,7 @@ import { confirmDeletion } from "../../lib/confirmDelete";
 import { OUTPUT_DENSITIES, type OutputDensity, useOutputGallery } from "./useOutputGallery";
 import { getRoute, navigate, useRoute } from "../../lib/appRouter";
 import { buildAlbumStarProps, type AlbumStarContext } from "../albums/albumStar";
+import type { RecentJobOwnerFilter } from "../jobs/useRecentJobs";
 import "./outputsGallery.css";
 import "../../styles/jobsOutput.css";
 
@@ -52,6 +53,9 @@ type OutputsTabProps = {
   img2imgInputAvailable?: boolean;
   onLoadImageIntoImg2Img?: (imageUrl: string) => void;
   albumStarContext?: AlbumStarContext;
+  ownerFilter?: RecentJobOwnerFilter;
+  onOwnerFilterChange?: (next: RecentJobOwnerFilter) => void;
+  currentUser?: string | null;
 };
 
 function getGalleryClassName(density: (typeof OUTPUT_DENSITIES)[number]): string {
@@ -76,7 +80,7 @@ export function resolveSelectedJobCluster(
   return hydratedJobClusters[selectedJobId] ?? gallerySelectedCluster;
 }
 
-export function OutputsTab({ active = true, clusters, onRerun, onLoadInputs, onRemoveJobOutputs, onRemoveOutputImage, onExportWorkflow, onToggleOutputPinned, canPinMore = true, onLoadOutputCluster, pinningImageKeys, img2imgInputAvailable = false, onLoadImageIntoImg2Img, albumStarContext }: OutputsTabProps) {
+export function OutputsTab({ active = true, clusters, onRerun, onLoadInputs, onRemoveJobOutputs, onRemoveOutputImage, onExportWorkflow, onToggleOutputPinned, canPinMore = true, onLoadOutputCluster, pinningImageKeys, img2imgInputAvailable = false, onLoadImageIntoImg2Img, albumStarContext, ownerFilter = "all", onOwnerFilterChange, currentUser = null }: OutputsTabProps) {
   const gallery = useOutputGallery(clusters);
   const route = useRoute();
   const galleryApiRef = useRef<GalleryApi | null>(null);
@@ -358,6 +362,16 @@ export function OutputsTab({ active = true, clusters, onRerun, onLoadInputs, onR
               <option value="unpinned">Unpinned only</option>
             </select>
           </label>
+          {onOwnerFilterChange ? (
+            <label className="field">
+              Owner
+              <select className="select" value={ownerFilter} onChange={(event) => onOwnerFilterChange(event.target.value as RecentJobOwnerFilter)}>
+                <option value="all">All</option>
+                <option value="own">Mine</option>
+                <option value="anonymous">Anonymous</option>
+              </select>
+            </label>
+          ) : null}
           <label className="field">
             Density
             <select className="select" value={gallery.density} onChange={(event) => gallery.setDensity(event.target.value as OutputDensity)}>
@@ -464,7 +478,7 @@ export function OutputsTab({ active = true, clusters, onRerun, onLoadInputs, onR
                         onTogglePin={onToggleOutputPinned ? () => onToggleOutputPinned(cluster.jobId, cluster.representative.outputIndex, !cluster.representative.isPinned) : undefined}
                         canPinMore={canPinMore}
                         isPinning={pinningImageKeys?.has(`${cluster.jobId}:${cluster.representative.outputIndex}`) ?? false}
-                        badge={`${cluster.outputCount} images`}
+                        badge={`${cluster.outputCount} images · ${(cluster.createdBy ?? null) === null ? "Anonymous" : cluster.createdBy === currentUser ? "You" : cluster.createdBy}`}
                         albumStar={buildAlbumStarProps(albumStarContext, cluster.jobId, cluster.representative.outputIndex)}
                       />
                     </div>

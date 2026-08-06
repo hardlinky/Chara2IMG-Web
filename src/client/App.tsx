@@ -19,6 +19,7 @@ import { WorkflowImport } from "./features/workflows/WorkflowImport";
 import { useActiveWorkflowTemplate } from "./features/workflows/useActiveWorkflowTemplate";
 import { fetchSystemConfig, fetchSystemStorageStats, ProxyRequestError, updateAppViaProxy } from "./lib/api/runpodProxyClient";
 import { getJobInputs } from "./lib/api/jobsClient";
+import { getUserSession, loginUser, logoutUser } from "./lib/api/usersClient";
 import { clearImageCache } from "./lib/imageCache";
 import { getStoredEndpointId, saveEndpointId } from "./lib/endpointStorage";
 import { getRoute, navigate, useRoute } from "./lib/appRouter";
@@ -208,12 +209,104 @@ async function resolveImageDataUrl(imageUrl: string): Promise<string | null> {
   }
 }
 
+function UserAuthPanel({
+  currentUser,
+  onUserChanged
+}: {
+  currentUser: string | null;
+  onUserChanged: (username: string | null) => void;
+}) {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [status, setStatus] = useState("");
+  const [isBusy, setIsBusy] = useState(false);
+
+  async function handleLogin(): Promise<void> {
+    const name = username.trim();
+    if (name.length === 0 || password.length === 0) {
+      setStatus("Enter a username and password.");
+      return;
+    }
+    setIsBusy(true);
+    setStatus("");
+    try {
+      const result = await loginUser(name, password);
+      if (result.ok) {
+        onUserChanged(result.username);
+        setStatus(result.created ? `Created account "${result.username}".` : `Logged in as "${result.username}".`);
+        setPassword("");
+      } else {
+        setStatus(result.error);
+      }
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  async function handleLogout(): Promise<void> {
+    setIsBusy(true);
+    try {
+      await logoutUser();
+      onUserChanged(null);
+      setStatus("Logged out.");
+      setUsername("");
+      setPassword("");
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  return (
+    <section className="setup-card">
+      <h2>User</h2>
+      {currentUser ? (
+        <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
+          <span>Logged in as <strong>{currentUser}</strong></span>
+          <button className="btn btn-secondary" type="button" onClick={() => void handleLogout()} disabled={isBusy}>
+            Logout
+          </button>
+        </div>
+      ) : (
+        <div className="section-stack">
+          <p>Enter a username and password. A new account is created if the name is unused; otherwise the password must match to log in.</p>
+          <div className="field">
+            <label htmlFor="user-auth-name">Username</label>
+            <input
+              className="input"
+              id="user-auth-name"
+              value={username}
+              onChange={(event) => setUsername(event.target.value)}
+              autoComplete="username"
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="user-auth-password">Password</label>
+            <input
+              className="input"
+              id="user-auth-password"
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              autoComplete="current-password"
+            />
+          </div>
+          <button className="btn btn-primary" type="button" onClick={() => void handleLogin()} disabled={isBusy}>
+            {isBusy ? "Please wait..." : "Login / Create"}
+          </button>
+        </div>
+      )}
+      {status ? <p className="status-inline">{status}</p> : null}
+    </section>
+  );
+}
+
 export function App() {
   const [activeTab, setActiveTab] = useState<AppTabId>(() => getInitialActiveTab());
   const route = useRoute();
   const isFirstRouteSyncRef = useRef(true);
   const [invited, setInvited] = useState(false);
   const [adminGranted, setAdminGranted] = useState(false);
+  const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [runpodKey, setRunpodKey] = useState(getRunpodKey());
   const [hasServerRunpodApiKey, setHasServerRunpodApiKey] = useState(false);
   const [runEndpointId, setRunEndpointId] = useState(() => getStoredEndpointId() ?? "");
@@ -281,6 +374,17 @@ export function App() {
       });
   }, [invited, runEndpointId]);
 
+  useEffect(() => {
+    if (!invited) {
+      return;
+    }
+    void getUserSession()
+      .then((session) => setCurrentUser(session.username))
+      .catch(() => {
+        // Session bootstrap failure just leaves the user anonymous.
+      });
+  }, [invited]);
+
   function updateEndpointId(value: string): void {
     setRunEndpointId(value);
     saveEndpointId(value);
@@ -289,7 +393,8 @@ export function App() {
   const recentJobs = useRecentJobs({
     endpointId: runEndpointId,
     apiKey: effectiveRunpodKey || undefined,
-    includeOutputClusters: activeTab === "output"
+    includeOutputClusters: activeTab === "output",
+    currentUser
   });
 
   const transientJobsCount = recentJobs.transientJobsCount;
@@ -714,10 +819,13 @@ export function App() {
               warningJobIds={recentJobs.warningJobIds}
               cancelingJobIds={recentJobs.cancelingJobIds}
               statusFilter={recentJobs.statusFilter}
+              ownerFilter={recentJobs.jobsOwnerFilter}
+              currentUser={currentUser}
               page={recentJobs.page}
               pageCount={recentJobs.pageCount}
               pageNumbers={recentJobs.pageNumbers}
               onStatusFilterChange={recentJobs.setStatusFilter}
+              onOwnerFilterChange={recentJobs.setJobsOwnerFilter}
               onPageChange={recentJobs.setPage}
               onCancel={(jobId) => void recentJobs.cancelJob(jobId)}
               onRerun={(jobId) => void handleRerun(jobId)}
@@ -755,6 +863,9 @@ export function App() {
             img2imgInputAvailable={Boolean(editorApi?.img2imgInputAvailable)}
             onLoadImageIntoImg2Img={(imageUrl) => void onLoadImageIntoImg2Img(imageUrl)}
             albumStarContext={albumStarContext}
+            ownerFilter={recentJobs.outputsOwnerFilter}
+            onOwnerFilterChange={recentJobs.setOutputsOwnerFilter}
+            currentUser={currentUser}
           />
         ),
         albums: (
@@ -777,10 +888,12 @@ export function App() {
               }
               return { ok: result.ok };
             }}
+            currentUser={currentUser}
           />
         ),
         admin: (
           <div className="section-stack">
+            <UserAuthPanel currentUser={currentUser} onUserChanged={setCurrentUser} />
             {hasServerRunpodApiKey ? (
               <section className="setup-card">
                 <h2>Runpod API Key</h2>

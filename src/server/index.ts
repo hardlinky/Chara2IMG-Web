@@ -9,6 +9,7 @@ import { registerJobsRoutes } from "./routes/jobs";
 import { registerPinnedImageRoutes } from "./routes/pinnedImages";
 import { registerRunpodProxyRoutes } from "./routes/runpodProxy";
 import { registerSystemRoutes } from "./routes/system";
+import { registerUserRoutes } from "./routes/users";
 import { applySecurityMiddleware } from "./middleware/security";
 import { logAdminPasskey } from "./security/adminPasskey";
 import { logServerError } from "./lib/logger";
@@ -38,6 +39,7 @@ export function createServerApp(): Hono {
   registerPinnedImageRoutes(app);
   registerRunpodProxyRoutes(app);
   registerSystemRoutes(app);
+  registerUserRoutes(app);
 
   app.use("/*", async (c, next) => {
     await next();

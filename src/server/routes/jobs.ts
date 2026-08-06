@@ -1,22 +1,31 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Hono } from "hono";
-import { requireInvitedSession } from "../middleware/session";
+import { getSessionUser, requireInvitedSession } from "../middleware/session";
 import { listJobs, readJob, readJobAnywhere, deleteJob, deleteJobImage, getJobTmpDir, getJobArchiveDir, pinImage, unpinImage, listPresentImageIndices } from "../lib/jobStore";
-import { removeImageFromAllAlbums } from "../lib/albumStore";
+import { isImageInPublishedAlbum, removeImageFromAllAlbums } from "../lib/albumStore";
+import type { JobRecord } from "../../shared/contracts/jobs";
+
+// A user can see their own jobs plus anonymous (null-owner) ones.
+function canSeeJob(job: Pick<JobRecord, "createdBy">, user: string | null): boolean {
+  return (job.createdBy ?? null) === null || job.createdBy === user;
+}
 
 export function registerJobsRoutes(app: Hono): void {
   app.use("/api/jobs/*", requireInvitedSession);
+  app.use("/api/jobs", requireInvitedSession);
 
   app.get("/api/jobs", async (c) => {
-    const jobs = await listJobs();
+    const user = await getSessionUser(c);
+    const jobs = (await listJobs()).filter((job) => canSeeJob(job, user));
     return c.json({ ok: true, jobs });
   });
 
   app.get("/api/jobs/:jobId", async (c) => {
     const jobId = c.req.param("jobId");
+    const user = await getSessionUser(c);
     const job = await readJob(jobId);
-    if (job === null) {
+    if (job === null || !canSeeJob(job, user)) {
       return c.json({ ok: false, error: "Not found" }, 404);
     }
     const availableImageIndices = await listPresentImageIndices(jobId, job.displayName);
@@ -25,6 +34,11 @@ export function registerJobsRoutes(app: Hono): void {
 
   app.get("/api/jobs/:jobId/inputs", async (c) => {
     const jobId = c.req.param("jobId");
+    const user = await getSessionUser(c);
+    const job = await readJobAnywhere(jobId);
+    if (!job || !canSeeJob(job, user)) {
+      return c.json({ ok: false, error: "Not found" }, 404);
+    }
     const inputsPath = join(getJobTmpDir(), "jobs", jobId, "inputs.json");
     try {
       const raw = await readFile(inputsPath, "utf8");
@@ -48,6 +62,13 @@ export function registerJobsRoutes(app: Hono): void {
 
     const job = await readJobAnywhere(jobId);
     if (!job) {
+      return c.json({ ok: false, error: "Not found" }, 404);
+    }
+
+    // Owners/anonymous see their images directly; others only if the image is
+    // part of a published album (image visibility without job navigation).
+    const user = await getSessionUser(c);
+    if (!canSeeJob(job, user) && !(await isImageInPublishedAlbum(jobId, index))) {
       return c.json({ ok: false, error: "Not found" }, 404);
     }
 
@@ -87,6 +108,12 @@ export function registerJobsRoutes(app: Hono): void {
       return c.json({ ok: false, error: "Invalid index" }, 400);
     }
 
+    const user = await getSessionUser(c);
+    const job = await readJobAnywhere(jobId);
+    if (!job || !canSeeJob(job, user)) {
+      return c.json({ ok: false, error: "Not found" }, 404);
+    }
+
     const success = await pinImage(jobId, index);
     if (!success) {
       return c.json({ ok: false, error: "Not found" }, 404);
@@ -99,6 +126,12 @@ export function registerJobsRoutes(app: Hono): void {
     const index = parseInt(c.req.param("index"), 10);
     if (!Number.isFinite(index) || index < 0) {
       return c.json({ ok: false, error: "Invalid index" }, 400);
+    }
+
+    const user = await getSessionUser(c);
+    const job = await readJobAnywhere(jobId);
+    if (!job || !canSeeJob(job, user)) {
+      return c.json({ ok: false, error: "Not found" }, 404);
     }
 
     const result = await unpinImage(jobId, index);
@@ -114,6 +147,11 @@ export function registerJobsRoutes(app: Hono): void {
     if (!Number.isFinite(index) || index < 0) {
       return c.json({ ok: false, error: "Invalid index" }, 400);
     }
+    const user = await getSessionUser(c);
+    const job = await readJobAnywhere(jobId);
+    if (!job || !canSeeJob(job, user)) {
+      return c.json({ ok: false, error: "Not found" }, 404);
+    }
     await deleteJobImage(jobId, index);
     await removeImageFromAllAlbums(jobId, index);
     return c.json({ ok: true });
@@ -121,6 +159,11 @@ export function registerJobsRoutes(app: Hono): void {
 
   app.delete("/api/jobs/:jobId", async (c) => {
     const jobId = c.req.param("jobId");
+    const user = await getSessionUser(c);
+    const job = await readJobAnywhere(jobId);
+    if (!job || !canSeeJob(job, user)) {
+      return c.json({ ok: false, error: "Not found" }, 404);
+    }
     await deleteJob(jobId);
     return c.json({ ok: true });
   });

@@ -1,5 +1,5 @@
 import type { Hono } from "hono";
-import { clearAdminSessionCookie, hasInvitedSession, issueSessionCookie, clearSessionCookie } from "../middleware/session";
+import { clearAdminSessionCookie, clearUserSessionCookie, hasInvitedSession, issueSessionCookie, clearSessionCookie } from "../middleware/session";
 import { verifyInviteSecret } from "../security/invite";
 import { verifyInviteSchema } from "../schemas/access";
 
@@ -35,6 +35,7 @@ export function registerAccessRoutes(app: Hono): void {
   app.post("/api/access/logout", (c) => {
     clearSessionCookie(c);
     clearAdminSessionCookie(c);
+    clearUserSessionCookie(c);
     return c.json({ ok: true, invited: false });
   });
 }

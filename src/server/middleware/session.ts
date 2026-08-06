@@ -6,6 +6,7 @@ import { getAdminPasskey } from "../security/adminPasskey";
 const SESSION_COOKIE_NAME = "invited_session";
 const SESSION_COOKIE_VALUE = "invited";
 const ADMIN_SESSION_COOKIE_NAME = "admin_session";
+const USER_SESSION_COOKIE_NAME = "user_session";
 
 function getAdminSessionCookieValue(): string {
   const digest = createHash("sha256").update(getAdminPasskey()).digest("hex").slice(0, 24);
@@ -56,6 +57,23 @@ export function clearAdminSessionCookie(c: Context): void {
 export async function hasAdminSession(c: Context): Promise<boolean> {
   const signedValue = await getSignedCookie(c, getCookieSecret(), ADMIN_SESSION_COOKIE_NAME);
   return signedValue === getAdminSessionCookieValue();
+}
+
+export async function issueUserSessionCookie(c: Context, username: string): Promise<void> {
+  await setSignedCookie(c, USER_SESSION_COOKIE_NAME, username, getCookieSecret(), getCookieOptions());
+}
+
+export function clearUserSessionCookie(c: Context): void {
+  deleteCookie(c, USER_SESSION_COOKIE_NAME, {
+    ...getCookieOptions(),
+    maxAge: 0
+  });
+}
+
+// Current logged-in username, or null for anonymous access.
+export async function getSessionUser(c: Context): Promise<string | null> {
+  const signedValue = await getSignedCookie(c, getCookieSecret(), USER_SESSION_COOKIE_NAME);
+  return typeof signedValue === "string" && signedValue.length > 0 ? signedValue : null;
 }
 
 export const requireInvitedSession: MiddlewareHandler = async (c, next) => {

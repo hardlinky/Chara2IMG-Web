@@ -24,7 +24,15 @@ async function readAlbumsFile(): Promise<Album[]> {
   try {
     const raw = await readFile(albumsFilePath(), "utf8");
     const parsed = JSON.parse(raw) as { albums?: Album[] };
-    return Array.isArray(parsed.albums) ? parsed.albums : [];
+    if (!Array.isArray(parsed.albums)) {
+      return [];
+    }
+    // Normalize legacy records that predate createdBy/isPublished.
+    return parsed.albums.map((album) => ({
+      ...album,
+      createdBy: album.createdBy ?? null,
+      isPublished: Boolean(album.isPublished)
+    }));
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === "ENOENT") {
       return [];
@@ -110,22 +118,44 @@ function sortAlbumsNewestFirst(albums: Album[]): Album[] {
   return [...albums].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
 }
 
-export async function listAlbums(): Promise<Album[]> {
+// An album is visible to a user if they own it, it's anonymous, or it's published.
+function isAlbumVisibleTo(album: Album, user: string | null): boolean {
+  return album.createdBy === null || album.createdBy === user || album.isPublished;
+}
+
+// A user may manage (edit/delete/publish) their own albums and anonymous ones.
+export function canManageAlbum(album: Album, user: string | null): boolean {
+  return album.createdBy === null || album.createdBy === user;
+}
+
+export async function listAlbums(user: string | null): Promise<Album[]> {
   return withLock(async () => {
     const { albums, pinned } = await loadPrunedAlbums();
-    return sortAlbumsNewestFirst(albums).map((album) => ({
-      ...album,
-      images: sortImagesNewestFirst(album.images).map((ref) => ({
-        ...ref,
-        isPinned: pinned.get(ref.jobId)?.has(ref.imageIndex) ?? false
-      }))
-    }));
+    return sortAlbumsNewestFirst(albums)
+      .filter((album) => isAlbumVisibleTo(album, user))
+      .map((album) => ({
+        ...album,
+        images: sortImagesNewestFirst(album.images).map((ref) => ({
+          ...ref,
+          isPinned: pinned.get(ref.jobId)?.has(ref.imageIndex) ?? false
+        }))
+      }));
   });
 }
 
-export async function getAlbum(id: string): Promise<Album | null> {
-  const albums = await listAlbums();
+export async function getAlbum(id: string, user: string | null): Promise<Album | null> {
+  const albums = await listAlbums(user);
   return albums.find((album) => album.id === id) ?? null;
+}
+
+// True when the image belongs to at least one published album (any owner).
+export async function isImageInPublishedAlbum(jobId: string, imageIndex: number): Promise<boolean> {
+  const albums = await readAlbumsFile();
+  return albums.some(
+    (album) =>
+      album.isPublished &&
+      album.images.some((ref) => ref.jobId === jobId && ref.imageIndex === imageIndex)
+  );
 }
 
 export async function createAlbum(input: {
@@ -133,6 +163,7 @@ export async function createAlbum(input: {
   description?: string;
   jobId: string;
   imageIndex: number;
+  createdBy: string | null;
 }): Promise<Album> {
   return withLock(async () => {
     const albums = await readAlbumsFile();
@@ -143,7 +174,8 @@ export async function createAlbum(input: {
       description: input.description ?? "",
       createdAt: now,
       updatedAt: now,
-      createdBy: null,
+      createdBy: input.createdBy,
+      isPublished: false,
       images: [{ jobId: input.jobId, imageIndex: input.imageIndex, addedAt: now }]
     };
     await writeAlbumsFile([album, ...albums]);
@@ -153,7 +185,7 @@ export async function createAlbum(input: {
 
 export async function updateAlbum(
   id: string,
-  updates: { name?: string; description?: string }
+  updates: { name?: string; description?: string; isPublished?: boolean }
 ): Promise<Album | null> {
   return withLock(async () => {
     const albums = await readAlbumsFile();
@@ -166,6 +198,7 @@ export async function updateAlbum(
       ...existing,
       name: updates.name ?? existing.name,
       description: updates.description ?? existing.description,
+      isPublished: updates.isPublished ?? existing.isPublished,
       updatedAt: new Date().toISOString()
     };
     const nextAlbums = [...albums];

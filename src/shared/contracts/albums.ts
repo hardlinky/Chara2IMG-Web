@@ -12,7 +12,9 @@ export type Album = {
   description: string;
   createdAt: string;
   updatedAt: string;
-  // Reserved for future per-user scoping; always null while albums are global.
+  // Owner username, or null for anonymous albums (manageable by everyone).
   createdBy: string | null;
+  // When true, the album's images are viewable by any user.
+  isPublished: boolean;
   images: AlbumImageRef[];
 };

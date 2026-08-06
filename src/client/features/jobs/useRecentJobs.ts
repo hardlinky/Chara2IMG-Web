@@ -17,6 +17,7 @@ type UseRecentJobsOptions = {
   endpointId?: string;
   apiKey?: string;
   includeOutputClusters?: boolean;
+  currentUser?: string | null;
 };
 
 export const RECENT_JOB_PAGE_SIZE = 12;
@@ -28,6 +29,24 @@ export const RECENT_JOB_STATUS_FILTERS = ["All", "IN_QUEUE", "IN_PROGRESS", "COM
 export type RecentJobStatusFilter = (typeof RECENT_JOB_STATUS_FILTERS)[number];
 
 const RECENT_JOB_STATUS_FILTER_STORAGE_KEY = "chara2imgRecentJobsStatusFilter";
+
+export const RECENT_JOB_OWNER_FILTERS = ["all", "own", "anonymous"] as const;
+export type RecentJobOwnerFilter = (typeof RECENT_JOB_OWNER_FILTERS)[number];
+
+export function filterJobsByOwner<T extends { createdBy?: string | null }>(
+  jobs: T[],
+  ownerFilter: RecentJobOwnerFilter,
+  currentUser: string | null
+): T[] {
+  if (ownerFilter === "all") {
+    return jobs;
+  }
+  if (ownerFilter === "anonymous") {
+    return jobs.filter((job) => (job.createdBy ?? null) === null);
+  }
+  // "own"
+  return jobs.filter((job) => currentUser !== null && job.createdBy === currentUser);
+}
 
 export function shouldDeferAdaptiveOffload(job: Pick<RecentJobRecord, "hiddenAt" | "lifecycle" | "submittedAt">, now: number = Date.now()): boolean {
   if (job.hiddenAt !== null) {
@@ -160,10 +179,13 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
   const endpointId = options.endpointId;
   const apiKey = options.apiKey;
   const includeOutputClusters = options.includeOutputClusters ?? true;
+  const currentUser = options.currentUser ?? null;
   const [jobs, setJobs] = useState<RecentJobRecord[]>([]);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [lastFetchedAt, setLastFetchedAt] = useState<number | null>(null);
   const [statusFilter, setStatusFilterState] = useState<RecentJobStatusFilter>(() => getStoredStatusFilter());
+  const [jobsOwnerFilter, setJobsOwnerFilter] = useState<RecentJobOwnerFilter>("all");
+  const [outputsOwnerFilter, setOutputsOwnerFilter] = useState<RecentJobOwnerFilter>("all");
   const [page, setPageState] = useState(1);
   const [cancelingJobIds, setCancelingJobIds] = useState<string[]>([]);
   const [deletingJobIds, setDeletingJobIds] = useState<Set<string>>(new Set());
@@ -394,6 +416,11 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
     setPageState(1);
   }, []);
 
+  const setJobsOwnerFilterAndResetPage = useCallback((next: RecentJobOwnerFilter) => {
+    setJobsOwnerFilter(next);
+    setPageState(1);
+  }, []);
+
   const setPage = useCallback((nextPage: number) => {
     setPageState(Math.max(1, nextPage));
   }, []);
@@ -424,11 +451,15 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
       return [];
     }
 
-    return projectRecentJobOutputClusters(visibleJobs, {
+    const projected = projectRecentJobOutputClusters(visibleJobs, {
       maxOutputsPerJob: OUTPUTS_IN_MEMORY_PER_JOB_LIMIT
     });
-  }, [includeOutputClusters, visibleJobs]);
-  const filteredJobs = useMemo(() => filterJobsByStatus(visibleJobs, statusFilter), [statusFilter, visibleJobs]);
+    return filterJobsByOwner(projected, outputsOwnerFilter, currentUser);
+  }, [includeOutputClusters, visibleJobs, outputsOwnerFilter, currentUser]);
+  const filteredJobs = useMemo(() => {
+    const byStatus = filterJobsByStatus(visibleJobs, statusFilter);
+    return filterJobsByOwner(byStatus, jobsOwnerFilter, currentUser);
+  }, [statusFilter, visibleJobs, jobsOwnerFilter, currentUser]);
 
   const pageCount = Math.max(1, Math.ceil(filteredJobs.length / RECENT_JOB_PAGE_SIZE));
 
@@ -455,6 +486,10 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
     pageNumbers,
     statusFilter,
     setStatusFilter,
+    jobsOwnerFilter,
+    setJobsOwnerFilter: setJobsOwnerFilterAndResetPage,
+    outputsOwnerFilter,
+    setOutputsOwnerFilter,
     setPage,
     warningJobIds: [] as string[],
     cancelingJobIds,

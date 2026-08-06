@@ -12,11 +12,12 @@ type AlbumsTabProps = {
   error: string | null;
   selectedAlbumId: string | null;
   onSelectAlbum: (albumId: string | null) => void;
-  onUpdateAlbum: (id: string, updates: { name?: string; description?: string }) => Promise<Album>;
+  onUpdateAlbum: (id: string, updates: { name?: string; description?: string; isPublished?: boolean }) => Promise<Album>;
   onDeleteAlbum: (id: string) => Promise<void>;
   onRemoveImage: (id: string, jobId: string, imageIndex: number) => Promise<Album | null>;
   onViewJob: (jobId: string) => void;
   onTogglePinImage: (jobId: string, imageIndex: number, pinned: boolean) => Promise<{ ok: boolean }>;
+  currentUser: string | null;
 };
 
 function imageUrl(jobId: string, imageIndex: number): string {
@@ -70,7 +71,8 @@ function AlbumView({
   onViewJob,
   onTogglePinImage,
   onPreviousAlbum,
-  onNextAlbum
+  onNextAlbum,
+  currentUser
 }: {
   album: Album;
   onBack: () => void;
@@ -81,7 +83,9 @@ function AlbumView({
   onTogglePinImage: AlbumsTabProps["onTogglePinImage"];
   onPreviousAlbum?: () => void;
   onNextAlbum?: () => void;
+  currentUser: string | null;
 }) {
+  const canManage = album.createdBy === null || album.createdBy === currentUser;
   const [isEditing, setIsEditing] = useState(false);
   const [nameDraft, setNameDraft] = useState(album.name);
   const [descDraft, setDescDraft] = useState(album.description);
@@ -122,7 +126,13 @@ function AlbumView({
   const perImageActions = {
     jobId: (index: number) => album.images[index]!.jobId,
     displayPrefix: (index: number) => formatOutputJobId(album.images[index]!.jobId),
-    onViewJob: (index: number) => onViewJob(album.images[index]!.jobId),
+    onViewJob: (index: number) => {
+      // Non-owned albums may be viewed (if published) but job navigation is not allowed.
+      if (!canManage) {
+        return;
+      }
+      onViewJob(album.images[index]!.jobId);
+    },
     onRemove: (index: number) => {
       const ref = album.images[index]!;
       void onRemoveImage(album.id, ref.jobId, ref.imageIndex);
@@ -154,6 +164,7 @@ function AlbumView({
             ← Albums
           </button>
           {!isEditing ? <h2 className="album-view-title">{album.name}</h2> : null}
+          {!isEditing && album.isPublished ? <span className="album-published-badge">Published</span> : null}
           <div className="album-view-actions">
             {isEditing ? (
               <>
@@ -164,8 +175,15 @@ function AlbumView({
                   Cancel
                 </button>
               </>
-            ) : (
+            ) : canManage ? (
               <>
+                <button
+                  className="btn btn-secondary"
+                  type="button"
+                  onClick={() => void onUpdateAlbum(album.id, { isPublished: !album.isPublished })}
+                >
+                  {album.isPublished ? "Unpublish" : "Publish"}
+                </button>
                 <button className="btn btn-secondary" type="button" onClick={() => setIsEditing(true)}>
                   Edit
                 </button>
@@ -181,7 +199,7 @@ function AlbumView({
                   Delete album
                 </button>
               </>
-            )}
+            ) : null}
           </div>
         </div>
 
@@ -237,7 +255,8 @@ export function AlbumsTab({
   onDeleteAlbum,
   onRemoveImage,
   onViewJob,
-  onTogglePinImage
+  onTogglePinImage,
+  currentUser
 }: AlbumsTabProps) {
   const selectedAlbum = selectedAlbumId ? albums.find((album) => album.id === selectedAlbumId) ?? null : null;
 
@@ -256,6 +275,7 @@ export function AlbumsTab({
         onTogglePinImage={onTogglePinImage}
         onPreviousAlbum={previousAlbum ? () => onSelectAlbum(previousAlbum.id) : undefined}
         onNextAlbum={nextAlbum ? () => onSelectAlbum(nextAlbum.id) : undefined}
+        currentUser={currentUser}
       />
     );
   }

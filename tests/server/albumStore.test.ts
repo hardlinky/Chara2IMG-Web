@@ -11,6 +11,7 @@ function makeAlbum(id: string, images: Array<{ jobId: string; imageIndex: number
     createdAt: now,
     updatedAt: now,
     createdBy: null,
+    isPublished: false,
     images: images.map((ref) => ({ ...ref, addedAt: now }))
   };
 }

@@ -1,7 +1,8 @@
 import type { Hono } from "hono";
-import { requireInvitedSession } from "../middleware/session";
+import { getSessionUser, requireInvitedSession } from "../middleware/session";
 import {
   addImageToAlbum,
+  canManageAlbum,
   createAlbum,
   deleteAlbum,
   getAlbum,
@@ -16,7 +17,8 @@ export function registerAlbumRoutes(app: Hono): void {
   app.use("/api/albums/*", requireInvitedSession);
 
   app.get("/api/albums", async (c) => {
-    const albums = await listAlbums();
+    const user = await getSessionUser(c);
+    const albums = await listAlbums(user);
     return c.json({ ok: true, albums });
   });
 
@@ -24,12 +26,14 @@ export function registerAlbumRoutes(app: Hono): void {
     const body = await c.req.json().catch(() => null);
     const parsed = createAlbumSchema.safeParse(body);
     if (!parsed.success) return c.json({ ok: false, error: "Invalid request" }, 400);
-    const album = await createAlbum(parsed.data);
+    const user = await getSessionUser(c);
+    const album = await createAlbum({ ...parsed.data, createdBy: user });
     return c.json({ ok: true, album }, 201);
   });
 
   app.get("/api/albums/:id", async (c) => {
-    const album = await getAlbum(c.req.param("id"));
+    const user = await getSessionUser(c);
+    const album = await getAlbum(c.req.param("id"), user);
     if (!album) return c.json({ ok: false, error: "Not found" }, 404);
     return c.json({ ok: true, album });
   });
@@ -38,12 +42,20 @@ export function registerAlbumRoutes(app: Hono): void {
     const body = await c.req.json().catch(() => null);
     const parsed = updateAlbumSchema.safeParse(body);
     if (!parsed.success) return c.json({ ok: false, error: "Invalid request" }, 400);
+    const user = await getSessionUser(c);
+    const existing = await getAlbum(c.req.param("id"), user);
+    if (!existing) return c.json({ ok: false, error: "Not found" }, 404);
+    if (!canManageAlbum(existing, user)) return c.json({ ok: false, error: "Forbidden" }, 403);
     const album = await updateAlbum(c.req.param("id"), parsed.data);
     if (!album) return c.json({ ok: false, error: "Not found" }, 404);
     return c.json({ ok: true, album });
   });
 
   app.delete("/api/albums/:id", async (c) => {
+    const user = await getSessionUser(c);
+    const existing = await getAlbum(c.req.param("id"), user);
+    if (!existing) return c.json({ ok: false, error: "Not found" }, 404);
+    if (!canManageAlbum(existing, user)) return c.json({ ok: false, error: "Forbidden" }, 403);
     const deleted = await deleteAlbum(c.req.param("id"));
     if (!deleted) return c.json({ ok: false, error: "Not found" }, 404);
     return c.json({ ok: true });
@@ -53,6 +65,10 @@ export function registerAlbumRoutes(app: Hono): void {
     const body = await c.req.json().catch(() => null);
     const parsed = addAlbumImageSchema.safeParse(body);
     if (!parsed.success) return c.json({ ok: false, error: "Invalid request" }, 400);
+    const user = await getSessionUser(c);
+    const existing = await getAlbum(c.req.param("id"), user);
+    if (!existing) return c.json({ ok: false, error: "Not found" }, 404);
+    if (!canManageAlbum(existing, user)) return c.json({ ok: false, error: "Forbidden" }, 403);
     const album = await addImageToAlbum(c.req.param("id"), parsed.data.jobId, parsed.data.imageIndex);
     if (!album) return c.json({ ok: false, error: "Not found" }, 404);
     return c.json({ ok: true, album });
@@ -62,6 +78,11 @@ export function registerAlbumRoutes(app: Hono): void {
     const index = Number.parseInt(c.req.param("index"), 10);
     if (!Number.isFinite(index) || index < 0) {
       return c.json({ ok: false, error: "Invalid index" }, 400);
+    }
+    const user = await getSessionUser(c);
+    const existing = await getAlbum(c.req.param("id"), user);
+    if (existing && !canManageAlbum(existing, user)) {
+      return c.json({ ok: false, error: "Forbidden" }, 403);
     }
     // Returns null when the album is not found or was emptied and removed; both
     // are treated as success from the client's perspective.

@@ -8,7 +8,7 @@ type UseAlbumsResult = {
   error: string | null;
   refresh: () => Promise<void>;
   createAlbum: (input: { name: string; description?: string; jobId: string; imageIndex: number }) => Promise<Album>;
-  updateAlbum: (id: string, updates: { name?: string; description?: string }) => Promise<Album>;
+  updateAlbum: (id: string, updates: { name?: string; description?: string; isPublished?: boolean }) => Promise<Album>;
   deleteAlbum: (id: string) => Promise<void>;
   addImageToAlbum: (id: string, jobId: string, imageIndex: number) => Promise<Album>;
   removeImageFromAlbum: (id: string, jobId: string, imageIndex: number) => Promise<Album | null>;
