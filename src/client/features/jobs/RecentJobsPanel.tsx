@@ -331,6 +331,9 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
                 <div className="jobs-card-meta">
                   <strong className="jobs-card-id">
                     <span>{displayJobId}</span>
+                    <span className="jobs-owner-chip" data-owner={(job.createdBy ?? null) === null ? "anonymous" : job.createdBy === props.currentUser ? "you" : "other"}>
+                      {(job.createdBy ?? null) === null ? "Anon" : job.createdBy === props.currentUser ? "You" : job.createdBy}
+                    </span>
                     {workerId ? <span className="jobs-card-worker">Worker: {workerId}</span> : null}
                     {isPinnedJob ? <span className="jobs-card-pinned-icon" aria-label="Pinned job" title="Pinned job">📌</span> : null}
                   </strong>
@@ -341,9 +344,6 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
                 <span>Workflow: {job.provenance.workflowFileName ?? "Workflow unknown"}</span>
                 <div className="jobs-status-row">
                   <span className="jobs-status-chip" data-status={job.lifecycle.status}>{job.lifecycle.status}</span>
-                  <span className="jobs-owner-chip" data-owner={(job.createdBy ?? null) === null ? "anonymous" : job.createdBy === props.currentUser ? "you" : "other"}>
-                    {(job.createdBy ?? null) === null ? "Anon" : job.createdBy === props.currentUser ? "You" : job.createdBy}
-                  </span>
                   {!job.lifecycle.isTerminal ? <span className="jobs-next-poll">Next poll in {formatNextPollCountdown(props.lastFetchedAt, now)}</span> : null}
                   {props.warningJobIds.includes(job.jobId) ? (
                     <span className="jobs-status-chip jobs-warning-chip">Polling warning</span>
