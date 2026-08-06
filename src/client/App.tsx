@@ -403,7 +403,8 @@ export function App() {
 
   const albumStarContext = useMemo<AlbumStarContext>(
     () => ({
-      albums: albums.albums,
+      // Only own + anonymous albums can be added to / removed from.
+      albums: albums.albums.filter((album) => album.createdBy === null || album.createdBy === currentUser),
       onToggleImageInAlbum: (albumId, jobId, imageIndex, next) => {
         if (next) {
           void albums.addImageToAlbum(albumId, jobId, imageIndex);
@@ -415,7 +416,7 @@ export function App() {
         void albums.createAlbum({ name, jobId, imageIndex });
       }
     }),
-    [albums.albums, albums.addImageToAlbum, albums.removeImageFromAlbum, albums.createAlbum]
+    [albums.albums, albums.addImageToAlbum, albums.removeImageFromAlbum, albums.createAlbum, currentUser]
   );
 
   const appTabs = useMemo<AppTabDefinition[]>(

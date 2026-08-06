@@ -96,6 +96,20 @@
   margin: 0;
 }
 
+.album-owner-label {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.album-published-badge {
+  padding: 0.125rem 0.5rem;
+  border-radius: var(--radius-pill, 999px);
+  background: var(--color-accent-soft, rgba(214, 138, 74, 0.18));
+  color: var(--color-accent, #d68a4a);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
 .album-view-desc {
   color: var(--color-text-secondary);
   margin: 0;

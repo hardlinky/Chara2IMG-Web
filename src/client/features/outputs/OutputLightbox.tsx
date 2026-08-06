@@ -15,7 +15,7 @@ export type LightboxPerImageActions = {
   jobId: (index: number) => string;
   displayPrefix?: (index: number) => string;
   onViewJob: (index: number) => void;
-  onRemove: (index: number) => void;
+  onRemove?: (index: number) => void;
   onTogglePin?: (index: number, pinned: boolean) => void;
   isPinningAt?: (index: number) => boolean;
 };
@@ -215,12 +215,13 @@ export function OutputLightbox({
             : undefined
       }
       onDeleteCurrent={
-        perImageActions
+        perImageActions?.onRemove
           ? (index) => {
+              const remove = perImageActions.onRemove!;
               const image = visibleImages[index];
               if (image) {
                 void confirmDeletion({ message: removeConfirmMessage, confirmLabel: removeConfirmLabel }).then((ok) => {
-                  if (ok) perImageActions.onRemove(index);
+                  if (ok) remove(index);
                 });
               }
             }
@@ -291,8 +292,8 @@ export function OutputLightbox({
                     onOpen={open}
                     onImageLoad={(event) => handleImageLoad(index, event)}
                     onRemoveImage={
-                      perImageActions
-                        ? () => perImageActions.onRemove(index)
+                      perImageActions?.onRemove
+                        ? () => perImageActions.onRemove!(index)
                         : onRemoveImage
                           ? () => onRemoveImage(image.outputIndex)
                           : undefined

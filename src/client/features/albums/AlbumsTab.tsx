@@ -134,14 +134,18 @@ function AlbumView({
       }
       onViewJob(album.images[index]!.jobId);
     },
-    onRemove: (index: number) => {
-      const ref = album.images[index]!;
-      void onRemoveImage(album.id, ref.jobId, ref.imageIndex);
-    },
-    onTogglePin: (index: number, pinned: boolean) => {
-      const ref = album.images[index]!;
-      void togglePin(ref.jobId, ref.imageIndex, pinned);
-    },
+    onRemove: canManage
+      ? (index: number) => {
+          const ref = album.images[index]!;
+          void onRemoveImage(album.id, ref.jobId, ref.imageIndex);
+        }
+      : undefined,
+    onTogglePin: canManage
+      ? (index: number, pinned: boolean) => {
+          const ref = album.images[index]!;
+          void togglePin(ref.jobId, ref.imageIndex, pinned);
+        }
+      : undefined,
     isPinningAt: (index: number) => {
       const ref = album.images[index]!;
       return pinningKeys.has(`${ref.jobId}:${ref.imageIndex}`);
@@ -165,6 +169,11 @@ function AlbumView({
             ← Albums
           </button>
           {!isEditing ? <h2 className="album-view-title">{album.name}</h2> : null}
+          {!isEditing ? (
+            <span className="album-owner-label">
+              by {album.createdBy === null ? "Anonymous" : album.createdBy === currentUser ? "You" : album.createdBy}
+            </span>
+          ) : null}
           {!isEditing && album.isPublished ? <span className="album-published-badge">Published</span> : null}
           <div className="album-view-actions">
             {isEditing ? (
