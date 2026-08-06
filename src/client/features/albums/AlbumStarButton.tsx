@@ -1,21 +1,24 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { AlbumStarProps } from "./albumStar";
+import { filterJobsByOwner, type RecentJobOwnerFilter } from "../jobs/useRecentJobs";
 import "../../styles/albums.css";
 
 type AlbumStarButtonProps = AlbumStarProps & {
   label: string;
 };
 
-export function AlbumStarButton({ albums, memberAlbumIds, onToggleAlbum, onCreateAlbum, label }: AlbumStarButtonProps) {
+export function AlbumStarButton({ albums, memberAlbumIds, currentUser, onToggleAlbum, onCreateAlbum, label }: AlbumStarButtonProps) {
   const [open, setOpen] = useState(false);
   const [newName, setNewName] = useState("");
+  const [ownerFilter, setOwnerFilter] = useState<RecentJobOwnerFilter>("all");
   const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const popoverRef = useRef<HTMLDivElement | null>(null);
   const isMember = memberAlbumIds.length > 0;
   const memberSet = new Set(memberAlbumIds);
+  const visibleAlbums = filterJobsByOwner(albums, ownerFilter, currentUser);
 
   useEffect(() => {
     if (!open) {
@@ -111,9 +114,21 @@ export function AlbumStarButton({ albums, memberAlbumIds, onToggleAlbum, onCreat
               onClick={(event) => event.stopPropagation()}
             >
               <p className="album-star-popover-title">Add to album</p>
-              {albums.length > 0 ? (
+              <label className="album-star-filter">
+                <span>Owner</span>
+                <select
+                  className="select"
+                  value={ownerFilter}
+                  onChange={(event) => setOwnerFilter(event.target.value as RecentJobOwnerFilter)}
+                >
+                  <option value="all">All</option>
+                  <option value="own">Mine</option>
+                  <option value="anonymous">Anon</option>
+                </select>
+              </label>
+              {visibleAlbums.length > 0 ? (
                 <ul className="album-star-list">
-                  {albums.map((album) => (
+                  {visibleAlbums.map((album) => (
                     <li key={album.id}>
                       <label className="album-star-option">
                         <input

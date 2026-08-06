@@ -171,7 +171,7 @@ function AlbumView({
           {!isEditing ? <h2 className="album-view-title">{album.name}</h2> : null}
           {!isEditing ? (
             <span className="album-owner-label">
-              by {album.createdBy === null ? "Anonymous" : album.createdBy === currentUser ? "You" : album.createdBy}
+              by {album.createdBy === null ? "Anon" : album.createdBy === currentUser ? "You" : album.createdBy}
             </span>
           ) : null}
           {!isEditing && album.isPublished ? <span className="album-published-badge">Published</span> : null}
@@ -302,7 +302,7 @@ export function AlbumsTab({
           <select className="select" value={ownerFilter} onChange={(event) => setOwnerFilter(event.target.value as RecentJobOwnerFilter)}>
             <option value="all">All</option>
             <option value="own">Mine</option>
-            <option value="anonymous">Anonymous</option>
+            <option value="anonymous">Anon</option>
           </select>
         </label>
       </div>

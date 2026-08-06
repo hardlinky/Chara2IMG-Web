@@ -233,6 +233,15 @@
   color: var(--color-text-secondary);
 }
 
+.album-star-filter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
 .album-star-empty {
   margin: 0;
   font-size: var(--font-size-sm);

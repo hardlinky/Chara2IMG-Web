@@ -405,6 +405,7 @@ export function App() {
     () => ({
       // Only own + anonymous albums can be added to / removed from.
       albums: albums.albums.filter((album) => album.createdBy === null || album.createdBy === currentUser),
+      currentUser,
       onToggleImageInAlbum: (albumId, jobId, imageIndex, next) => {
         if (next) {
           void albums.addImageToAlbum(albumId, jobId, imageIndex);

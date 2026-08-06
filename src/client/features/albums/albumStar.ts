@@ -3,6 +3,7 @@ import type { Album } from "../../../shared/contracts/albums";
 export type AlbumStarProps = {
   albums: Album[];
   memberAlbumIds: string[];
+  currentUser: string | null;
   onToggleAlbum: (albumId: string, next: boolean) => void;
   onCreateAlbum: (name: string) => void;
 };
@@ -10,6 +11,7 @@ export type AlbumStarProps = {
 // Threaded down through the outputs views; binds album mutations to a specific image.
 export type AlbumStarContext = {
   albums: Album[];
+  currentUser: string | null;
   onToggleImageInAlbum: (albumId: string, jobId: string, imageIndex: number, next: boolean) => void;
   onCreateAlbumWithImage: (name: string, jobId: string, imageIndex: number) => void;
 };
@@ -30,6 +32,7 @@ export function buildAlbumStarProps(
   return {
     albums: context.albums,
     memberAlbumIds,
+    currentUser: context.currentUser,
     onToggleAlbum: (albumId, next) => context.onToggleImageInAlbum(albumId, jobId, imageIndex, next),
     onCreateAlbum: (name) => context.onCreateAlbumWithImage(name, jobId, imageIndex)
   };

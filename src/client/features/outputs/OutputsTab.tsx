@@ -368,7 +368,7 @@ export function OutputsTab({ active = true, clusters, onRerun, onLoadInputs, onR
               <select className="select" value={ownerFilter} onChange={(event) => onOwnerFilterChange(event.target.value as RecentJobOwnerFilter)}>
                 <option value="all">All</option>
                 <option value="own">Mine</option>
-                <option value="anonymous">Anonymous</option>
+                <option value="anonymous">Anon</option>
               </select>
             </label>
           ) : null}
@@ -478,7 +478,7 @@ export function OutputsTab({ active = true, clusters, onRerun, onLoadInputs, onR
                         onTogglePin={onToggleOutputPinned ? () => onToggleOutputPinned(cluster.jobId, cluster.representative.outputIndex, !cluster.representative.isPinned) : undefined}
                         canPinMore={canPinMore}
                         isPinning={pinningImageKeys?.has(`${cluster.jobId}:${cluster.representative.outputIndex}`) ?? false}
-                        badge={`${cluster.outputCount} images · ${(cluster.createdBy ?? null) === null ? "Anonymous" : cluster.createdBy === currentUser ? "You" : cluster.createdBy}`}
+                        badge={`${cluster.outputCount} images · ${(cluster.createdBy ?? null) === null ? "Anon" : cluster.createdBy === currentUser ? "You" : cluster.createdBy}`}
                         albumStar={buildAlbumStarProps(albumStarContext, cluster.jobId, cluster.representative.outputIndex)}
                       />
                     </div>

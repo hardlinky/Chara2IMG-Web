@@ -281,6 +281,7 @@ export function OutputImageCard({
           <AlbumStarButton
             albums={albumStar.albums}
             memberAlbumIds={albumStar.memberAlbumIds}
+            currentUser={albumStar.currentUser}
             onToggleAlbum={albumStar.onToggleAlbum}
             onCreateAlbum={albumStar.onCreateAlbum}
             label={`Add ${displayPrefix} image ${imageLabel} to album`}
