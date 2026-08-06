@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import type { Hono } from "hono";
 import { getArchiveCapacityBytes, getArchiveUsageBytes, listJobs } from "../lib/jobStore";
-import { requireInvitedSession } from "../middleware/session";
+import { hasAdminSession, requireInvitedSession } from "../middleware/session";
 
 const execFileAsync = promisify(execFile);
 
@@ -105,6 +105,10 @@ export function registerSystemRoutes(app: Hono): void {
   });
 
   app.post("/api/system/update", async (c) => {
+    if (!(await hasAdminSession(c))) {
+      return c.json({ ok: false, error: "Forbidden" }, 403);
+    }
+
     if (!isSelfUpdateEnabled()) {
       return c.json(
         {

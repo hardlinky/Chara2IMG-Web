@@ -1,7 +1,14 @@
 import type { Hono } from "hono";
-import { clearAdminSessionCookie, hasAdminSession, issueAdminSessionCookie, requireInvitedSession } from "../middleware/session";
+import {
+  clearAdminSessionCookie,
+  hasAdminSession,
+  issueAdminSessionCookie,
+  issueUserSessionCookie,
+  requireInvitedSession
+} from "../middleware/session";
 import { deleteJobImage, listManifestImages } from "../lib/jobStore";
-import { verifyAdminKeyRequestSchema } from "../schemas/admin";
+import { userExists } from "../lib/userStore";
+import { impersonateRequestSchema, verifyAdminKeyRequestSchema } from "../schemas/admin";
 import { getAdminPasskey } from "../security/adminPasskey";
 
 export function registerAdminRoutes(app: Hono): void {
@@ -32,6 +39,25 @@ export function registerAdminRoutes(app: Hono): void {
   app.post("/api/admin/logout", (c) => {
     clearAdminSessionCookie(c);
     return c.json({ ok: true, admin: false });
+  });
+
+  // Adopt an existing user's identity by issuing them a user session cookie.
+  app.post("/api/admin/impersonate", async (c) => {
+    const admin = await hasAdminSession(c);
+    if (!admin) return c.json({ ok: false, error: "Forbidden" }, 403);
+
+    const payload = await c.req.json().catch(() => null);
+    const parsed = impersonateRequestSchema.safeParse(payload);
+    if (!parsed.success) {
+      return c.json({ ok: false, error: "Invalid request" }, 400);
+    }
+
+    if (!(await userExists(parsed.data.username))) {
+      return c.json({ ok: false, error: "No such user" }, 404);
+    }
+
+    await issueUserSessionCookie(c, parsed.data.username);
+    return c.json({ ok: true, username: parsed.data.username });
   });
 
   app.get("/api/admin/manifest", async (c) => {

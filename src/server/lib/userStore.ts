@@ -78,6 +78,19 @@ export async function loginOrCreateUser(username: string, password: string): Pro
     const existing = users.find((user) => user.username === username);
 
     if (existing) {
+      // Soft reset: a record with both salt and hash absent adopts the next password.
+      if (!existing.salt && !existing.hash) {
+        const salt = randomBytes(16).toString("hex");
+        const restored: StoredUser = {
+          ...existing,
+          salt,
+          hash: hashPassword(password, salt),
+          createdAt: existing.createdAt || new Date().toISOString()
+        };
+        await writeUsersFile(users.map((user) => (user.username === existing.username ? restored : user)));
+        return { ok: true, created: false };
+      }
+
       return passwordMatches(password, existing)
         ? { ok: true, created: false }
         : { ok: false, reason: "wrong-password" };

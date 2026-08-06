@@ -916,12 +916,14 @@ export function App() {
             <section className="setup-card">
               <h2>Admin Maintenance</h2>
               <p>Use this section for privileged operations.</p>
-              <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
-                <button className="btn btn-secondary" type="button" onClick={() => void onUpdateApp()} disabled={isUpdatingApp}>
-                  {isUpdatingApp ? "Updating..." : "Update App"}
-                </button>
-                {updateStatus ? <span>{updateStatus}</span> : null}
-              </div>
+              {adminGranted ? (
+                <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
+                  <button className="btn btn-secondary" type="button" onClick={() => void onUpdateApp()} disabled={isUpdatingApp}>
+                    {isUpdatingApp ? "Updating..." : "Update App"}
+                  </button>
+                  {updateStatus ? <span>{updateStatus}</span> : null}
+                </div>
+              ) : null}
               <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
                 <button className="btn btn-secondary" type="button" onClick={() => void onClearImageCache()} disabled={isClearingCache}>
                   {isClearingCache ? "Clearing..." : "Clear Image Cache"}
@@ -929,7 +931,7 @@ export function App() {
                 {clearCacheStatus ? <span>{clearCacheStatus}</span> : null}
               </div>
             </section>
-            <AdminTab enabled={adminGranted} />
+            <AdminTab enabled={adminGranted} onImpersonated={setCurrentUser} />
             {!adminGranted ? <AdminGate onGranted={setAdminGranted} /> : null}
           </div>
         )
