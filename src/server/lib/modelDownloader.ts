@@ -32,7 +32,7 @@ const apiKeyCache = new Map<string, string>();
 // ─── URL helpers ─────────────────────────────────────────────────────────────
 
 export function detectSource(url: string): DownloadSource | null {
-  if (url.includes("civitai.com")) return "civitai";
+  if (url.includes("civitai.com") || url.includes("civitai.red")) return "civitai";
   if (url.includes("huggingface.co")) return "huggingface";
   return null;
 }
@@ -40,8 +40,8 @@ export function detectSource(url: string): DownloadSource | null {
 function buildDownloadUrl(url: string, source: DownloadSource, apiKey: string): string {
   if (source === "civitai") {
     let normalized = url;
-    // Convert model page URL to API download URL
-    const pageMatch = /^https:\/\/civitai\.com\/models\/(\d+)/.exec(url);
+    // Convert model page URL (civitai.com or civitai.red) to API download URL
+    const pageMatch = /^https:\/\/civitai\.(?:com|red)\/models\/(\d+)/.exec(url);
     if (pageMatch && !url.includes("/api/download/")) {
       const versionMatch = /[?&]modelVersionId=(\d+)/.exec(url);
       normalized = `https://civitai.com/api/download/models/${pageMatch[1]}`;
