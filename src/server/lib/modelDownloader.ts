@@ -182,7 +182,7 @@ export async function enqueueDownload(
   huggingfaceApiKey?: string,
 ): Promise<EnqueueResult> {
   const source = detectSource(url);
-  if (!source) return { ok: false, error: "URL must be from civitai.com or huggingface.co" };
+  if (!source) return { ok: false, error: "URL must be from civitai.com, civitai.red, or huggingface.co" };
 
   const apiKey =
     source === "civitai"
