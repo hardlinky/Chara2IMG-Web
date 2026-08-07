@@ -44,8 +44,9 @@ function buildDownloadUrl(url: string, source: DownloadSource, apiKey: string): 
     const pageMatch = /^https:\/\/civitai\.(?:com|red)\/models\/(\d+)/.exec(url);
     if (pageMatch && !url.includes("/api/download/")) {
       const versionMatch = /[?&]modelVersionId=(\d+)/.exec(url);
-      normalized = `https://civitai.com/api/download/models/${pageMatch[1]}`;
-      if (versionMatch) normalized += `?modelVersionId=${versionMatch[1]}`;
+      // Download API uses the modelVersionId as the path param, not the model ID
+      const downloadId = versionMatch ? versionMatch[1] : pageMatch[1];
+      normalized = `https://civitai.com/api/download/models/${downloadId}`;
     }
     const parsed = new URL(normalized);
     parsed.searchParams.set("token", apiKey);
