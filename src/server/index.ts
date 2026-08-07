@@ -12,6 +12,7 @@ import { registerSystemRoutes } from "./routes/system";
 import { registerUserRoutes } from "./routes/users";
 import { registerModelDownloadRoutes } from "./routes/modelDownloads";
 import { registerModelRoutes } from "./routes/models";
+import { registerWorkflowsRoutes } from "./routes/stockWorkflows";
 import { applySecurityMiddleware } from "./middleware/security";
 import { logAdminPasskey } from "./security/adminPasskey";
 import { logServerError } from "./lib/logger";
@@ -46,6 +47,7 @@ export function createServerApp(): Hono {
   registerUserRoutes(app);
   registerModelDownloadRoutes(app);
   registerModelRoutes(app);
+  registerWorkflowsRoutes(app);
 
   app.use("/*", async (c, next) => {
     await next();

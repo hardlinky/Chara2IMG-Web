@@ -784,6 +784,7 @@ export function App() {
                   onClear={() => {
                     void clearTemplate();
                   }}
+                  onImported={persistTemplate}
                 />
                 <WorkflowImport onImported={persistTemplate} onImportInputs={onImportInputs} currentTemplate={activeTemplate} />
               </div>

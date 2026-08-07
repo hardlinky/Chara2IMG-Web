@@ -1,4 +1,6 @@
+import { useEffect, useState } from "react";
 import type { WorkflowTemplateRecord } from "../../../shared/contracts/workflow";
+import { importWorkflowFromText } from "../../../shared/workflow/importWorkflow";
 import { confirmDeletion } from "../../lib/confirmDelete";
 
 type ActiveWorkflowTemplateProps = {
@@ -9,6 +11,7 @@ type ActiveWorkflowTemplateProps = {
   onClear: () => void;
   onSwitchTemplate: (template: WorkflowTemplateRecord) => void;
   onRemoveRecentTemplate: (fingerprint: string) => void;
+  onImported: (template: WorkflowTemplateRecord) => void;
 };
 
 export function ActiveWorkflowTemplate({
@@ -18,8 +21,61 @@ export function ActiveWorkflowTemplate({
   error,
   onClear,
   onSwitchTemplate,
-  onRemoveRecentTemplate
+  onRemoveRecentTemplate,
+  onImported
 }: ActiveWorkflowTemplateProps) {
+  const [stockWorkflows, setStockWorkflows] = useState<string[]>([]);
+  const [loadingStock, setLoadingStock] = useState(false);
+  const [stockError, setStockError] = useState<string | null>(null);
+
+  useEffect(() => {
+    void fetch("/api/workflows", { credentials: "include" })
+      .then((r) => r.json())
+      .then((d: unknown) => {
+        const list = (d as { workflows?: string[] }).workflows;
+        setStockWorkflows(Array.isArray(list) ? list : []);
+      })
+      .catch(() => {});
+  }, []);
+
+  async function handleLoadStock(filename: string): Promise<void> {
+    if (!filename) return;
+    setLoadingStock(true);
+    setStockError(null);
+    try {
+      const res = await fetch(`/api/workflows/${encodeURIComponent(filename)}`, { credentials: "include" });
+      if (!res.ok) { setStockError(`Failed to load ${filename}`); return; }
+      const text = await res.text();
+      const result = importWorkflowFromText(text, filename);
+      if (!result.ok) { setStockError(`Import error: ${result.error.message}`); return; }
+      onImported(result.template);
+    } catch {
+      setStockError(`Failed to load ${filename}`);
+    } finally {
+      setLoadingStock(false);
+    }
+  }
+  const stockDropdown = stockWorkflows.length > 0 ? (
+    <div className="setup-meta">
+      <h3>Stock Workflows</h3>
+      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
+        <select
+          className="select"
+          defaultValue=""
+          disabled={loadingStock}
+          onChange={(e) => void handleLoadStock(e.target.value)}
+          style={{ flex: "1 1 0" }}
+        >
+          <option value="" disabled>{loadingStock ? "Loading…" : "Select a stock workflow…"}</option>
+          {stockWorkflows.map((name) => (
+            <option key={name} value={name}>{name.replace(/\.json$/i, "")}</option>
+          ))}
+        </select>
+      </div>
+      {stockError && <p className="status-inline" data-tone="error">{stockError}</p>}
+    </div>
+  ) : null;
+
   if (isLoading) {
     return (
       <section className="setup-card">
@@ -42,6 +98,7 @@ export function ActiveWorkflowTemplate({
     return (
       <section className="setup-card">
         <h2>Active Workflow Template</h2>
+        {stockDropdown}
         <p>No active template saved yet.</p>
       </section>
     );
@@ -82,6 +139,7 @@ export function ActiveWorkflowTemplate({
           </div>
         </div>
       ) : null}
+      {stockDropdown}
       <h2>Active Workflow Template</h2>
       <div className="setup-meta">
         <p>Name: {activeTemplate.displayName}</p>
