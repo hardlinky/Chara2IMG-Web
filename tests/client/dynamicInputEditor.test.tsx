@@ -282,24 +282,20 @@ describe("dynamic input editor", () => {
         orderKey: "000001:[Input1] Detailer.Use Different Detailer Loras?"
       },
       {
-        id: "detailer:lora-row:lora_1",
-        kind: "lora-row",
+        id: "detailer:lora-list",
+        kind: "lora-list",
         inputIndex: 2,
-        fullTitle: "[Input2] Detailer.Bhive_Style.safetensors",
+        fullTitle: "[Input2] Detailer.Loras",
         category: "Detailer",
-        name: "Bhive_Style.safetensors",
+        name: "Loras",
         source: {
           nodeId: "b",
           titlePath: "b._meta.title",
           valuePath: ["lora_1"]
         },
-        constraints: { min: -5, max: 5 },
-        defaultValue: {
-          enabled: false,
-          loraName: "Bhive_Style.safetensors",
-          strength: 1
-        },
-        orderKey: "000002:[Input2] Detailer.Bhive_Style.safetensors"
+        constraints: { min: 0, max: 2 },
+        defaultValue: { loras: [{ loraName: "Bhive_Style.safetensors", strength: 1 }] },
+        orderKey: "000002:[Input2] Detailer.Loras"
       }
     ];
 
@@ -312,11 +308,7 @@ describe("dynamic input editor", () => {
         warnings={[]}
         draftValues={{
           "detailer:boolean:toggle": false,
-          "detailer:lora-row:lora_1": {
-            enabled: false,
-            loraName: "Bhive_Style.safetensors",
-            strength: 1
-          }
+          "detailer:lora-list": { loras: [{ loraName: "Bhive_Style.safetensors", strength: 1 }] }
         }}
         hasDraftDiffFromTemplate={false}
         editedControlIds={new Set()}

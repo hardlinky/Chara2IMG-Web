@@ -141,6 +141,7 @@ function toKind(rawKind: string | undefined): DynamicInputControlKind | null {
     case "dimension":
     case "image":
     case "lora-row":
+    case "lora-list":
       return rawKind;
     default:
       return null;
@@ -152,63 +153,47 @@ function toNumberOrDefault(value: unknown, fallback: number): number {
   return Number.isFinite(next) ? next : fallback;
 }
 
-function createLoraRowControls(args: {
+function createLoraListControl(args: {
   nodeId: string;
   title: string;
   titlePath: string;
   parsedTitle: { inputIndex: number; body: string };
   inputs: Record<string, unknown>;
-}): DynamicInputControl[] {
-  const controls: DynamicInputControl[] = [];
+}): DynamicInputControl | null {
   const categoryAndName = parseCategoryAndName(args.parsedTitle.body);
   const rowKeys = Object.keys(args.inputs)
     .filter((key) => /^lora_\d+$/.test(key))
     .sort((left, right) => Number(left.slice(5)) - Number(right.slice(5)));
 
-  for (const rowKey of rowKeys) {
-    const rowValue = args.inputs[rowKey];
-    if (!rowValue || typeof rowValue !== "object" || Array.isArray(rowValue)) {
-      continue;
-    }
+  if (rowKeys.length === 0) return null;
 
-    const loraRow = rowValue as {
-      on?: unknown;
-      lora?: unknown;
-      strength?: unknown;
-    };
+  // Default value: only slots with on:true from the template
+  const defaultLoras = rowKeys
+    .map((key) => args.inputs[key])
+    .filter((row): row is Record<string, unknown> => !!row && typeof row === "object" && !Array.isArray(row))
+    .filter((row) => Boolean(row.on))
+    .map((row) => ({
+      loraName: typeof row.lora === "string" && row.lora.trim() ? row.lora.trim() : "",
+      strength: typeof row.strength === "number" ? row.strength : 1,
+    }))
+    .filter((item) => item.loraName.length > 0);
 
-    const loraName =
-      typeof loraRow.lora === "string" && loraRow.lora.trim().length > 0
-        ? loraRow.lora
-        : rowKey;
-
-    controls.push({
-      id: `${args.nodeId}:lora-row:${rowKey}`,
-      kind: "lora-row",
-      inputIndex: args.parsedTitle.inputIndex,
-      fullTitle: `${args.title}.${loraName}`,
-      category: categoryAndName.category,
-      name: loraName,
-      source: {
-        nodeId: args.nodeId,
-        titlePath: args.titlePath,
-        valuePath: [rowKey]
-      },
-      constraints: {
-        min: -5,
-        max: 5,
-        precision: 3
-      },
-      defaultValue: {
-        enabled: Boolean(loraRow.on),
-        loraName,
-        strength: toNumberOrDefault(loraRow.strength, 0)
-      },
-      orderKey: `${args.parsedTitle.inputIndex.toString().padStart(6, "0")}:${args.title}:${rowKey}`
-    });
-  }
-
-  return controls;
+  return {
+    id: `${args.nodeId}:lora-list`,
+    kind: "lora-list",
+    inputIndex: args.parsedTitle.inputIndex,
+    fullTitle: args.title,
+    category: categoryAndName.category,
+    name: categoryAndName.name || "Loras",
+    source: {
+      nodeId: args.nodeId,
+      titlePath: args.titlePath,
+      valuePath: rowKeys,
+    },
+    constraints: { min: 0, max: 2, precision: 2 },
+    defaultValue: { loras: defaultLoras },
+    orderKey: `${args.parsedTitle.inputIndex.toString().padStart(6, "0")}:${args.title}`,
+  };
 }
 
 function parseTitle(title: string): { inputIndex: number; body: string } | null {
@@ -411,15 +396,15 @@ export function deriveInputControls(rawWorkflow: unknown): DynamicInputDerivatio
       continue;
     }
 
-    const loraControls = createLoraRowControls({
+    const loraControl = createLoraListControl({
       nodeId,
       title,
       titlePath,
       parsedTitle,
       inputs: node.inputs
     });
-    if (loraControls.length > 0) {
-      controls.push(...loraControls);
+    if (loraControl) {
+      controls.push(loraControl);
       continue;
     }
 

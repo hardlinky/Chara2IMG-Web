@@ -179,16 +179,13 @@ describe("buildRunWorkflowPayload", () => {
     expect(first).toEqual(second);
   });
 
-  it("applies lora-row controls to lora on/strength fields", () => {
+  it("applies lora-list control to lora on/strength fields, disabling unused slots", () => {
     const template = {
       "534": {
         class_type: "Power Lora Loader (rgthree)",
         inputs: {
-          lora_1: {
-            on: true,
-            lora: "Houtengeki_Style.safetensors",
-            strength: 1
-          }
+          lora_1: { on: false, lora: "Houtengeki_Style.safetensors", strength: 1 },
+          lora_2: { on: false, lora: "Bhive_Style.safetensors", strength: 1 }
         }
       }
     };
@@ -197,43 +194,33 @@ describe("buildRunWorkflowPayload", () => {
       templateRawJson: template,
       controls: [
         createControl({
-          id: "534:lora-row:lora_1",
-          kind: "lora-row",
-          name: "Houtengeki_Style.safetensors",
+          id: "534:lora-list",
+          kind: "lora-list",
+          name: "Loras",
           source: {
             nodeId: "534",
             titlePath: "534._meta.title",
-            valuePath: ["lora_1"]
+            valuePath: ["lora_1", "lora_2"]
           },
-          constraints: {
-            min: -5,
-            max: 5,
-            precision: 3
-          },
-          defaultValue: {
-            enabled: true,
-            loraName: "Houtengeki_Style.safetensors",
-            strength: 1
-          }
+          constraints: { min: 0, max: 2, precision: 2 },
+          defaultValue: { loras: [] }
         })
       ],
       draftValues: {
-        "534:lora-row:lora_1": {
-          enabled: false,
-          loraName: "Houtengeki_Style.safetensors",
-          strength: -2.25
-        }
+        "534:lora-list": { loras: [{ loraName: "Houtengeki_Style.safetensors", strength: 0.75 }] }
       }
     });
 
     expect(result.ok).toBe(true);
-    if (!result.ok) {
-      return;
-    }
+    if (!result.ok) return;
 
-    const loraRow = (result.payload["534"] as { inputs: { lora_1: { on: boolean; strength: number } } }).inputs.lora_1;
-    expect(loraRow.on).toBe(false);
-    expect(loraRow.strength).toBe(-2.25);
+    type LoraSlot = { on: boolean; lora: string; strength: number };
+    type Payload = { inputs: { lora_1: LoraSlot; lora_2: LoraSlot } };
+    const node = result.payload["534"] as Payload;
+    expect(node.inputs.lora_1.on).toBe(true);
+    expect(node.inputs.lora_1.lora).toBe("Houtengeki_Style.safetensors");
+    expect(node.inputs.lora_1.strength).toBe(0.75);
+    expect(node.inputs.lora_2.on).toBe(false);
   });
 
   it("strips data URL prefix and normalizes base64 padding for easy loadImageBase64 inputs", () => {

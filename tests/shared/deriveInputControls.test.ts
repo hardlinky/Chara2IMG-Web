@@ -179,7 +179,7 @@ describe("deriveInputControls", () => {
     expect(result.warnings).toEqual([]);
   });
 
-  it("maps Detailer.Loras rows into dedicated lora-row controls", () => {
+  it("maps Power Lora Loader nodes into a single lora-list control", () => {
     const workflow = {
       "534": {
         class_type: "Power Lora Loader (rgthree)",
@@ -212,9 +212,11 @@ describe("deriveInputControls", () => {
 
     const result = deriveInputControls(workflow);
 
-    expect(result.controls.map((control) => control.kind)).toEqual(["boolean", "lora-row", "lora-row"]);
-    expect(result.controls.find((control) => control.id === "534:lora-row:lora_1")?.name).toBe("Houtengeki_Style.safetensors");
-    expect(result.controls.find((control) => control.id === "534:lora-row:lora_2")?.name).toBe("Bhive_Style.safetensors");
+    expect(result.controls.map((control) => control.kind)).toEqual(["boolean", "lora-list"]);
+    const loraList = result.controls.find((control) => control.id === "534:lora-list");
+    expect(loraList?.source.valuePath).toEqual(["lora_1", "lora_2"]);
+    // Only the on:true slot appears in the default value
+    expect(loraList?.defaultValue).toEqual({ loras: [{ loraName: "Houtengeki_Style.safetensors", strength: 1 }] });
     expect(result.warnings).toEqual([]);
   });
 });

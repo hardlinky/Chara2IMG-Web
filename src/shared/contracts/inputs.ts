@@ -5,7 +5,8 @@ export type DynamicInputControlKind =
   | "boolean"
   | "dimension"
   | "image"
-  | "lora-row";
+  | "lora-row"
+  | "lora-list";
 
 export type DynamicInputConstraint = {
   required?: boolean;
@@ -73,6 +74,9 @@ export type DynamicInputValue =
       enabled: boolean;
       loraName: string;
       strength: number;
+    }
+  | {
+      loras: Array<{ loraName: string; strength: number }>;
     }
   | null;
 

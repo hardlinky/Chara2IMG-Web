@@ -11,7 +11,8 @@ import type { WorkflowTemplateRecord } from "../../../shared/contracts/workflow"
 import { useDynamicInputEditor } from "./useDynamicInputEditor";
 import { buildVariableTokenParts, isNameField, getCategoriesWithName } from "./inputVariables";
 import { toggleCategoryTracked, useTrackedInputCategories } from "../../lib/inputTrackingStorage";
-import { toImageDataUrl } from "../../lib/modelAssets";
+import { toImageDataUrl, stripModelExtension } from "../../lib/modelAssets";
+import { fetchAvailableLoras } from "../../lib/api/modelsClient";
 import "../../styles/setupInput.css";
 
 // Integer-valued inputs step by 1; every other number spinner steps by 0.05.
@@ -189,6 +190,114 @@ function toImageDraftValue(file: File): Promise<{ dataUrl: string }> {
     });
     reader.readAsDataURL(file);
   });
+}
+
+function LoraListInput({
+  controlId,
+  sliderMin,
+  sliderMax,
+  currentLoras,
+  onChange,
+}: {
+  controlId: string;
+  sliderMin: number;
+  sliderMax: number;
+  currentLoras: Array<{ loraName: string; strength: number }>;
+  onChange: (loras: Array<{ loraName: string; strength: number }>) => void;
+}) {
+  const [available, setAvailable] = useState<string[] | null>(null);
+  const sliderStep = 0.05;
+
+  useEffect(() => {
+    void fetchAvailableLoras().then(setAvailable);
+  }, []);
+
+  function updateStrength(index: number, strength: number) {
+    const next = [...currentLoras];
+    next[index] = { ...next[index]!, strength };
+    onChange(next);
+  }
+
+  function removeLora(index: number) {
+    onChange(currentLoras.filter((_, i) => i !== index));
+  }
+
+  function addLora(loraName: string) {
+    if (!loraName || currentLoras.length >= 10) return;
+    onChange([...currentLoras, { loraName, strength: 1.0 }]);
+  }
+
+  const addableOptions = available
+    ? available.filter((name) => !currentLoras.some((l) => l.loraName === name))
+    : [];
+
+  return (
+    <div className="input-lora-list">
+      {currentLoras.map((lora, index) => {
+        const missing = available !== null && !available.includes(lora.loraName);
+        const displayName = stripModelExtension(lora.loraName);
+        return (
+          <div key={`${controlId}-${lora.loraName}-${index}`} className="input-lora-list-item">
+            <div className="input-lora-list-item-header">
+              <span
+                className={`input-lora-list-item-name${missing ? " input-lora-list-item-name--missing" : ""}`}
+                title={missing ? `${lora.loraName} — file not found on disk` : lora.loraName}
+              >
+                {displayName}{missing ? " (not found)" : ""}
+              </span>
+              <button
+                type="button"
+                className="input-lora-list-item-delete"
+                aria-label={`Remove ${displayName}`}
+                onClick={() => removeLora(index)}
+              >
+                ×
+              </button>
+            </div>
+            <div className="input-lora-list-strength">
+              <input
+                type="range"
+                min={sliderMin}
+                max={sliderMax}
+                step={sliderStep}
+                value={lora.strength}
+                disabled={missing}
+                onChange={(e) => updateStrength(index, Number(e.target.value))}
+              />
+              <WheelNumberInput
+                className="input"
+                wheelStep={sliderStep}
+                currentValue={lora.strength}
+                onWheelStep={(next) => updateStrength(index, next)}
+                value={lora.strength}
+                disabled={missing}
+                onChange={(e) => {
+                  const parsed = Number(e.target.value);
+                  if (Number.isFinite(parsed)) updateStrength(index, parsed);
+                }}
+              />
+            </div>
+          </div>
+        );
+      })}
+      {currentLoras.length < 10 && (available === null || addableOptions.length > 0) && (
+        <div className="input-lora-add-row">
+          <span>Add LoRA:</span>
+          <select
+            className="select"
+            value=""
+            disabled={available === null}
+            onChange={(e) => { if (e.target.value) addLora(e.target.value); }}
+          >
+            <option value="">{available === null ? "Loading\u2026" : "Select a LoRA\u2026"}</option>
+            {addableOptions.map((name) => (
+              <option key={name} value={name}>{stripModelExtension(name)}</option>
+            ))}
+          </select>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function renderInputControl(
@@ -403,6 +512,21 @@ function renderInputControl(
             }
           />
         </div>
+      );
+    }
+    case "lora-list": {
+      const listValue =
+        value && typeof value === "object" && "loras" in value
+          ? (value as { loras: Array<{ loraName: string; strength: number }> })
+          : { loras: [] };
+      return (
+        <LoraListInput
+          controlId={control.id}
+          sliderMin={control.constraints.min ?? 0}
+          sliderMax={control.constraints.max ?? 2}
+          currentLoras={listValue.loras}
+          onChange={(loras) => setValue(control.id, { loras })}
+        />
       );
     }
     default:
@@ -819,7 +943,7 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
                 (control) =>
                   !(
                     category === "Detailer" &&
-                    control.kind === "lora-row" &&
+                    (control.kind === "lora-row" || control.kind === "lora-list") &&
                     !detailerLorasEnabled
                   )
               )
@@ -827,7 +951,7 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
           <div
             key={control.id}
             className={`input-row ${
-              category === "Detailer" && control.kind === "lora-row" && animateDetailerLoraRows
+              category === "Detailer" && (control.kind === "lora-row" || control.kind === "lora-list") && animateDetailerLoraRows
                 ? "input-row-lora-reveal"
                 : ""
             }${props.editedControlIds.has(control.id) ? " is-edited" : ""}`}
@@ -866,6 +990,9 @@ export function DynamicInputEditorView(props: DynamicInputEditorViewProps) {
                   </p>
                 ) : null}
               </>
+            ) : control.kind === "lora-list" ? (
+              // lora-list renders without a label wrapper; it contains its own per-item labels
+              renderInputControl(control, props.draftValues, props.setValue, Boolean(inlineErrorsByControlId[control.id]))
             ) : (
               <label className="field">
                 <span className="field-label-row">

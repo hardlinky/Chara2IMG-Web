@@ -243,7 +243,7 @@ export function validateDraftForRun(
 }
 
 export function shouldPersistDraftValue(control: DynamicInputControl, value: DynamicInputValue): boolean {
-  if (control.kind === "text" || control.kind === "multiline") {
+  if (control.kind === "text" || control.kind === "multiline" || control.kind === "lora-list") {
     return true;
   }
 

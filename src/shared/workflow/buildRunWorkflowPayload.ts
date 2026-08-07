@@ -100,6 +100,28 @@ function applyControlValue(
     return null;
   }
 
+  if (control.kind === "lora-list") {
+    const slotKeys = control.source.valuePath;
+    const listValue =
+      nextValue && typeof nextValue === "object" && "loras" in nextValue
+        ? (nextValue as { loras: Array<{ loraName: string; strength: number }> })
+        : { loras: [] };
+
+    for (let i = 0; i < slotKeys.length; i++) {
+      const slotKey = slotKeys[i]!;
+      const currentRow = inputs[slotKey];
+      if (!currentRow || typeof currentRow !== "object" || Array.isArray(currentRow)) continue;
+
+      if (i < listValue.loras.length) {
+        const lora = listValue.loras[i]!;
+        inputs[slotKey] = { ...(currentRow as Record<string, unknown>), on: true, lora: lora.loraName, strength: lora.strength };
+      } else {
+        inputs[slotKey] = { ...(currentRow as Record<string, unknown>), on: false };
+      }
+    }
+    return null;
+  }
+
   if (control.kind === "lora-row") {
     const currentRow = inputs[field];
     if (!currentRow || typeof currentRow !== "object" || Array.isArray(currentRow)) {

@@ -11,6 +11,7 @@ import { registerRunpodProxyRoutes } from "./routes/runpodProxy";
 import { registerSystemRoutes } from "./routes/system";
 import { registerUserRoutes } from "./routes/users";
 import { registerModelDownloadRoutes } from "./routes/modelDownloads";
+import { registerModelRoutes } from "./routes/models";
 import { applySecurityMiddleware } from "./middleware/security";
 import { logAdminPasskey } from "./security/adminPasskey";
 import { logServerError } from "./lib/logger";
@@ -44,6 +45,7 @@ export function createServerApp(): Hono {
   registerSystemRoutes(app);
   registerUserRoutes(app);
   registerModelDownloadRoutes(app);
+  registerModelRoutes(app);
 
   app.use("/*", async (c, next) => {
     await next();
