@@ -6,7 +6,8 @@ export type DynamicInputControlKind =
   | "dimension"
   | "image"
   | "lora-row"
-  | "lora-list";
+  | "lora-list"
+  | "checkpoint";
 
 export type DynamicInputConstraint = {
   required?: boolean;

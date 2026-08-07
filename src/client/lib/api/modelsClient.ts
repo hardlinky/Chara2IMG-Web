@@ -23,3 +23,24 @@ export async function fetchAvailableLoras(): Promise<string[]> {
   }
   return pending;
 }
+
+let checkpointCache: string[] | null = null;
+let checkpointPending: Promise<string[]> | null = null;
+
+export async function fetchAvailableCheckpoints(): Promise<string[]> {
+  if (checkpointCache !== null) return checkpointCache;
+  if (!checkpointPending) {
+    checkpointPending = fetch("/api/models/checkpoints", { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : { checkpoints: [] }))
+      .then((data: unknown) => {
+        const checkpoints = (data as { checkpoints?: string[] }).checkpoints;
+        checkpointCache = Array.isArray(checkpoints) ? checkpoints : [];
+        return checkpointCache;
+      })
+      .catch(() => {
+        checkpointPending = null;
+        return [];
+      });
+  }
+  return checkpointPending;
+}

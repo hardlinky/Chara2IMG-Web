@@ -68,10 +68,13 @@ function inferMetadata(classType: string, inputs: Record<string, unknown>): Inpu
     return { kind: "text", field: "value" };
   }
 
+  // Checkpoint files — detect by field name since class_type varies across loaders
+  if (typeof inputs.ckpt_name === "string") return { kind: "checkpoint", field: "ckpt_name" };
+
   // --- Class-type explicit mappings ---
   switch (classType) {
     case "CheckpointLoaderSimple":
-      if (typeof inputs.ckpt_name === "string") return { kind: "text", field: "ckpt_name" };
+      if (typeof inputs.ckpt_name === "string") return { kind: "checkpoint", field: "ckpt_name" };
       break;
 
     case "VAELoader":
@@ -142,6 +145,7 @@ function toKind(rawKind: string | undefined): DynamicInputControlKind | null {
     case "image":
     case "lora-row":
     case "lora-list":
+    case "checkpoint":
       return rawKind;
     default:
       return null;

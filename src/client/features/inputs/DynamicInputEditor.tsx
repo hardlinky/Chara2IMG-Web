@@ -12,7 +12,7 @@ import { useDynamicInputEditor } from "./useDynamicInputEditor";
 import { buildVariableTokenParts, isNameField, getCategoriesWithName } from "./inputVariables";
 import { toggleCategoryTracked, useTrackedInputCategories } from "../../lib/inputTrackingStorage";
 import { toImageDataUrl, stripModelExtension } from "../../lib/modelAssets";
-import { fetchAvailableLoras } from "../../lib/api/modelsClient";
+import { fetchAvailableLoras, fetchAvailableCheckpoints } from "../../lib/api/modelsClient";
 import "../../styles/setupInput.css";
 
 // Integer-valued inputs step by 1; every other number spinner steps by 0.05.
@@ -190,6 +190,33 @@ function toImageDraftValue(file: File): Promise<{ dataUrl: string }> {
     });
     reader.readAsDataURL(file);
   });
+}
+
+function CheckpointSelect({ value, onChange }: { value: string; onChange: (name: string) => void }) {
+  const [available, setAvailable] = useState<string[] | null>(null);
+
+  useEffect(() => {
+    void fetchAvailableCheckpoints().then(setAvailable);
+  }, []);
+
+  // Keep the current value selectable even if not present on disk
+  const options = available ?? [];
+  const needsFallback = value && !options.includes(value);
+
+  return (
+    <select
+      className="select"
+      value={value}
+      disabled={available === null}
+      onChange={(e) => onChange(e.target.value)}
+    >
+      {available === null && <option value={value}>{value ? stripModelExtension(value) : "Loading\u2026"}</option>}
+      {needsFallback && <option value={value}>{stripModelExtension(value)} (not found)</option>}
+      {options.map((name) => (
+        <option key={name} value={name}>{stripModelExtension(name)}</option>
+      ))}
+    </select>
+  );
 }
 
 function LoraListInput({
@@ -512,6 +539,14 @@ function renderInputControl(
             }
           />
         </div>
+      );
+    }
+    case "checkpoint": {
+      return (
+        <CheckpointSelect
+          value={typeof value === "string" ? value : ""}
+          onChange={(name) => setValue(control.id, name)}
+        />
       );
     }
     case "lora-list": {
