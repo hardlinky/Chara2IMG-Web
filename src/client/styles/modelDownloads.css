@@ -75,10 +75,8 @@
 }
 
 .model-dl-card-meta-url {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 40ch;
+  overflow-wrap: break-word;
+  word-break: break-all;
 }
 
 .model-dl-progress-row {

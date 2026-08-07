@@ -113,7 +113,7 @@ function DownloadCard({
 
       <div className="model-dl-card-meta">
         <span>Path: <strong>{entry.destPath}</strong></span>
-        <span className="model-dl-card-meta-url" title={entry.url}>URL: {entry.url}</span>
+        <a className="model-dl-card-meta-url" href={entry.url} target="_blank" rel="noopener noreferrer" title={entry.url}>URL: {entry.url}</a>
       </div>
 
       <ProgressBar entry={entry} />
