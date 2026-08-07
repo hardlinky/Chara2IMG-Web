@@ -10,10 +10,13 @@ import { registerPinnedImageRoutes } from "./routes/pinnedImages";
 import { registerRunpodProxyRoutes } from "./routes/runpodProxy";
 import { registerSystemRoutes } from "./routes/system";
 import { registerUserRoutes } from "./routes/users";
+import { registerModelDownloadRoutes } from "./routes/modelDownloads";
 import { applySecurityMiddleware } from "./middleware/security";
 import { logAdminPasskey } from "./security/adminPasskey";
 import { logServerError } from "./lib/logger";
 import { ensureJobStoreDirs, purgeExpiredJobs } from "./lib/jobStore";
+import { initDownloadStore } from "./lib/modelDownloadStore";
+import { startQueueOnBoot } from "./lib/modelDownloader";
 
 const CLIENT_DIST_ROOT = "./dist/client";
 
@@ -40,6 +43,7 @@ export function createServerApp(): Hono {
   registerRunpodProxyRoutes(app);
   registerSystemRoutes(app);
   registerUserRoutes(app);
+  registerModelDownloadRoutes(app);
 
   app.use("/*", async (c, next) => {
     await next();
@@ -83,6 +87,8 @@ if (isMainModule) {
 
   void (async () => {
     await ensureJobStoreDirs();
+    await initDownloadStore();
+    startQueueOnBoot();
     setInterval(() => {
       void purgeExpiredJobs().catch((err) => {
         logServerError("Purge timer error", err);

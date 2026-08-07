@@ -1,0 +1,176 @@
+.model-dl-api-keys {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+@media (max-width: 600px) {
+  .model-dl-api-keys {
+    grid-template-columns: 1fr;
+  }
+}
+
+.model-dl-url-row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-end;
+}
+
+.model-dl-url-row .input {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.model-dl-url-row .btn {
+  flex-shrink: 0;
+}
+
+.model-dl-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.model-dl-card {
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, rgba(39, 47, 56, 0.84), rgba(21, 26, 31, 0.88));
+  padding: var(--space-3);
+  display: grid;
+  gap: var(--space-2);
+}
+
+.model-dl-card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.model-dl-filename {
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 1 1 0;
+}
+
+.model-dl-source-tag {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.model-dl-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.model-dl-card-meta-url {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 40ch;
+}
+
+.model-dl-progress-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.model-dl-progress-track {
+  flex: 1 1 0;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--color-surface-elevated);
+  overflow: hidden;
+}
+
+.model-dl-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--color-accent-primary-active), var(--color-accent-primary-hover));
+  transition: width 300ms ease;
+}
+
+.model-dl-progress-fill[data-status="finished"] {
+  background: linear-gradient(90deg, #2e7d55, #4caf7d);
+}
+
+.model-dl-progress-fill[data-status="failed"],
+.model-dl-progress-fill[data-status="cancelled"] {
+  background: linear-gradient(90deg, #7d2e2e, #c45c5c);
+}
+
+.model-dl-progress-bytes {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: 9ch;
+  text-align: right;
+}
+
+.model-dl-status-chip {
+  border: 1px solid var(--color-border-strong);
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+  font-size: var(--font-size-xs);
+  flex-shrink: 0;
+}
+
+.model-dl-status-chip[data-status="queued"] {
+  border-color: rgba(140, 152, 166, 0.45);
+  background: rgba(38, 45, 54, 0.72);
+  color: var(--color-text-secondary);
+}
+
+.model-dl-status-chip[data-status="in_progress"] {
+  border-color: color-mix(in srgb, var(--color-accent-primary) 60%, transparent);
+  background: color-mix(in srgb, var(--color-accent-primary) 22%, transparent);
+  color: var(--color-accent-primary-hover);
+}
+
+.model-dl-status-chip[data-status="finished"] {
+  border-color: rgba(96, 190, 138, 0.55);
+  background: rgba(25, 49, 38, 0.8);
+  color: var(--color-success-text);
+}
+
+.model-dl-status-chip[data-status="cancelled"],
+.model-dl-status-chip[data-status="failed"] {
+  border-color: rgba(214, 108, 110, 0.6);
+  background: rgba(78, 35, 36, 0.82);
+  color: var(--color-error-text);
+}
+
+.model-dl-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.model-dl-error {
+  font-size: var(--font-size-xs);
+  color: var(--color-error-text);
+  word-break: break-word;
+}
+
+.model-dl-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
