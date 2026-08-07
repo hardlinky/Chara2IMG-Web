@@ -191,7 +191,7 @@ export function ModelDownloadsPanel({ enabled }: { enabled: boolean }) {
   if (!enabled) return null;
 
   function detectSource(rawUrl: string): "civitai" | "huggingface" | null {
-    if (rawUrl.includes("civitai.com")) return "civitai";
+    if (rawUrl.includes("civitai.com") || rawUrl.includes("civitai.red")) return "civitai";
     if (rawUrl.includes("huggingface.co")) return "huggingface";
     return null;
   }
