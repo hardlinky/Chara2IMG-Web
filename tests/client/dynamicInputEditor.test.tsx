@@ -52,7 +52,52 @@ function createControls(): DynamicInputControl[] {
   ];
 }
 
+function createDimensionControl(): DynamicInputControl {
+  return {
+    id: "c:dimension:width:height",
+    kind: "dimension",
+    inputIndex: 3,
+    fullTitle: "[Input3] Render.Size",
+    category: "Render",
+    name: "Size",
+    source: {
+      nodeId: "c",
+      titlePath: "c.inputs.title",
+      valuePath: ["width", "height"]
+    },
+    constraints: {},
+    defaultValue: { width: 1024, height: 1024 },
+    orderKey: "000003:[Input3] Render.Size"
+  };
+}
+
 describe("dynamic input editor", () => {
+  it("increments width and height controls in steps of 32", () => {
+    const control = createDimensionControl();
+    const html = renderToStaticMarkup(
+      <DynamicInputEditorView
+        controls={[control]}
+        sections={buildSectionsFromControls([control])}
+        sectionColumnByCategory={{}}
+        columnsSplitRatio={0.5}
+        warnings={[]}
+        draftValues={{ [control.id]: { width: 1024, height: 768 } }}
+        hasDraftDiffFromTemplate={false}
+        editedControlIds={new Set()}
+        inlineErrorsByControlId={{}}
+        runBlockingMessage={null}
+        setValue={vi.fn()}
+        moveSection={vi.fn()}
+        toggleSectionColumn={vi.fn()}
+        setColumnsSplitRatio={vi.fn()}
+        resetToTemplateDefaults={vi.fn()}
+        onRun={vi.fn()}
+      />
+    );
+
+    expect(html.match(/step="32"/g)).toHaveLength(2);
+  });
+
   it("renders grouped controls and warnings", () => {
     const controls = createControls();
     const warnings: DynamicInputWarning[] = [

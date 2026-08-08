@@ -404,7 +404,7 @@ function renderInputControl(
             Width
             <WheelNumberInput
               className={className}
-              wheelStep={1}
+              wheelStep={32}
               currentValue={dimensions.width}
               onWheelStep={(next) => setValue(control.id, { width: next, height: dimensions.height })}
               value={dimensions.width}
@@ -429,7 +429,7 @@ function renderInputControl(
             Height
             <WheelNumberInput
               className={className}
-              wheelStep={1}
+              wheelStep={32}
               currentValue={dimensions.height}
               onWheelStep={(next) => setValue(control.id, { width: dimensions.width, height: next })}
               value={dimensions.height}
