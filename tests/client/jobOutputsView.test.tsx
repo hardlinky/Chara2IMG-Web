@@ -59,6 +59,29 @@ describe("JobOutputsView", () => {
     expect(html).not.toContain(`${cluster.jobId} |`);
   });
 
+  it("mounts only the first image batch for large jobs", () => {
+    const outputs = Array.from({ length: 110 }, (_, outputIndex) => ({
+      dataUrl: tinyPngDataUrl,
+      mimeType: "image/png" as const,
+      sourcePath: `$.output.images[${outputIndex}].image`,
+      outputIndex,
+      isPinned: false
+    }));
+    const html = renderToStaticMarkup(
+      <JobOutputsView
+        cluster={{ ...cluster, outputCount: outputs.length, outputs, representative: outputs[0]! }}
+        onBack={() => undefined}
+        onRerun={() => undefined}
+        onLoadInputs={() => undefined}
+        onRemoveImage={() => undefined}
+        onRemoveAllOutputs={() => undefined}
+      />
+    );
+
+    expect(html.match(/class="outputs-image-tile"/g)).toHaveLength(12);
+    expect(html).toContain("Load more images");
+  });
+
   it("renders the job owner nametag on each output card", () => {
     const html = renderToStaticMarkup(
       <JobOutputsView

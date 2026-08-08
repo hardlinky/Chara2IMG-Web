@@ -27,7 +27,7 @@ type JobOutputsViewProps = {
   currentUser?: string | null;
 };
 
-const PAGE_SIZE = 24;
+const PAGE_SIZE = 12;
 
 function toRelativeTimestamp(isoValue: string | null): string {
   if (!isoValue) {

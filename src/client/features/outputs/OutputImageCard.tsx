@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { MouseEventHandler, ReactNode, SyntheticEvent } from "react";
 import type { RecentJobOutputImage } from "../../../shared/contracts/jobs";
 import { JOB_IMAGE_TTL_MS } from "../../../shared/contracts/jobs";
@@ -130,11 +130,35 @@ export function OutputImageCard({
   const [isLoading, setIsLoading] = useState(isUrlBased);
   const [isAuthError, setIsAuthError] = useState(false);
   const [resolvedSrc, setResolvedSrc] = useState<string | null>(null);
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const [shouldLoad, setShouldLoad] = useState(!isUrlBased);
   // Download progress 0-100 while streaming; null means length unknown (indeterminate).
   const [loadProgress, setLoadProgress] = useState<number | null>(null);
 
   useEffect(() => {
-    if (!isUrlBased) return;
+    if (!isUrlBased || shouldLoad) return;
+
+    const card = cardRef.current;
+    if (!card || typeof IntersectionObserver === "undefined") {
+      setShouldLoad(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setShouldLoad(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "600px 0px" }
+    );
+    observer.observe(card);
+    return () => observer.disconnect();
+  }, [isUrlBased, shouldLoad]);
+
+  useEffect(() => {
+    if (!isUrlBased || !shouldLoad) return;
     setIsLoading(true);
     setIsAuthError(false);
     setResolvedSrc(null);
@@ -226,10 +250,10 @@ export function OutputImageCard({
     })();
 
     return () => { cancelled = true; };
-  }, [image.dataUrl, image.cacheExpiresAt, image.isPinned, isArchived, isUrlBased]);
+  }, [image.dataUrl, image.cacheExpiresAt, image.isPinned, isArchived, isUrlBased, shouldLoad]);
 
   return (
-    <div className={`outputs-image-tile-wrapper ${maxVisible ? "" : "outputs-image-tile-hidden"}`.trim()}>
+    <div ref={cardRef} className={`outputs-image-tile-wrapper ${maxVisible ? "" : "outputs-image-tile-hidden"}`.trim()}>
       <div className="outputs-image-media">
         <button type="button" className="outputs-image-tile" onClick={onOpen} aria-label={`Open ${displayPrefix} image ${imageLabel}`}>
           {imgBroken || isAuthError ? (
@@ -259,13 +283,15 @@ export function OutputImageCard({
                   )}
                 </div>
               ) : null}
-              <img
-                src={isUrlBased ? (resolvedSrc ?? "") : image.dataUrl}
-                alt={`${displayPrefix} ${imageLabel}`}
-                loading="lazy"
-                onLoad={(e) => { setIsLoading(false); onImageLoad?.(e); }}
-                onError={() => setImgBroken(true)}
-              />
+              {(!isUrlBased || resolvedSrc) ? (
+                <img
+                  src={isUrlBased ? resolvedSrc! : image.dataUrl}
+                  alt={`${displayPrefix} ${imageLabel}`}
+                  loading="lazy"
+                  onLoad={(e) => { setIsLoading(false); onImageLoad?.(e); }}
+                  onError={() => setImgBroken(true)}
+                />
+              ) : null}
             </>
           )}
         </button>
