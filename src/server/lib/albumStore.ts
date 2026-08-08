@@ -148,12 +148,16 @@ export async function getAlbum(id: string, user: string | null): Promise<Album |
   return albums.find((album) => album.id === id) ?? null;
 }
 
-// True when the image belongs to at least one published album (any owner).
-export async function isImageInPublishedAlbum(jobId: string, imageIndex: number): Promise<boolean> {
+// True when the image belongs to an album visible to the requesting user.
+export async function isImageInVisibleAlbum(
+  jobId: string,
+  imageIndex: number,
+  user: string | null
+): Promise<boolean> {
   const albums = await readAlbumsFile();
   return albums.some(
     (album) =>
-      album.isPublished &&
+      isAlbumVisibleTo(album, user) &&
       album.images.some((ref) => ref.jobId === jobId && ref.imageIndex === imageIndex)
   );
 }

@@ -3,7 +3,7 @@ import { join } from "node:path";
 import type { Hono } from "hono";
 import { getSessionUser, requireInvitedSession } from "../middleware/session";
 import { listJobs, readJob, readJobAnywhere, deleteJob, deleteJobImage, getJobTmpDir, getJobArchiveDir, pinImage, unpinImage, listPresentImageIndices } from "../lib/jobStore";
-import { isImageInPublishedAlbum, removeImageFromAllAlbums } from "../lib/albumStore";
+import { isImageInVisibleAlbum, removeImageFromAllAlbums } from "../lib/albumStore";
 import type { JobRecord } from "../../shared/contracts/jobs";
 
 // A user can see their own jobs plus anonymous (null-owner) ones.
@@ -65,10 +65,10 @@ export function registerJobsRoutes(app: Hono): void {
       return c.json({ ok: false, error: "Not found" }, 404);
     }
 
-    // Owners/anonymous see their images directly; others only if the image is
-    // part of a published album (image visibility without job navigation).
+    // Owners/anonymous see their images directly; otherwise mirror album
+    // visibility so anonymous and published album images can still render.
     const user = await getSessionUser(c);
-    if (!canSeeJob(job, user) && !(await isImageInPublishedAlbum(jobId, index))) {
+    if (!canSeeJob(job, user) && !(await isImageInVisibleAlbum(jobId, index, user))) {
       return c.json({ ok: false, error: "Not found" }, 404);
     }
 
