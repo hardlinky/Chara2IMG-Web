@@ -66,4 +66,14 @@ describe("credit presentation", () => {
     expect(html).toContain("Gold balance");
     expect(html).toContain("Concurrent jobs");
   });
+
+  it("labels the shared anonymous wallet identity", () => {
+    const html = renderToStaticMarkup(<CreditAccountEditor
+      users={["anonymous", "artist"]}
+      walletGroups={["default"]}
+      onSaved={() => undefined}
+    />);
+
+    expect(html).toContain("Anonymous users (shared)");
+  });
 });

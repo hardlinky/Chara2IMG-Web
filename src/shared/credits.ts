@@ -3,6 +3,12 @@ export type CreditBalances = {
   staticCredits: number;
 };
 
+export const ANONYMOUS_CREDIT_USERNAME = "anonymous";
+
+export function isReservedAnonymousUsername(username: string): boolean {
+  return /^(anon|anonymous)$/i.test(username.trim());
+}
+
 export type CreditPricedJob = {
   status: string;
   startedAt: string | null | undefined;

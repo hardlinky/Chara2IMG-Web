@@ -21,6 +21,7 @@ import {
   listManagedEndpointWallets,
   type CreditAccount
 } from "../lib/creditStore";
+import { ANONYMOUS_CREDIT_USERNAME } from "../../shared/credits";
 
 const MAX_WORKFLOW_BYTES = 5 * 1024 * 1024;
 
@@ -67,7 +68,12 @@ export function registerAdminRoutes(app: Hono): void {
       listCreditAccounts(),
       listCreditLedger()
     ]);
-    return c.json({ ok: true, users, accounts, ledger, managedEndpoints: listManagedEndpointWallets() });
+    const creditUsers = [...new Set([
+      ANONYMOUS_CREDIT_USERNAME,
+      ...users,
+      ...accounts.map((account) => account.username)
+    ])].sort((left, right) => left.localeCompare(right));
+    return c.json({ ok: true, users: creditUsers, accounts, ledger, managedEndpoints: listManagedEndpointWallets() });
   });
 
   app.put("/api/admin/credits/accounts", async (c) => {

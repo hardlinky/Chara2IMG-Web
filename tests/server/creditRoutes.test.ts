@@ -69,9 +69,48 @@ describe("credit routes", () => {
 
     expect(update.status).toBe(200);
     expect(await listed.json()).toMatchObject({
+      users: expect.arrayContaining(["anonymous", "artist"]),
       accounts: [expect.objectContaining({ username: "artist", refreshingCredits: 80, staticCredits: 25 })],
       managedEndpoints: { "managed-endpoint": "default" }
     });
+  });
+
+  it("lets an admin assign the wallet shared by all anonymous sessions", async () => {
+    const { createServerApp } = await import("../../src/server/index");
+    const app = createServerApp();
+    const firstInvited = await invitedCookie(app);
+    const verified = await app.request("http://localhost/api/admin/verify-key", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: firstInvited },
+      body: JSON.stringify({ key: "admin-credit-test" })
+    });
+    const adminCookie = `${firstInvited}; ${cookieFrom(verified)}`;
+    const update = await app.request("http://localhost/api/admin/credits/accounts", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Cookie: adminCookie },
+      body: JSON.stringify({
+        username: "anonymous",
+        walletGroupId: "default",
+        allowance: 50,
+        refreshIntervalMs: 86_400_000,
+        refreshingCredits: 40,
+        staticCredits: 5,
+        maxActiveJobs: 3,
+        nextRefreshAt: "2099-01-01T00:00:00.000Z"
+      })
+    });
+    const secondInvited = await invitedCookie(app);
+
+    const firstBalance = await app.request("http://localhost/api/users/credits?endpointId=managed-endpoint", {
+      headers: { Cookie: firstInvited }
+    });
+    const secondBalance = await app.request("http://localhost/api/users/credits?endpointId=managed-endpoint", {
+      headers: { Cookie: secondInvited }
+    });
+
+    expect(update.status).toBe(200);
+    expect(await firstBalance.json()).toMatchObject({ refreshingCredits: 40, staticCredits: 5, maxActiveJobs: 3 });
+    expect(await secondBalance.json()).toMatchObject({ refreshingCredits: 40, staticCredits: 5, maxActiveJobs: 3 });
   });
 
   it("returns the current session balance for a managed endpoint", async () => {

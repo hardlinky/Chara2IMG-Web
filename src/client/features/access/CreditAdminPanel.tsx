@@ -6,6 +6,7 @@ import {
   type CreditAccountDto
 } from "../../lib/api/creditsClient";
 import "../../styles/credits.css";
+import { ANONYMOUS_CREDIT_USERNAME } from "../../../shared/credits";
 
 type RefreshUnit = "minutes" | "hours" | "days";
 
@@ -14,6 +15,10 @@ const UNIT_MS: Record<RefreshUnit, number> = {
   hours: 3_600_000,
   days: 86_400_000
 };
+
+function creditUsernameLabel(username: string): string {
+  return username === ANONYMOUS_CREDIT_USERNAME ? "Anonymous users (shared)" : username;
+}
 
 function toRefreshControl(intervalMs: number | undefined): { value: number; unit: RefreshUnit } {
   if (!intervalMs) return { value: 24, unit: "hours" };
@@ -69,7 +74,7 @@ export function CreditAccountEditor({
     <div className="credit-editor">
       <label className="field">Username
         <input className="input" list="credit-users" value={username} onChange={(event) => setUsername(event.target.value)} />
-        <datalist id="credit-users">{users.map((user) => <option key={user} value={user} />)}</datalist>
+        <datalist id="credit-users">{users.map((user) => <option key={user} value={user} label={creditUsernameLabel(user)} />)}</datalist>
       </label>
       <label className="field">Wallet group
         <input className="input" list="credit-wallet-groups" value={walletGroupId} onChange={(event) => setWalletGroupId(event.target.value)} />
@@ -118,7 +123,7 @@ export function CreditAdminPanel() {
 
   useEffect(load, []);
 
-  const users = [...new Set([...(data?.users ?? []), ...(data?.accounts.map((account) => account.username) ?? []), "anonymous"])].sort();
+  const users = [...new Set([...(data?.users ?? []), ...(data?.accounts.map((account) => account.username) ?? []), ANONYMOUS_CREDIT_USERNAME])].sort();
   const walletGroups = [...new Set(["default", ...Object.values(data?.managedEndpoints ?? {}), ...(data?.accounts.map((account) => account.walletGroupId) ?? [])])].sort();
 
   return (
@@ -137,7 +142,7 @@ export function CreditAdminPanel() {
           <thead><tr><th>User</th><th>Wallet</th><th>Green</th><th>Gold</th><th>Allowance</th><th>Jobs</th><th>Next refresh</th><th></th></tr></thead>
           <tbody>{data?.accounts.map((account) => (
             <tr key={`${account.username}:${account.walletGroupId}`}>
-              <td>{account.username}</td><td>{account.walletGroupId}</td><td>{account.refreshingCredits}</td><td>{account.staticCredits}</td>
+              <td>{creditUsernameLabel(account.username)}</td><td>{account.walletGroupId}</td><td>{account.refreshingCredits}</td><td>{account.staticCredits}</td>
               <td>{account.allowance}</td><td>{account.maxActiveJobs}</td><td>{new Date(account.nextRefreshAt).toLocaleString()}</td>
               <td><button className="btn btn-secondary" type="button" onClick={() => setSelectedAccount(account)}>Edit</button></td>
             </tr>

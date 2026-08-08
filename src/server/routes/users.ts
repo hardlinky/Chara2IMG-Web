@@ -8,6 +8,7 @@ import {
 import { loginOrCreateUser } from "../lib/userStore";
 import { userLoginSchema } from "../schemas/users";
 import { getCreditBalance } from "../lib/creditStore";
+import { ANONYMOUS_CREDIT_USERNAME } from "../../shared/credits";
 
 export function registerUserRoutes(app: Hono): void {
   app.use("/api/users/*", requireInvitedSession);
@@ -44,7 +45,7 @@ export function registerUserRoutes(app: Hono): void {
     if (!endpointId) {
       return c.json({ ok: false, error: "Endpoint ID is required" }, 400);
     }
-    const username = (await getSessionUser(c)) ?? "anonymous";
+    const username = (await getSessionUser(c)) ?? ANONYMOUS_CREDIT_USERNAME;
     return c.json({ ok: true, ...(await getCreditBalance(username, endpointId)) });
   });
 }

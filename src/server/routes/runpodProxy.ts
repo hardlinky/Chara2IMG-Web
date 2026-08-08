@@ -8,6 +8,7 @@ import { redactSecrets } from "../lib/redaction";
 import { isTerminalRunpodStatus, normalizeRunpodStatus, toTerminalReason, type JobStatus } from "../../shared/contracts/jobs";
 import { formatJobDisplayName } from "../../shared/jobDisplay";
 import { logServerError, logServerWarning } from "../lib/logger";
+import { ANONYMOUS_CREDIT_USERNAME } from "../../shared/credits";
 import { getCreditBalance, getManagedWalletGroupId } from "../lib/creditStore";
 import { releaseSubmissionCapacity, reserveSubmissionCapacity } from "../lib/submissionCapacity";
 import { settleTerminalJobBilling } from "../lib/jobBilling";
@@ -53,7 +54,7 @@ export function registerRunpodProxyRoutes(app: Hono): void {
     }
 
     const createdBy = await getSessionUser(c);
-    const username = createdBy ?? "anonymous";
+    const username = createdBy ?? ANONYMOUS_CREDIT_USERNAME;
     const balance = await getCreditBalance(username, parsed.data.endpointId);
     if (balance.managed && balance.totalCredits <= 0) {
       return c.json({ ok: false, error: "Insufficient credits" }, 402);
