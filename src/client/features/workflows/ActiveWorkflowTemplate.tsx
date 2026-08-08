@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { WorkflowTemplateRecord } from "../../../shared/contracts/workflow";
 import { importWorkflowFromText } from "../../../shared/workflow/importWorkflow";
 import { confirmDeletion } from "../../lib/confirmDelete";
+import { WorkflowInfoButton } from "./WorkflowInfoButton";
 
 type ActiveWorkflowTemplateProps = {
   activeTemplate: WorkflowTemplateRecord | null;
@@ -140,13 +141,12 @@ export function ActiveWorkflowTemplate({
         </div>
       ) : null}
       {stockDropdown}
-      <h2>Active Workflow Template</h2>
-      <div className="setup-meta">
-        <p>Name: {activeTemplate.displayName}</p>
-        <p>Fingerprint: {activeTemplate.fingerprint}</p>
-        <p>Imported at: {new Date(activeTemplate.importedAt).toLocaleString()}</p>
-        <p>Shape valid: {activeTemplate.validation.shapeValid ? "Yes" : "No"}</p>
-        <p>Template valid: {activeTemplate.validation.templateValid ? "Yes" : "No"}</p>
+      <div className="workflow-heading">
+        <h2>Active Workflow: {activeTemplate.displayName}</h2>
+        <WorkflowInfoButton
+          label="Active workflow details"
+          tooltip={`Fingerprint: ${activeTemplate.fingerprint}\nImported: ${new Date(activeTemplate.importedAt).toLocaleString()}\nShape valid: ${activeTemplate.validation.shapeValid ? "Yes" : "No"}\nTemplate valid: ${activeTemplate.validation.templateValid ? "Yes" : "No"}`}
+        />
       </div>
       <div className="setup-actions">
         <button className="btn btn-destructive" type="button" onClick={onClear}>

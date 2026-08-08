@@ -3,6 +3,7 @@ import type { DynamicInputDraftValues } from "../../../shared/contracts/inputs";
 import type { WorkflowTemplateRecord } from "../../../shared/contracts/workflow";
 import { deriveInputControls } from "../../../shared/workflow/deriveInputControls";
 import { importWorkflowFromText } from "../../../shared/workflow/importWorkflow";
+import { WorkflowInfoButton } from "./WorkflowInfoButton";
 
 type WorkflowImportProps = {
   onImported: (template: WorkflowTemplateRecord) => void;
@@ -66,6 +67,10 @@ export function WorkflowImport({ onImported, onImportInputs, currentTemplate }: 
 
     return displayTemplate.validation.issues;
   }, [displayTemplate]);
+
+  const workflowDetails = displayTemplate
+    ? `Upload a ComfyUI workflow JSON template to reuse for later runs.\nCurrent: ${displayTemplate.displayName}\nFingerprint: ${displayTemplate.fingerprint}\nShape valid: ${displayTemplate.validation.shapeValid ? "Yes" : "No"}\nTemplate valid: ${displayTemplate.validation.templateValid ? "Yes" : "No"}${nonBlockingIssues.length > 0 ? `\nIssues: ${nonBlockingIssues.map((issue) => issue.message).join("; ")}` : ""}`
+    : "Upload a ComfyUI workflow JSON template to reuse for later runs.";
 
   const pendingCategories = pendingInputImport?.categories ?? [];
 
@@ -170,35 +175,26 @@ export function WorkflowImport({ onImported, onImportInputs, currentTemplate }: 
 
   return (
     <section className="setup-card">
-      <h2>Workflow Import</h2>
-      <p>Upload a ComfyUI workflow JSON template to reuse it for later runs.</p>
+      <div className="workflow-heading">
+        <h2>Workflow Import</h2>
+        <WorkflowInfoButton label="About workflow import" tooltip={workflowDetails} />
+      </div>
       <div className="setup-form">
         <input className="input" type="file" accept=".json,application/json" onChange={handleFileChange} />
       </div>
-      <p className="status-inline" data-tone="success">{statusText}</p>
+      {status ? <p className="status-inline" data-tone="success">{statusText}</p> : null}
       <div className="setup-stack">
-        <h3>Import Inputs</h3>
-        <p>Pick a workflow JSON file, then choose which source categories to map into the active Inputs tab.</p>
+        <div className="workflow-heading">
+          <h3>Import Inputs</h3>
+          <WorkflowInfoButton
+            label="About input import"
+            tooltip="Pick a workflow JSON file, then choose which source categories to map into the active Inputs tab."
+          />
+        </div>
         <div className="setup-form">
           <input className="input" type="file" accept=".json,application/json" onChange={handleInputsFileChange} />
         </div>
       </div>
-      {displayTemplate ? (
-        <div className="setup-meta">
-          <p>Fingerprint: {displayTemplate.fingerprint}</p>
-          <p>Shape valid: {displayTemplate.validation.shapeValid ? "Yes" : "No"}</p>
-          <p>Template valid: {displayTemplate.validation.templateValid ? "Yes" : "No"}</p>
-          {nonBlockingIssues.length > 0 ? (
-            <ul>
-              {nonBlockingIssues.map((issue) => (
-                <li key={`${issue.stage}-${issue.code}-${issue.path ?? "root"}`}>
-                  [{issue.stage}] {issue.message}
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </div>
-      ) : null}
       {pendingInputImport ? (
         <div className="workflow-import-dialog" role="dialog" aria-modal="true" aria-label="Import inputs dialog">
           <div className="workflow-import-dialog-card card">

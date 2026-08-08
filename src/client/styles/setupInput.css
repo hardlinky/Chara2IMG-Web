@@ -40,6 +40,53 @@
   font-size: var(--font-size-sm);
 }
 
+.workflow-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.workflow-heading :is(h2, h3) {
+  margin: 0;
+}
+
+.workflow-info-button {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  padding: 0;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-text-muted);
+  font: 600 var(--font-size-sm)/1 serif;
+  cursor: help;
+}
+
+.workflow-info-button:hover::after,
+.workflow-info-button:focus::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  width: max-content;
+  max-width: min(24rem, 75vw);
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  background: rgba(17, 21, 24, 0.98);
+  color: var(--color-text-primary);
+  font-family: inherit;
+  font-weight: 400;
+  line-height: 1.4;
+  text-align: left;
+  white-space: pre-line;
+  z-index: 10;
+  box-shadow: var(--shadow-sm);
+}
+
 .workflow-import-dialog {
   position: fixed;
   inset: 0;
