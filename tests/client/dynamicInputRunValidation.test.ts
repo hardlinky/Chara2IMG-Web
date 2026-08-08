@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DynamicInputControl } from "../../src/shared/contracts/inputs";
-import { attemptRunFromEditorState } from "../../src/client/features/inputs/useDynamicInputEditor";
+import { attemptRunFromEditorState, dynamicInputValueEquals } from "../../src/client/features/inputs/useDynamicInputEditor";
 
 function createControl(overrides: Partial<DynamicInputControl>): DynamicInputControl {
   return {
@@ -23,6 +23,18 @@ function createControl(overrides: Partial<DynamicInputControl>): DynamicInputCon
 }
 
 describe("dynamic input run validation", () => {
+  it("compares image and structured values without JSON serialization", () => {
+    const imageData = `data:image/png;base64,${"a".repeat(100_000)}`;
+
+    expect(dynamicInputValueEquals({ dataUrl: imageData }, { dataUrl: imageData })).toBe(true);
+    expect(dynamicInputValueEquals({ dataUrl: imageData }, { dataUrl: `${imageData}b` })).toBe(false);
+    expect(dynamicInputValueEquals({ width: 1024, height: 1024 }, { width: 1024, height: 1024 })).toBe(true);
+    expect(dynamicInputValueEquals(
+      { loras: [{ loraName: "style.safetensors", strength: 0.8 }] },
+      { loras: [{ loraName: "style.safetensors", strength: 0.8 }] }
+    )).toBe(true);
+  });
+
   it("blocks run when invalid required fields remain", () => {
     const controls = [
       createControl({

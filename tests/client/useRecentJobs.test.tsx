@@ -5,6 +5,7 @@ import { renderHook, act } from "@testing-library/react";
 import { clearRecentJobs, getRecentJob, listRecentJobs, upsertRecentJob } from "../../src/client/lib/recentJobsStorage";
 import { buildLifecycleSnapshotFromStatus } from "../../src/client/features/jobs/jobStatus";
 import {
+  buildRecentJobsRevision,
   filterJobsByStatus,
   getStoredStatusFilter,
   persistStatusFilter,
@@ -210,6 +211,14 @@ describe("useRecentJobs hook", () => {
     };
   }
 
+  it("changes job revisions only when render-relevant job metadata changes", () => {
+    const job = makeJob("job-revision", "COMPLETED");
+    const revision = buildRecentJobsRevision([job]);
+
+    expect(buildRecentJobsRevision([{ ...job }])).toBe(revision);
+    expect(buildRecentJobsRevision([{ ...job, availableImageIndices: [0, 1] }])).not.toBe(revision);
+  });
+
   beforeEach(() => {
     vi.useFakeTimers();
     vi.mocked(listJobs).mockReset();
@@ -263,6 +272,25 @@ describe("useRecentJobs hook", () => {
     });
 
     expect(vi.mocked(listJobs).mock.calls.length).toBeGreaterThan(callsAfterInit);
+  });
+
+  it("does not update app state for an unchanged poll response", async () => {
+    const jobs = [makeJob("job-stable", "COMPLETED")];
+    vi.mocked(listJobs).mockResolvedValue(jobs);
+
+    const { result } = renderHook(() => useRecentJobs());
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100);
+    });
+    const refreshToken = result.current.storageRefreshToken;
+    const lastFetchedAt = result.current.lastFetchedAt;
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+
+    expect(result.current.storageRefreshToken).toBe(refreshToken);
+    expect(result.current.lastFetchedAt).toBe(lastFetchedAt);
   });
 
   it("delete calls deleteJob and removes job from list", async () => {

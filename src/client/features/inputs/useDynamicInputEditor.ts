@@ -286,13 +286,38 @@ export function applyImportedWorkflowInputs(args: {
   };
 }
 
-function valueEquals(left: DynamicInputValue, right: DynamicInputValue): boolean {
-  return JSON.stringify(left) === JSON.stringify(right);
+export function dynamicInputValueEquals(left: DynamicInputValue, right: DynamicInputValue): boolean {
+  if (left === right) {
+    return true;
+  }
+  if (left === null || right === null || typeof left !== "object" || typeof right !== "object") {
+    return false;
+  }
+  if ("dataUrl" in left || "dataUrl" in right) {
+    return "dataUrl" in left && "dataUrl" in right && left.dataUrl === right.dataUrl;
+  }
+  if ("width" in left || "width" in right) {
+    return "width" in left && "width" in right && left.width === right.width && left.height === right.height;
+  }
+  if ("loras" in left || "loras" in right) {
+    if (!("loras" in left) || !("loras" in right) || left.loras.length !== right.loras.length) {
+      return false;
+    }
+    return left.loras.every((lora, index) => {
+      const candidate = right.loras[index];
+      return candidate?.loraName === lora.loraName && candidate.strength === lora.strength;
+    });
+  }
+  return "enabled" in left
+    && "enabled" in right
+    && left.enabled === right.enabled
+    && left.loraName === right.loraName
+    && left.strength === right.strength;
 }
 
 function hasDraftDiffFromDefaults(controls: DynamicInputControl[], draftValues: DynamicInputDraftValues): boolean {
   for (const control of controls) {
-    if (!valueEquals(control.defaultValue, draftValues[control.id] ?? null)) {
+    if (!dynamicInputValueEquals(control.defaultValue, draftValues[control.id] ?? null)) {
       return true;
     }
   }
@@ -753,13 +778,18 @@ export function useDynamicInputEditor(activeTemplate: WorkflowTemplateRecord | n
     ]);
 
     for (const controlId of allControlIds) {
-      if (JSON.stringify(lastSuccessfulRunDraft[controlId] ?? null) !== JSON.stringify(draftValues[controlId] ?? null)) {
+      if (!dynamicInputValueEquals(lastSuccessfulRunDraft[controlId] ?? null, draftValues[controlId] ?? null)) {
         edited.add(controlId);
       }
     }
 
     return edited;
   }, [draftValues, lastSuccessfulRunDraft]);
+
+  const hasDraftDiffFromTemplate = useMemo(
+    () => hasDraftDiffFromDefaults(derivation.controls, draftValues),
+    [derivation.controls, draftValues]
+  );
 
   return {
     controls: orderedControls,
@@ -786,6 +816,6 @@ export function useDynamicInputEditor(activeTemplate: WorkflowTemplateRecord | n
     applyExternalDraft,
     applyImportedWorkflowInputs: applyImportedWorkflowInputsToDraft,
     attemptRun,
-    hasDraftDiffFromTemplate: hasDraftDiffFromDefaults(derivation.controls, draftValues)
+    hasDraftDiffFromTemplate
   };
 }

@@ -30,6 +30,25 @@ export type RecentJobStatusFilter = (typeof RECENT_JOB_STATUS_FILTERS)[number];
 
 const RECENT_JOB_STATUS_FILTER_STORAGE_KEY = "chara2imgRecentJobsStatusFilter";
 
+export function buildRecentJobsRevision(jobs: RecentJobRecord[]): string {
+  return jobs.map((job) => [
+    job.jobId,
+    job.lifecycle.status,
+    job.lifecycle.isTerminal ? "1" : "0",
+    job.lifecycle.startedAt ?? "",
+    job.lifecycle.finishedAt ?? "",
+    job.lastError ?? "",
+    job.workerId ?? "",
+    job.outputImageCount ?? "",
+    job.availableImageIndices?.join(",") ?? "",
+    job.pinnedOutputIndices?.join(",") ?? "",
+    job.hiddenOutputIndices?.join(",") ?? "",
+    job.outputsHidden ? "1" : "0",
+    job.createdBy ?? "",
+    Object.entries(job.imageUnarchiveExpiries ?? {}).sort(([left], [right]) => left.localeCompare(right)).map(([index, expiry]) => `${index}:${expiry ?? ""}`).join(",")
+  ].join("|")).join("\n");
+}
+
 export const RECENT_JOB_OWNER_FILTERS = ["all", "own", "anonymous"] as const;
 export type RecentJobOwnerFilter = (typeof RECENT_JOB_OWNER_FILTERS)[number];
 
@@ -192,6 +211,8 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
   const [pinningImageKeys, setPinningImageKeys] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [storageRefreshToken, setStorageRefreshToken] = useState(0);
+  const jobsRevisionRef = useRef("");
+  const hasFetchedRef = useRef(false);
 
   // Ref so fetchJobs can be called imperatively (e.g. after submit/cancel).
   const fetchJobsRef = useRef<(() => Promise<void>) | null>(null);
@@ -203,9 +224,14 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
       try {
         const fetched = await listJobs();
         if (!cancelled) {
-          setJobs(fetched);
-          setLastFetchedAt(Date.now());
-          setStorageRefreshToken((current) => current + 1);
+          const revision = buildRecentJobsRevision(fetched);
+          if (!hasFetchedRef.current || revision !== jobsRevisionRef.current) {
+            hasFetchedRef.current = true;
+            jobsRevisionRef.current = revision;
+            setJobs(fetched);
+            setLastFetchedAt(Date.now());
+            setStorageRefreshToken((current) => current + 1);
+          }
         }
       } catch {
         // silent - keep stale data on error
@@ -229,6 +255,10 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
       clearInterval(interval);
     };
   }, []);
+
+  useEffect(() => {
+    jobsRevisionRef.current = buildRecentJobsRevision(jobs);
+  }, [jobs]);
 
   const handleDeleteJob = useCallback(async (jobId: string) => {
     setDeletingJobIds((prev) => new Set(prev).add(jobId));
