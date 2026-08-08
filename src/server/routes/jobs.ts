@@ -39,17 +39,18 @@ export function registerJobsRoutes(app: Hono): void {
     if (!job || !canSeeJob(job, user)) {
       return c.json({ ok: false, error: "Not found" }, 404);
     }
-    const inputsPath = join(getJobTmpDir(), "jobs", jobId, "inputs.json");
-    try {
-      const raw = await readFile(inputsPath, "utf8");
-      const parsed = JSON.parse(raw);
-      return c.json({ ok: true, inputs: parsed });
-    } catch (err) {
-      if ((err as NodeJS.ErrnoException).code === "ENOENT") {
-        return c.json({ ok: false, error: "Not found" }, 404);
+    for (const base of [getJobTmpDir(), getJobArchiveDir()]) {
+      try {
+        const raw = await readFile(join(base, "jobs", jobId, "inputs.json"), "utf8");
+        const parsed = JSON.parse(raw);
+        return c.json({ ok: true, inputs: parsed });
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
+          throw err;
+        }
       }
-      throw err;
     }
+    return c.json({ ok: false, error: "Not found" }, 404);
   });
 
   app.get("/api/jobs/:jobId/images/:index", async (c) => {

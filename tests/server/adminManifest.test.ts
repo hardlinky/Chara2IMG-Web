@@ -185,7 +185,8 @@ describe("purgeExpiredJobs", () => {
 describe("pinned jobs surviving a tmp wipe (pod restart)", () => {
   it("pinImage persists an archive job.json", async () => {
     const job = makeJobRecord({ jobId: "job-pin", displayName: "1111aaaa", imageCount: 2 });
-    await jobStore.createJob(job, { draftValues: {}, submittedInput: {} });
+    const inputs = { draftValues: { prompt: "saved" }, submittedInput: { prompt: "saved" } };
+    await jobStore.createJob(job, inputs);
     await writeFile(jobStore.getJobImagePath("job-pin", "1111aaaa-0.png"), Buffer.from("img0"));
     await writeFile(jobStore.getJobImagePath("job-pin", "1111aaaa-1.png"), Buffer.from("img1"));
 
@@ -197,6 +198,8 @@ describe("pinned jobs surviving a tmp wipe (pod restart)", () => {
     expect(archived.pinnedImageIndices).toEqual([0]);
     expect(archived.isArchived).toBe(true);
     expect(archived.expiresAt).toBeNull();
+    await expect(readFile(join(archiveBase, "jobs", "job-pin", "inputs.json"), "utf8"))
+      .resolves.toBe(JSON.stringify(inputs, null, 2));
   });
 
   it("listJobs reconstructs an archive-only job after the tmp dir is wiped, showing only pinned images", async () => {

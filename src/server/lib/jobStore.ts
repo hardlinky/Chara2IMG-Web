@@ -247,6 +247,7 @@ export async function pinImage(jobId: string, imageIndex: number): Promise<boole
 
   await mkdir(archiveDir, { recursive: true });
   await copyFile(join(tmpDir, found.fileName), join(archiveDir, found.fileName));
+  await copyFile(join(tmpDir, "inputs.json"), join(archiveDir, "inputs.json"));
   await rm(join(tmpDir, found.fileName), { force: true });
 
   const pinnedSet = new Set(job.pinnedImageIndices ?? []);
