@@ -151,7 +151,7 @@ export function ActiveWorkflowTemplate({
         </div>
         <div className="setup-actions">
           <button className="btn btn-destructive" type="button" onClick={onClear}>
-            Clear active template
+            Clear active workflow
           </button>
         </div>
       </div>
