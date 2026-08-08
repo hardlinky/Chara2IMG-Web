@@ -174,16 +174,16 @@ export function WorkflowImport({ onImported, onImportInputs, currentTemplate }: 
   }
 
   return (
-    <section className="setup-card">
-      <div className="workflow-heading">
-        <h2>Workflow Import</h2>
-        <WorkflowInfoButton label="About workflow import" tooltip={workflowDetails} />
-      </div>
-      <div className="setup-form">
+    <section className="setup-card workflow-import-card">
+      <div className="workflow-import-group">
+        <div className="workflow-heading">
+          <h2>Workflow Import</h2>
+          <WorkflowInfoButton label="About workflow import" tooltip={workflowDetails} />
+        </div>
         <input className="input" type="file" accept=".json,application/json" onChange={handleFileChange} />
       </div>
       {status ? <p className="status-inline" data-tone="success">{statusText}</p> : null}
-      <div className="setup-stack">
+      <div className="workflow-import-group">
         <div className="workflow-heading">
           <h3>Import Inputs</h3>
           <WorkflowInfoButton
@@ -191,9 +191,7 @@ export function WorkflowImport({ onImported, onImportInputs, currentTemplate }: 
             tooltip="Pick a workflow JSON file, then choose which source categories to map into the active Inputs tab."
           />
         </div>
-        <div className="setup-form">
-          <input className="input" type="file" accept=".json,application/json" onChange={handleInputsFileChange} />
-        </div>
+        <input className="input" type="file" accept=".json,application/json" onChange={handleInputsFileChange} />
       </div>
       {pendingInputImport ? (
         <div className="workflow-import-dialog" role="dialog" aria-modal="true" aria-label="Import inputs dialog">

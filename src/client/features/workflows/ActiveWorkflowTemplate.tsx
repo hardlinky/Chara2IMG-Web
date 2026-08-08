@@ -106,7 +106,7 @@ export function ActiveWorkflowTemplate({
   }
 
   return (
-    <section className="setup-card">
+    <section className="setup-card workflow-template-card">
       {recentTemplates.length > 1 ? (
         <div className="setup-meta">
           <h3>Recent Workflows</h3>
@@ -141,17 +141,19 @@ export function ActiveWorkflowTemplate({
         </div>
       ) : null}
       {stockDropdown}
-      <div className="workflow-heading">
-        <h2>Active Workflow: {activeTemplate.displayName}</h2>
-        <WorkflowInfoButton
-          label="Active workflow details"
-          tooltip={`Fingerprint: ${activeTemplate.fingerprint}\nImported: ${new Date(activeTemplate.importedAt).toLocaleString()}\nShape valid: ${activeTemplate.validation.shapeValid ? "Yes" : "No"}\nTemplate valid: ${activeTemplate.validation.templateValid ? "Yes" : "No"}`}
-        />
-      </div>
-      <div className="setup-actions">
-        <button className="btn btn-destructive" type="button" onClick={onClear}>
-          Clear active template
-        </button>
+      <div className="workflow-active-summary">
+        <div className="workflow-heading">
+          <h2>Active Workflow: {activeTemplate.displayName}</h2>
+          <WorkflowInfoButton
+            label="Active workflow details"
+            tooltip={`Fingerprint: ${activeTemplate.fingerprint}\nImported: ${new Date(activeTemplate.importedAt).toLocaleString()}\nShape valid: ${activeTemplate.validation.shapeValid ? "Yes" : "No"}\nTemplate valid: ${activeTemplate.validation.templateValid ? "Yes" : "No"}`}
+          />
+        </div>
+        <div className="setup-actions">
+          <button className="btn btn-destructive" type="button" onClick={onClear}>
+            Clear active template
+          </button>
+        </div>
       </div>
     </section>
   );
