@@ -35,6 +35,7 @@ describe("workflow controls", () => {
 
     expect(html).toContain("Active Workflow: Chara2IMG");
     expect(html).toContain("Clear active workflow");
+    expect(html.indexOf("Active Workflow: Chara2IMG")).toBeLessThan(html.indexOf("Clear active workflow"));
     expect(html).toContain('aria-label="Active workflow details"');
     expect(html).toContain("Fingerprint: wf_compact");
     expect(html).not.toContain("<p>Fingerprint:");

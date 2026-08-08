@@ -60,7 +60,6 @@
   margin-top: 0;
 }
 
-.workflow-active-summary,
 .workflow-import-group {
   display: grid;
   gap: var(--space-2);
