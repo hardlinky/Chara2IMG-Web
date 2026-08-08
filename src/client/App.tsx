@@ -851,6 +851,7 @@ export function App() {
               statusFilter={recentJobs.statusFilter}
               ownerFilter={recentJobs.jobsOwnerFilter}
               currentUser={currentUser}
+              refreshingCredits={creditBalance?.managed ? creditBalance.refreshingCredits : undefined}
               page={recentJobs.page}
               pageCount={recentJobs.pageCount}
               pageNumbers={recentJobs.pageNumbers}

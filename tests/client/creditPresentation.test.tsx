@@ -49,7 +49,19 @@ describe("credit presentation", () => {
     expect(formatJobPrice(job({
       creditsCharged: undefined,
       lifecycle: { status: "IN_PROGRESS", isTerminal: false, startedAt: "2026-08-08T00:00:00.000Z" }
-    }), Date.parse("2026-08-08T00:00:10.001Z"))).toEqual({ estimatedCredits: 2, state: "current" });
+    }), Date.parse("2026-08-08T00:00:10.001Z"), 5)).toEqual({
+      refreshingCredits: 2,
+      staticCredits: 0,
+      state: "current"
+    });
+    expect(formatJobPrice(job({
+      creditsCharged: undefined,
+      lifecycle: { status: "IN_PROGRESS", isTerminal: false, startedAt: "2026-08-08T00:00:00.000Z" }
+    }), Date.parse("2026-08-08T00:01:00.000Z"), 5)).toEqual({
+      refreshingCredits: 5,
+      staticCredits: 1,
+      state: "current"
+    });
   });
 
   it("renders every managed wallet control for administrators", () => {

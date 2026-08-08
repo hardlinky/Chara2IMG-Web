@@ -72,6 +72,45 @@ describe("RecentJobsPanel", () => {
     expect(html).not.toContain("Price:");
   });
 
+  it("shows a running estimate against green credits before gold", () => {
+    const html = renderToStaticMarkup(
+      <RecentJobsPanel
+        jobs={[createJob({
+          billingMode: "managed",
+          lifecycle: {
+            status: "IN_PROGRESS",
+            isTerminal: false,
+            startedAt: "2026-08-08T00:00:00.000Z"
+          }
+        })]}
+        refreshingCredits={5}
+        warningJobIds={[]}
+        cancelingJobIds={[]}
+        statusFilter="All"
+        ownerFilter="all"
+        currentUser={null}
+        onOwnerFilterChange={vi.fn()}
+        page={1}
+        pageCount={1}
+        pageNumbers={[1]}
+        onStatusFilterChange={vi.fn()}
+        onPageChange={vi.fn()}
+        onCancel={vi.fn()}
+        onRerun={vi.fn()}
+        onLoadInputs={vi.fn()}
+        onExportWorkflow={vi.fn()}
+        onRemoveVisible={vi.fn()}
+        formatSubmittedAtRelative={() => "just now"}
+        lastFetchedAt={null}
+      />
+    );
+
+    expect(html).toContain('class="jobs-price jobs-price-refreshing"');
+    expect(html).toContain('aria-label="Estimated refreshing credits:');
+    expect(html).toContain('class="jobs-price jobs-price-static"');
+    expect(html).toContain('aria-label="Estimated static credits:');
+  });
+
   it("renders the required compact list controls and row content", () => {
     const displayJobId = formatOutputJobId("job-123");
     const html = renderToStaticMarkup(
