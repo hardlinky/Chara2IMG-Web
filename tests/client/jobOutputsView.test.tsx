@@ -59,6 +59,22 @@ describe("JobOutputsView", () => {
     expect(html).not.toContain(`${cluster.jobId} |`);
   });
 
+  it("renders the job owner nametag on each output card", () => {
+    const html = renderToStaticMarkup(
+      <JobOutputsView
+        cluster={{ ...cluster, createdBy: "artist" }}
+        currentUser="viewer"
+        onBack={() => undefined}
+        onRerun={() => undefined}
+        onLoadInputs={() => undefined}
+        onRemoveImage={() => undefined}
+        onRemoveAllOutputs={() => undefined}
+      />
+    );
+
+    expect(html.match(/>artist<\/span>/g)).toHaveLength(2);
+  });
+
   it("renders previous and next job buttons in the navigation row and disables previous when unavailable", () => {
     const html = renderToStaticMarkup(
       <JobOutputsView

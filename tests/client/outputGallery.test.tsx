@@ -120,7 +120,7 @@ describe("OutputsTab", () => {
     const displayJobId = formatOutputJobId("job-123");
     const html = renderToStaticMarkup(
       <OutputsTab
-        clusters={[createCluster({ jobId: "job-123" })]}
+        clusters={[createCluster({ jobId: "job-123", createdBy: "artist" })]}
         onRerun={() => undefined}
         onLoadInputs={() => undefined}
         onRemoveJobOutputs={() => undefined}
@@ -134,10 +134,28 @@ describe("OutputsTab", () => {
     expect(html).toContain("Density");
     expect(html).toContain(`${displayJobId} #1`);
     expect(html).toContain("2 images");
+    expect(html).toContain("artist");
     expect(html).toContain(`View job outputs for ${displayJobId}`);
     expect(html).toContain('aria-label="Go to page"');
     expect(html).toContain("/ 1");
     expect(html).not.toContain("Remove outputs");
+  });
+
+  it("renders owner nametags in the all-images view", () => {
+    window.localStorage.setItem("chara2imgOutputsViewMode", "all-images");
+    const html = renderToStaticMarkup(
+      <OutputsTab
+        clusters={[createCluster({ createdBy: "artist" })]}
+        currentUser="viewer"
+        onRerun={() => undefined}
+        onLoadInputs={() => undefined}
+        onRemoveJobOutputs={() => undefined}
+        onRemoveOutputImage={() => undefined}
+      />
+    );
+    window.localStorage.removeItem("chara2imgOutputsViewMode");
+
+    expect(html.match(/>artist<\/span>/g)).toHaveLength(2);
   });
 
   it("renders empty state when there are no completed output clusters", () => {

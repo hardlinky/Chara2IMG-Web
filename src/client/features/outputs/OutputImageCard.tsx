@@ -30,6 +30,7 @@ type OutputImageCardProps = {
   isPinning?: boolean;
   maxVisible?: boolean;
   badge?: ReactNode;
+  secondaryBadge?: ReactNode;
   albumStar?: AlbumStarProps;
 };
 
@@ -109,6 +110,7 @@ export function OutputImageCard({
   isPinning = false,
   maxVisible = true,
   badge,
+  secondaryBadge,
   albumStar
 }: OutputImageCardProps) {
   const showBottomActions = Boolean(onExportWorkflow || onLoadInputs || onViewJobOutputs || onLoadIntoImg2Img);
@@ -360,6 +362,7 @@ export function OutputImageCard({
       </div>
       <div className="outputs-image-caption-row">
         <span className="outputs-image-caption-label">{`${displayPrefix} #${imageLabel}`}</span>
+        {secondaryBadge ? <span className="outputs-image-source-chip outputs-image-counter-chip">{secondaryBadge}</span> : null}
         {badge ? <span className="outputs-image-source-chip outputs-image-counter-chip">{badge}</span> : null}
       </div>
       {image.cacheExpiresAt && !isArchived ? (

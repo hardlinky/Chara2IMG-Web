@@ -1,7 +1,7 @@
 import { type SyntheticEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Item } from "react-photoswipe-gallery";
 import type { RecentJobOutputCluster } from "../../../shared/contracts/jobs";
-import { formatOutputJobId } from "./formatOutputJobId";
+import { formatOutputJobId, formatOutputOwner } from "./formatOutputJobId";
 import { FToggleGallery, type GalleryApi } from "./GalleryFToggle";
 import { JobOutputsView } from "./JobOutputsView";
 import { OutputImageCard } from "./OutputImageCard";
@@ -156,7 +156,8 @@ export function OutputsTab({ active = true, clusters, onRerun, onLoadInputs, onR
       filteredClusters.flatMap((cluster) =>
         cluster.outputs.map((output) => ({
           ...output,
-          jobId: cluster.jobId
+          jobId: cluster.jobId,
+          createdBy: cluster.createdBy
         }))
       ),
     [filteredClusters]
@@ -293,6 +294,7 @@ export function OutputsTab({ active = true, clusters, onRerun, onLoadInputs, onR
         img2imgInputAvailable={img2imgInputAvailable}
         onLoadImageIntoImg2Img={onLoadImageIntoImg2Img}
         albumStarContext={albumStarContext}
+        currentUser={currentUser}
       />
     );
   }
@@ -478,7 +480,8 @@ export function OutputsTab({ active = true, clusters, onRerun, onLoadInputs, onR
                         onTogglePin={onToggleOutputPinned ? () => onToggleOutputPinned(cluster.jobId, cluster.representative.outputIndex, !cluster.representative.isPinned) : undefined}
                         canPinMore={canPinMore}
                         isPinning={pinningImageKeys?.has(`${cluster.jobId}:${cluster.representative.outputIndex}`) ?? false}
-                        badge={`${cluster.outputCount} images · ${(cluster.createdBy ?? null) === null ? "Anon" : cluster.createdBy === currentUser ? "You" : cluster.createdBy}`}
+                        secondaryBadge={`${cluster.outputCount} images`}
+                        badge={formatOutputOwner(cluster.createdBy, currentUser)}
                         albumStar={buildAlbumStarProps(albumStarContext, cluster.jobId, cluster.representative.outputIndex)}
                       />
                     </div>
@@ -577,6 +580,7 @@ export function OutputsTab({ active = true, clusters, onRerun, onLoadInputs, onR
                         onTogglePin={onToggleOutputPinned ? () => onToggleOutputPinned(outputImage.jobId, outputImage.outputIndex, !outputImage.isPinned) : undefined}
                         canPinMore={canPinMore}
                         isPinning={pinningImageKeys?.has(`${outputImage.jobId}:${outputImage.outputIndex}`) ?? false}
+                        badge={formatOutputOwner(outputImage.createdBy, currentUser)}
                         albumStar={buildAlbumStarProps(albumStarContext, outputImage.jobId, outputImage.outputIndex)}
                       />
                     </div>

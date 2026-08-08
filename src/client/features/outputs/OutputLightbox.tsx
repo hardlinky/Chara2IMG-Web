@@ -39,6 +39,7 @@ type OutputLightboxProps = {
   enableJobNav?: boolean;
   albumStarContext?: AlbumStarContext;
   perImageActions?: LightboxPerImageActions;
+  badge?: string;
 };
 
 export function OutputLightbox({
@@ -58,7 +59,8 @@ export function OutputLightbox({
   onNextJob,
   enableJobNav = false,
   albumStarContext,
-  perImageActions
+  perImageActions,
+  badge
 }: OutputLightboxProps) {
   const [imageDimensions, setImageDimensions] = useState<Record<number, { width: number; height: number }>>({});
   const visibleImages = images.slice(0, maxVisible);
@@ -322,7 +324,7 @@ export function OutputLightbox({
                         ? perImageActions.isPinningAt?.(index) ?? false
                         : pinningOutputIndices?.has(image.outputIndex) ?? false
                     }
-                    badge={perImageActions?.badge?.(index)}
+                    badge={perImageActions?.badge?.(index) ?? badge}
                     albumStar={perImageActions ? undefined : buildAlbumStarProps(albumStarContext, imagePrefix, image.outputIndex)}
                   />
                 </div>

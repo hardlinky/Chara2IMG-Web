@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import type { RecentJobOutputCluster } from "../../../shared/contracts/jobs";
-import { formatOutputJobId } from "./formatOutputJobId";
+import { formatOutputJobId, formatOutputOwner } from "./formatOutputJobId";
 import { OutputLightbox } from "./OutputLightbox";
 import { TrackedInputsPanel } from "./TrackedInputsPanel";
 import { confirmDeletion } from "../../lib/confirmDelete";
@@ -24,6 +24,7 @@ type JobOutputsViewProps = {
   img2imgInputAvailable?: boolean;
   onLoadImageIntoImg2Img?: (imageUrl: string) => void;
   albumStarContext?: AlbumStarContext;
+  currentUser?: string | null;
 };
 
 const PAGE_SIZE = 24;
@@ -55,7 +56,7 @@ function toRelativeTimestamp(isoValue: string | null): string {
   return `${deltaDays}d ago`;
 }
 
-export function JobOutputsView({ cluster, density = "comfortable", onBack, onPreviousJob, onNextJob, onRerun, onLoadInputs, onRemoveImage, onRemoveAllOutputs, onExportWorkflow, onTogglePinnedImage, canPinMore = true, pinningOutputIndices, img2imgInputAvailable = false, onLoadImageIntoImg2Img, albumStarContext }: JobOutputsViewProps) {
+export function JobOutputsView({ cluster, density = "comfortable", onBack, onPreviousJob, onNextJob, onRerun, onLoadInputs, onRemoveImage, onRemoveAllOutputs, onExportWorkflow, onTogglePinnedImage, canPinMore = true, pinningOutputIndices, img2imgInputAvailable = false, onLoadImageIntoImg2Img, albumStarContext, currentUser = null }: JobOutputsViewProps) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const displayJobId = formatOutputJobId(cluster.jobId);
 
@@ -128,6 +129,7 @@ export function JobOutputsView({ cluster, density = "comfortable", onBack, onPre
           onNextJob={onNextJob}
           enableJobNav
           albumStarContext={albumStarContext}
+          badge={formatOutputOwner(cluster.createdBy, currentUser)}
         />
       </div>
 
