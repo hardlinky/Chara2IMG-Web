@@ -15,11 +15,7 @@ export function AdminTab({ enabled, onImpersonated }: AdminTabProps) {
   const [isBusy, setIsBusy] = useState(false);
 
   if (!enabled) {
-    return (
-      <section className="setup-card">
-        <p>Unlock Admin to impersonate a user.</p>
-      </section>
-    );
+    return null;
   }
 
   async function handleImpersonate(): Promise<void> {
