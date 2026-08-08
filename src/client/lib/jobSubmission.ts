@@ -14,6 +14,14 @@ export type RunSubmissionDependencies = {
   submitRun?: typeof runViaProxy;
 };
 
+export function omitImageDraftValues(draftValues: DynamicInputDraftValues): DynamicInputDraftValues {
+  return Object.fromEntries(
+    Object.entries(draftValues).filter(([, value]) => {
+      return !(value && typeof value === "object" && "dataUrl" in value);
+    })
+  );
+}
+
 function toPlainObject(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return null;
@@ -78,7 +86,7 @@ export async function submitRunAndPersistRecentJob(args: {
     input: args.submittedInput,
     meta: {
       workflowFileName: args.snapshot.workflowFileName,
-      draftValues: args.snapshot.draftValues as Record<string, unknown>,
+      draftValues: omitImageDraftValues(args.snapshot.draftValues) as Record<string, unknown>,
       templateFingerprint: args.snapshot.templateFingerprint,
     },
   });

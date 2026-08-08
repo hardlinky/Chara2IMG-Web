@@ -1,7 +1,14 @@
 ﻿import { describe, expect, it, vi } from "vitest";
-import { submitRunAndPersistRecentJob } from "../../src/client/lib/jobSubmission";
+import { omitImageDraftValues, submitRunAndPersistRecentJob } from "../../src/client/lib/jobSubmission";
 
 describe("app job submission", () => {
+  it("omits duplicate image values from submission metadata", () => {
+    expect(omitImageDraftValues({
+      prompt: "hello",
+      reference: { dataUrl: "data:image/png;base64,abc" }
+    })).toEqual({ prompt: "hello" });
+  });
+
   it("calls submitRun and returns the RunpodRunResponse", async () => {
     const submitRun = vi.fn(async () => ({
       id: "job-123",
@@ -12,12 +19,12 @@ describe("app job submission", () => {
     const response = await submitRunAndPersistRecentJob({
       endpointId: "endpoint-1",
       apiKey: "key",
-      submittedInput: { workflow: { prompt: "hello" } },
+      submittedInput: { workflow: { prompt: "hello", image: "data:image/png;base64,abc" } },
       snapshot: {
         templateFingerprint: "fp-1",
         workflowFileName: "workflow-a.json",
-        draftValues: { prompt: "hello" },
-        submittedInput: { workflow: { prompt: "hello" } }
+        draftValues: { prompt: "hello", reference: { dataUrl: "data:image/png;base64,abc" } },
+        submittedInput: { workflow: { prompt: "hello", image: "data:image/png;base64,abc" } }
       },
       dependencies: {
         submitRun
@@ -25,9 +32,16 @@ describe("app job submission", () => {
     });
 
     expect(submitRun).toHaveBeenCalledTimes(1);
-    expect(submitRun).toHaveBeenCalledWith(
-      expect.objectContaining({ endpointId: "endpoint-1", apiKey: "key" })
-    );
+    expect(submitRun).toHaveBeenCalledWith({
+      endpointId: "endpoint-1",
+      apiKey: "key",
+      input: { workflow: { prompt: "hello", image: "data:image/png;base64,abc" } },
+      meta: {
+        workflowFileName: "workflow-a.json",
+        draftValues: { prompt: "hello" },
+        templateFingerprint: "fp-1"
+      }
+    });
     expect(response).toMatchObject({ id: "job-123", status: "IN_QUEUE" });
   });
 

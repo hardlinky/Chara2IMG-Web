@@ -48,7 +48,7 @@ export async function deleteServerImage(jobId: string, index: number): Promise<v
 
 /**
  * Copy a server image into the client IndexedDB cache.
- * Fetches the raw bytes, converts to a data URL, and stores it with a fresh TTL.
+ * Stores the raw Blob with a fresh TTL.
  */
 export async function recacheImageFromServer(jobId: string, index: number): Promise<void> {
   const cacheKey = imageCacheKey(jobId, index);
@@ -59,13 +59,5 @@ export async function recacheImageFromServer(jobId: string, index: number): Prom
 
   const blob = await res.blob();
   const mimeType = blob.type || "image/png";
-
-  const dataUrl = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result as string);
-    reader.onerror = () => reject(reader.error ?? new Error("Failed to read image blob"));
-    reader.readAsDataURL(blob);
-  });
-
-  await storeImage(cacheKey, dataUrl, mimeType, Date.now() + JOB_IMAGE_TTL_MS);
+  await storeImage(cacheKey, blob, mimeType, Date.now() + JOB_IMAGE_TTL_MS);
 }

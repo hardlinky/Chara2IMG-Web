@@ -106,7 +106,7 @@ describe("adminManifestClient", () => {
       expect(global.fetch).toHaveBeenCalledWith("/api/jobs/job1/images/0", { credentials: "include" });
       const cached = await getImage("/api/jobs/job1/images/0");
       expect(cached).not.toBeNull();
-      expect(cached?.dataUrl).toContain("data:");
+      expect(cached?.blob).toBeDefined();
       expect(cached?.mimeType).toBe("image/png");
     });
   });

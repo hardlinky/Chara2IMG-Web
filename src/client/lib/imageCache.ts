@@ -3,8 +3,9 @@ import Dexie, { type Table } from "dexie";
 interface CachedImage {
   /** API URL used as the cache key, e.g. "/api/jobs/{jobId}/images/0" */
   cacheKey: string;
-  /** Base64 data URL of the image */
-  dataUrl: string;
+  /** Raw image bytes. Legacy rows may contain dataUrl instead. */
+  blob?: Blob;
+  dataUrl?: string;
   mimeType: string;
   /** Epoch ms — matches server expiresAt via JOB_IMAGE_TTL_MS */
   expiresAt: number;
@@ -28,11 +29,11 @@ const db = new ImageCacheDb();
  */
 export async function storeImage(
   cacheKey: string,
-  dataUrl: string,
+  blob: Blob,
   mimeType: string,
   expiresAt: number
 ): Promise<void> {
-  await db.images.put({ cacheKey, dataUrl, mimeType, expiresAt });
+  await db.images.put({ cacheKey, blob, mimeType, expiresAt });
 }
 
 /**
@@ -50,12 +51,33 @@ export async function listCachedImages(): Promise<{ cacheKey: string; expiresAt:
  */
 export async function getImage(
   cacheKey: string
-): Promise<{ dataUrl: string; mimeType: string } | null> {
+): Promise<{ blob: Blob; mimeType: string } | null> {
   const entry = await db.images.get(cacheKey);
   if (!entry || entry.expiresAt <= Date.now()) {
     return null;
   }
-  return { dataUrl: entry.dataUrl, mimeType: entry.mimeType };
+  if (entry.blob) {
+    return { blob: entry.blob, mimeType: entry.mimeType };
+  }
+  if (!entry.dataUrl) {
+    return null;
+  }
+
+  try {
+    const response = await fetch(entry.dataUrl);
+    const blob = await response.blob();
+    const migratedBlob = blob.type ? blob : new Blob([blob], { type: entry.mimeType });
+    await db.images.put({
+      cacheKey: entry.cacheKey,
+      blob: migratedBlob,
+      mimeType: entry.mimeType,
+      expiresAt: entry.expiresAt
+    });
+    return { blob: migratedBlob, mimeType: entry.mimeType };
+  } catch {
+    await db.images.delete(cacheKey);
+    return null;
+  }
 }
 
 /**

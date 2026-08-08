@@ -164,13 +164,15 @@ export function OutputImageCard({
     setResolvedSrc(null);
     setLoadProgress(null);
     let cancelled = false;
+    let objectUrl: string | null = null;
 
     (async () => {
       // 1. Archived images skip IndexedDB cache — always fetch fresh from server
       if (!isArchived) {
         const cached = await getImage(image.dataUrl);
         if (cached && !cancelled) {
-          setResolvedSrc(cached.dataUrl);
+          objectUrl = URL.createObjectURL(cached.blob);
+          setResolvedSrc(objectUrl);
           setIsLoading(false);
           return;
         }
@@ -223,24 +225,13 @@ export function OutputImageCard({
         }
         if (cancelled) return;
 
-        const reader = new FileReader();
-        reader.onload = () => {
-          if (cancelled) return;
-          const dataUrl = reader.result as string;
-          const mimeType = blob.type || "image/png";
-          if (image.cacheExpiresAt) {
-            void storeImage(image.dataUrl, dataUrl, mimeType, image.cacheExpiresAt);
-          }
-          setResolvedSrc(dataUrl);
-          setIsLoading(false);
-        };
-        reader.onerror = () => {
-          if (!cancelled) {
-            setImgBroken(true);
-            setIsLoading(false);
-          }
-        };
-        reader.readAsDataURL(blob);
+        const mimeType = blob.type || "image/png";
+        if (image.cacheExpiresAt) {
+          void storeImage(image.dataUrl, blob, mimeType, image.cacheExpiresAt);
+        }
+        objectUrl = URL.createObjectURL(blob);
+        setResolvedSrc(objectUrl);
+        setIsLoading(false);
       } catch {
         if (!cancelled) {
           setImgBroken(true);
@@ -249,7 +240,10 @@ export function OutputImageCard({
       }
     })();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
   }, [image.dataUrl, image.cacheExpiresAt, image.isPinned, isArchived, isUrlBased, shouldLoad]);
 
   return (
