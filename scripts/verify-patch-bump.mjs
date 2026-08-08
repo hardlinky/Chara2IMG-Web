@@ -54,10 +54,20 @@ if (!head || !parent || !lockVersion) {
 }
 
 const expectedPatch = parent.patch + 1;
-const versionMatches =
+const isPatchBump =
   head.major === parent.major &&
   head.minor === parent.minor &&
-  head.patch === expectedPatch &&
+  head.patch === expectedPatch;
+const isMinorBump =
+  head.major === parent.major &&
+  head.minor === parent.minor + 1 &&
+  head.patch === 0;
+const isMajorBump =
+  head.major === parent.major + 1 &&
+  head.minor === 0 &&
+  head.patch === 0;
+const versionMatches =
+  (isPatchBump || isMinorBump || isMajorBump) &&
   lockVersion.major === head.major &&
   lockVersion.minor === head.minor &&
   lockVersion.patch === head.patch;
@@ -65,8 +75,8 @@ const versionMatches =
 if (!versionMatches) {
   process.stderr.write(
     [
-      "Push blocked: the tip commit must be a patch version bump.",
-      "Run `npm version patch --no-git-tag-version`, commit the version files, then push again."
+      "Push blocked: the tip commit must contain one sequential semantic version bump.",
+      "Use a patch bump, or reset to .0 for an explicit next minor/major release, and keep package-lock.json aligned."
     ].join("\n") + "\n"
   );
   process.exit(1);
