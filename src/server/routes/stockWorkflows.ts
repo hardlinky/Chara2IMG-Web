@@ -3,7 +3,7 @@ import { join } from "node:path";
 import type { Hono } from "hono";
 import { requireInvitedSession } from "../middleware/session.js";
 
-function getStockWorkflowsDir(): string {
+export function getStockWorkflowsDir(): string {
   return process.env.STOCK_WORKFLOWS_DIR?.trim() || "/workspace/workflows";
 }
 

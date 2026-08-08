@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { impersonateUser } from "../../lib/api/usersClient";
 import { ModelDownloadsPanel } from "./ModelDownloadsPanel";
+import { WorkflowUploadsPanel } from "./WorkflowUploadsPanel";
 
 type AdminTabProps = {
   enabled: boolean;
@@ -63,6 +64,7 @@ export function AdminTab({ enabled, onImpersonated }: AdminTabProps) {
         {status ? <p className="status-inline">{status}</p> : null}
       </section>
 
+      <WorkflowUploadsPanel />
       <ModelDownloadsPanel enabled={enabled} />
     </div>
   );
