@@ -5,6 +5,7 @@ import { getArchiveCapacityBytes, getArchiveUsageBytes, listJobs } from "../lib/
 import { hasAdminSession, requireInvitedSession } from "../middleware/session";
 
 const execFileAsync = promisify(execFile);
+export const SELF_UPDATE_RESTART_EXIT_CODE = 75;
 
 type CommandResult = {
   name: string;
@@ -71,6 +72,11 @@ function getDefaultEndpointId(): string | null {
 function hasDefaultRunpodApiKey(): boolean {
   // Dedicated name avoids RunPod's auto-injected pod-scoped RUNPOD_API_KEY.
   return Boolean(process.env.SERVER_RUNPOD_API_KEY?.trim());
+}
+
+export function scheduleSelfUpdateRestart(exit: (code: number) => never = process.exit): void {
+  const timer = setTimeout(() => exit(SELF_UPDATE_RESTART_EXIT_CODE), 250);
+  timer.unref();
 }
 
 export function registerSystemRoutes(app: Hono): void {
@@ -151,10 +157,13 @@ export function registerSystemRoutes(app: Hono): void {
       const after = await runCommand("git-rev-after", "git", ["rev-parse", "--short", "HEAD"]);
       results.push(after);
 
+      scheduleSelfUpdateRestart();
+
       return c.json({
         ok: true,
         before: before.stdout,
         after: after.stdout,
+        restartScheduled: true,
         steps: results
       });
     } catch (error) {
