@@ -62,6 +62,25 @@ describe("validateInputDraft", () => {
     expect(runValidation.errors[0]?.message).toContain("needs an image");
   });
 
+  it("blocks placeholder checkpoint values before submission", () => {
+    const checkpoint = createControl({
+      id: "checkpoint",
+      kind: "checkpoint",
+      name: "Checkpoint",
+      source: {
+        nodeId: "24",
+        titlePath: "24._meta.title",
+        valuePath: ["ckpt_name"]
+      },
+      defaultValue: "None"
+    });
+
+    const runValidation = validateDraftForRun([checkpoint], { checkpoint: "None" });
+
+    expect(runValidation.valid).toBe(false);
+    expect(runValidation.errors[0]?.message).toContain("select a checkpoint");
+  });
+
   it("validates dimension pair completeness and precision constraints", () => {
     const dimension = createControl({
       id: "dim",

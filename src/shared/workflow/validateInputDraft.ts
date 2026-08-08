@@ -126,6 +126,21 @@ export function validateInlineControl(
     }
   }
 
+  if (control.kind === "checkpoint") {
+    const checkpointName = typeof value === "string" ? value.trim() : "";
+    if (!checkpointName || /^(none|null|undefined)$/i.test(checkpointName)) {
+      return {
+        valid: false,
+        errors: [
+          {
+            controlId: control.id,
+            message: `${control.name} must select a checkpoint.`
+          }
+        ]
+      };
+    }
+  }
+
   if (control.kind === "lora-row") {
     if (!value || typeof value !== "object" || !("strength" in value) || !("enabled" in value) || !("loraName" in value)) {
       return {

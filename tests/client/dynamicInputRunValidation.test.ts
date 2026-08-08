@@ -73,6 +73,33 @@ describe("dynamic input run validation", () => {
     expect(result.blockingMessage).toContain("Fix highlighted inputs");
   });
 
+  it("blocks a workflow whose checkpoint is None", () => {
+    const checkpoint = createControl({
+      id: "24:checkpoint:ckpt_name",
+      kind: "checkpoint",
+      name: "Checkpoint",
+      source: {
+        nodeId: "24",
+        titlePath: "24._meta.title",
+        valuePath: ["ckpt_name"]
+      },
+      defaultValue: "None"
+    });
+
+    const result = attemptRunFromEditorState({
+      controls: [checkpoint],
+      draftValues: {},
+      templateRawJson: {
+        "24": {
+          class_type: "Checkpoint Loader with Name (Image Saver)",
+          inputs: { ckpt_name: "None" }
+        }
+      }
+    });
+
+    expect(result.ok).toBe(false);
+  });
+
   it("preserves drafts and builds payload on valid run", () => {
     const controls = [
       createControl({

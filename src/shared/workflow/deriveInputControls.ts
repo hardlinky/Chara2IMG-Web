@@ -298,6 +298,7 @@ function createControl(
   switch (kind) {
     case "text":
     case "multiline":
+    case "checkpoint":
       defaultValue = typeof value === "string" ? value : "";
       break;
     case "number":

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { DynamicInputControl } from "../../src/shared/contracts/inputs";
 import { buildRunWorkflowPayload } from "../../src/shared/workflow/buildRunWorkflowPayload";
+import { deriveInputControls } from "../../src/shared/workflow/deriveInputControls";
 
 function createControl(overrides: Partial<DynamicInputControl>): DynamicInputControl {
   return {
@@ -70,6 +71,30 @@ describe("buildRunWorkflowPayload", () => {
 
     expect((result.payload["10"] as { inputs: { value: string } }).inputs.value).toBe("updated");
     expect((result.payload["11"] as { inputs: { steps: number } }).inputs.steps).toBe(35);
+  });
+
+  it("attaches the selected checkpoint to the derived workflow node", () => {
+    const template = {
+      "24": {
+        inputs: { ckpt_name: "template.safetensors" },
+        class_type: "Checkpoint Loader with Name (Image Saver)",
+        _meta: { title: "[Input] Model.CHECKPOINT" }
+      }
+    };
+    const controls = deriveInputControls(template).controls;
+
+    const result = buildRunWorkflowPayload({
+      templateRawJson: template,
+      controls,
+      draftValues: {
+        "24:checkpoint:ckpt_name": "waiIllustriousSDXL_v160.safetensors"
+      }
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect((result.payload["24"] as { inputs: { ckpt_name: string } }).inputs.ckpt_name)
+      .toBe("waiIllustriousSDXL_v160.safetensors");
   });
 
   it("fails all-or-nothing when a mapped target is missing", () => {

@@ -73,17 +73,17 @@ function mimeTypeToExt(mimeType: string): string {
 
 // ─── Image writing ────────────────────────────────────────────────────────────
 
-async function writeJobImages(jobId: string, data: unknown): Promise<void> {
+async function writeJobImages(jobId: string, data: unknown): Promise<number> {
   let images: ReturnType<typeof extractRunpodOutputImages>;
   try {
     images = extractRunpodOutputImages(data);
   } catch (error) {
     logServerError("Failed to extract output images", error, { jobId });
-    return;
+    return 0;
   }
 
   if (images.length === 0) {
-    return;
+    return 0;
   }
 
   const record = await readJob(jobId);
@@ -117,6 +117,7 @@ async function writeJobImages(jobId: string, data: unknown): Promise<void> {
   if (written > 0) {
     await updateJob(jobId, { imageCount: written });
   }
+  return written;
 }
 
 // ─── Timer ────────────────────────────────────────────────────────────────────
@@ -173,9 +174,20 @@ async function pollTrackedJob(job: TrackedJob): Promise<PollResult> {
         ? String((data as Record<string, unknown>)["status"] ?? "")
         : "";
 
-    const status = normalizeRunpodStatus(rawStatus) as JobStatus;
+    let status = normalizeRunpodStatus(rawStatus) as JobStatus;
     const isTerminal = isTerminalRunpodStatus(rawStatus);
-    const terminalReason = toTerminalReason(rawStatus);
+    let terminalReason = toTerminalReason(rawStatus);
+    let emptyOutputError: string | undefined;
+
+    if (isTerminal && status === "COMPLETED" && !existing?.isTerminal) {
+      const writtenImages = await writeJobImages(job.jobId, data);
+      if (writtenImages === 0) {
+        status = "FAILED";
+        terminalReason = "failed";
+        emptyOutputError = "Workflow completed without producing any images.";
+      }
+    }
+
     const completedAt =
       isTerminal && status === "COMPLETED" ? new Date().toISOString() : undefined;
     const expiresAt =
@@ -186,6 +198,9 @@ async function pollTrackedJob(job: TrackedJob): Promise<PollResult> {
     const jobUpdates: Parameters<typeof updateJob>[1] = { status, isTerminal };
     if (terminalReason !== undefined) {
       jobUpdates.terminalReason = terminalReason;
+    }
+    if (emptyOutputError) {
+      jobUpdates.lastError = emptyOutputError;
     }
 
     const workerId =
@@ -226,11 +241,6 @@ async function pollTrackedJob(job: TrackedJob): Promise<PollResult> {
     }
 
     await updateJob(job.jobId, jobUpdates);
-
-    // Write images only when status first becomes COMPLETED
-    if (isTerminal && status === "COMPLETED" && !existing?.isTerminal) {
-      await writeJobImages(job.jobId, data);
-    }
 
     if (isTerminal) {
       trackedJobs.delete(toKey(job.endpointId, job.jobId));

@@ -192,12 +192,18 @@ function toImageDraftValue(file: File): Promise<{ dataUrl: string }> {
   });
 }
 
-function CheckpointSelect({ value, onChange }: { value: string; onChange: (name: string) => void }) {
+export function CheckpointSelect({ value, onChange }: { value: string; onChange: (name: string) => void }) {
   const [available, setAvailable] = useState<string[] | null>(null);
 
   useEffect(() => {
     void fetchAvailableCheckpoints().then(setAvailable);
   }, []);
+
+  useEffect(() => {
+    if (available?.length === 1 && /^(none|null|undefined)?$/i.test(value.trim())) {
+      onChange(available[0]!);
+    }
+  }, [available, onChange, value]);
 
   // Keep the current value selectable even if not present on disk
   const options = available ?? [];

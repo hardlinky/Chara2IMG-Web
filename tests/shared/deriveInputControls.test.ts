@@ -179,6 +179,30 @@ describe("deriveInputControls", () => {
     expect(result.warnings).toEqual([]);
   });
 
+  it("preserves the workflow checkpoint filename as the control default", () => {
+    const workflow = {
+      "24": {
+        inputs: {
+          ckpt_name: "waiIllustriousSDXL_v160.safetensors"
+        },
+        class_type: "Checkpoint Loader with Name (Image Saver)",
+        _meta: {
+          title: "[Input] Model.CHECKPOINT"
+        }
+      }
+    };
+
+    const result = deriveInputControls(workflow);
+
+    expect(result.controls).toHaveLength(1);
+    expect(result.controls[0]).toMatchObject({
+      id: "24:checkpoint:ckpt_name",
+      kind: "checkpoint",
+      defaultValue: "waiIllustriousSDXL_v160.safetensors",
+      source: { nodeId: "24", valuePath: ["ckpt_name"] }
+    });
+  });
+
   it("maps Power Lora Loader nodes into a single lora-list control", () => {
     const workflow = {
       "534": {

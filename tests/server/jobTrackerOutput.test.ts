@@ -1,0 +1,97 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { mkdtemp, rm } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+
+describe("job tracker output validation", () => {
+  let rootDir: string;
+
+  beforeEach(async () => {
+    rootDir = await mkdtemp(join(tmpdir(), "job-tracker-output-"));
+    process.env.JOBS_TMP_DIR = join(rootDir, "jobs-tmp");
+    process.env.JOBS_ARCHIVE_DIR = join(rootDir, "archive");
+    vi.resetModules();
+  });
+
+  afterEach(async () => {
+    delete process.env.JOBS_TMP_DIR;
+    delete process.env.JOBS_ARCHIVE_DIR;
+    vi.unstubAllGlobals();
+    await rm(rootDir, { recursive: true, force: true });
+  });
+
+  it("records a completed image job with zero images as failed", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
+      status: "COMPLETED",
+      output: []
+    }), { status: 200, headers: { "Content-Type": "application/json" } })));
+    const jobStore = await import("../../src/server/lib/jobStore");
+    await jobStore.createJob({
+      jobId: "empty-output-job",
+      displayName: "12345678",
+      endpointId: "endpoint",
+      workflowFileName: null,
+      submittedAt: "2026-08-08T00:00:00.000Z",
+      startedAt: "2026-08-08T00:00:01.000Z",
+      completedAt: null,
+      expiresAt: null,
+      status: "IN_PROGRESS",
+      isTerminal: false,
+      imageCount: 0,
+      lastError: null,
+      createdBy: null,
+      billingMode: "free",
+      walletGroupId: null,
+      billingUsername: "anonymous"
+    }, { draftValues: {}, submittedInput: {} });
+    const { pollJobNow } = await import("../../src/server/lib/jobTracker");
+
+    await pollJobNow("endpoint", "empty-output-job", "rp_key");
+
+    expect(await jobStore.readJob("empty-output-job")).toMatchObject({
+      status: "FAILED",
+      isTerminal: true,
+      terminalReason: "failed",
+      imageCount: 0,
+      lastError: "Workflow completed without producing any images."
+    });
+  });
+
+  it("keeps a completed job successful when an image is persisted", async () => {
+    const tinyPng = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO5WvJwAAAAASUVORK5CYII=";
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
+      status: "COMPLETED",
+      output: { images: [{ image: tinyPng }] }
+    }), { status: 200, headers: { "Content-Type": "application/json" } })));
+    const jobStore = await import("../../src/server/lib/jobStore");
+    await jobStore.createJob({
+      jobId: "image-output-job",
+      displayName: "87654321",
+      endpointId: "endpoint",
+      workflowFileName: null,
+      submittedAt: "2026-08-08T00:00:00.000Z",
+      startedAt: "2026-08-08T00:00:01.000Z",
+      completedAt: null,
+      expiresAt: null,
+      status: "IN_PROGRESS",
+      isTerminal: false,
+      imageCount: 0,
+      lastError: null,
+      createdBy: null,
+      billingMode: "free",
+      walletGroupId: null,
+      billingUsername: "anonymous"
+    }, { draftValues: {}, submittedInput: {} });
+    const { pollJobNow } = await import("../../src/server/lib/jobTracker");
+
+    await pollJobNow("endpoint", "image-output-job", "rp_key");
+
+    expect(await jobStore.readJob("image-output-job")).toMatchObject({
+      status: "COMPLETED",
+      isTerminal: true,
+      terminalReason: "completed",
+      imageCount: 1,
+      lastError: null
+    });
+  });
+});
