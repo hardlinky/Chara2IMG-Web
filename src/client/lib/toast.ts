@@ -46,3 +46,7 @@ export function showToast(message: string, options: ToastOptions = {}): void {
   toast.addEventListener("click", dismiss);
   window.setTimeout(dismiss, durationMs);
 }
+
+export function showErrorToast(error: unknown, fallbackMessage: string): void {
+  showToast(error instanceof Error ? error.message : fallbackMessage, { tone: "error" });
+}

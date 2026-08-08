@@ -25,7 +25,7 @@ import { getStoredEndpointId, saveEndpointId } from "./lib/endpointStorage";
 import { getRoute, navigate, useRoute } from "./lib/appRouter";
 import { APP_VERSION, APP_VERSION_LABEL } from "./lib/appVersion";
 import { submitRunAndPersistRecentJob } from "./lib/jobSubmission";
-import { showToast } from "./lib/toast";
+import { showErrorToast, showToast } from "./lib/toast";
 import { getRunpodKey } from "./lib/runpodKeyStorage";
 import { sanitizeWorkflowForExport } from "./lib/workflowExport";
 import type { DynamicInputDraftValues } from "../shared/contracts/inputs";
@@ -313,7 +313,6 @@ export function App() {
   const [managedEndpointIds, setManagedEndpointIds] = useState<string[]>([]);
   const [runEndpointId, setRunEndpointId] = useState(() => getStoredEndpointId() ?? "");
   const [creditBalance, setCreditBalance] = useState<CreditBalanceView | null>(null);
-  const [runError, setRunError] = useState("");
   const [isSubmittingRun, setIsSubmittingRun] = useState(false);
   const [jobActionError, setJobActionError] = useState("");
   const [isUpdatingApp, setIsUpdatingApp] = useState(false);
@@ -527,17 +526,16 @@ export function App() {
     templateFingerprint: string;
   }): Promise<void> {
     if (!effectiveRunpodKey || !runEndpointId) {
-      setRunError("Set endpoint ID and Runpod key before running.");
+      showErrorToast(null, "Set endpoint ID and Runpod key before running.");
       return;
     }
 
     if (!activeTemplate) {
-      setRunError("Load a workflow template before running.");
+      showErrorToast(null, "Load a workflow template before running.");
       return;
     }
 
     try {
-      setRunError("");
       setIsSubmittingRun(true);
       await submitRunAndPersistRecentJob({
         endpointId: runEndpointId,
@@ -553,7 +551,7 @@ export function App() {
       await recentJobs.handleNewSubmission();
       showToast("Job submitted \u2014 it will appear in Jobs shortly.", { tone: "success" });
     } catch (submitError) {
-      setRunError(submitError instanceof Error ? submitError.message : "Run submission failed.");
+      showErrorToast(submitError, "Run submission failed.");
     } finally {
       setIsSubmittingRun(false);
     }
@@ -835,11 +833,6 @@ export function App() {
             ) : (
               <p>Import a workflow using the Workflow controls above before editing inputs.</p>
             )}
-            {runError ? (
-              <p role="alert" className="status-inline" data-tone="error">
-                {runError}
-              </p>
-            ) : null}
           </div>
         ),
         jobs: (
