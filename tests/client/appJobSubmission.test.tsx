@@ -1,7 +1,24 @@
 ﻿import { describe, expect, it, vi } from "vitest";
 import { omitImageDraftValues, submitRunAndPersistRecentJob } from "../../src/client/lib/jobSubmission";
+import { selectRunpodApiKey } from "../../src/client/lib/selectRunpodApiKey";
 
 describe("app job submission", () => {
+  it("uses the server key only for managed endpoints and enables BYO overrides elsewhere", () => {
+    expect(selectRunpodApiKey({
+      endpointId: "managed-a",
+      managedEndpointIds: ["managed-a", "managed-b"],
+      hasServerRunpodApiKey: true,
+      browserRunpodApiKey: "rp_browser"
+    })).toEqual({ apiKey: "__SERVER_MANAGED_RUNPOD_KEY__", canOverride: false });
+
+    expect(selectRunpodApiKey({
+      endpointId: "user-endpoint",
+      managedEndpointIds: ["managed-a", "managed-b"],
+      hasServerRunpodApiKey: true,
+      browserRunpodApiKey: "rp_browser"
+    })).toEqual({ apiKey: "rp_browser", canOverride: true });
+  });
+
   it("omits duplicate image values from submission metadata", () => {
     expect(omitImageDraftValues({
       prompt: "hello",

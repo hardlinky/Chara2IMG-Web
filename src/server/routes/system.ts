@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import type { Hono } from "hono";
 import { getArchiveCapacityBytes, getArchiveUsageBytes, listJobs } from "../lib/jobStore";
+import { listManagedEndpointWallets } from "../lib/creditStore";
 import { hasAdminSession, requireInvitedSession } from "../middleware/session";
 
 const execFileAsync = promisify(execFile);
@@ -87,7 +88,8 @@ export function registerSystemRoutes(app: Hono): void {
     c.header("Cache-Control", "no-store");
     return c.json({
       endpointId: getDefaultEndpointId(),
-      hasRunpodApiKey: hasDefaultRunpodApiKey()
+      hasRunpodApiKey: hasDefaultRunpodApiKey(),
+      managedEndpointIds: Object.keys(listManagedEndpointWallets())
     });
   });
 

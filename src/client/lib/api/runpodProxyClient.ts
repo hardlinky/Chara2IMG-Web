@@ -76,6 +76,7 @@ export type SelfUpdateResult = {
 export type SystemConfig = {
   endpointId: string | null;
   hasRunpodApiKey: boolean;
+  managedEndpointIds: string[];
 };
 
 export type AdminSessionResponse = {
@@ -121,7 +122,7 @@ function toSystemStorageStats(data: unknown): SystemStorageStats | null {
 export async function fetchSystemConfig(): Promise<SystemConfig> {
   const response = await fetch("/api/system/config", { cache: "no-store" });
   if (!response.ok) {
-    return { endpointId: null, hasRunpodApiKey: false };
+    return { endpointId: null, hasRunpodApiKey: false, managedEndpointIds: [] };
   }
 
   return (await response.json()) as SystemConfig;

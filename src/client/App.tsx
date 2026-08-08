@@ -33,6 +33,7 @@ import type { SystemStorageStats } from "./lib/api/runpodProxyClient";
 import { deriveInputControls } from "../shared/workflow/deriveInputControls";
 import { CreditBalanceDisplay, type CreditBalanceView } from "./features/access/CreditBalanceDisplay";
 import { fetchCreditBalance } from "./lib/api/creditsClient";
+import { selectRunpodApiKey } from "./lib/selectRunpodApiKey";
 
 const APP_ACTIVE_TAB_STORAGE_KEY = "chara2imgActiveTab";
 const APP_VERSION_STORAGE_KEY = "chara2imgAppVersion";
@@ -169,8 +170,6 @@ const BASE_APP_TABS: AppTabDefinition[] = [
   { id: "output", label: "Output" },
   { id: "albums", label: "Albums" }
 ];
-
-const SERVER_MANAGED_RUNPOD_KEY = "__SERVER_MANAGED_RUNPOD_KEY__";
 
 function getStoredActiveTab(): "input" | "jobs" | "output" | "albums" | "admin" {
   if (typeof window === "undefined") {
@@ -311,6 +310,7 @@ export function App() {
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [runpodKey, setRunpodKey] = useState(getRunpodKey());
   const [hasServerRunpodApiKey, setHasServerRunpodApiKey] = useState(false);
+  const [managedEndpointIds, setManagedEndpointIds] = useState<string[]>([]);
   const [runEndpointId, setRunEndpointId] = useState(() => getStoredEndpointId() ?? "");
   const [creditBalance, setCreditBalance] = useState<CreditBalanceView | null>(null);
   const [runError, setRunError] = useState("");
@@ -357,7 +357,13 @@ export function App() {
 
   const { activeTemplate, recentTemplates, isLoading, error, persistTemplate, clearTemplate, removeRecentTemplate } = useActiveWorkflowTemplate();
 
-  const effectiveRunpodKey = hasServerRunpodApiKey ? SERVER_MANAGED_RUNPOD_KEY : runpodKey;
+  const runpodKeySelection = selectRunpodApiKey({
+    endpointId: runEndpointId,
+    managedEndpointIds,
+    hasServerRunpodApiKey,
+    browserRunpodApiKey: runpodKey
+  });
+  const effectiveRunpodKey = runpodKeySelection.apiKey;
 
   useEffect(() => {
     if (!invited) {
@@ -371,6 +377,7 @@ export function App() {
         }
 
         setHasServerRunpodApiKey(config.hasRunpodApiKey);
+  setManagedEndpointIds(config.managedEndpointIds);
       })
       .catch(() => {
         // Keep setup usable even when config bootstrap is temporarily unavailable.
@@ -784,7 +791,7 @@ export function App() {
       }
       headerRowTwo={
         <>
-          <span>{`Runpod key: ${runpodKey || hasServerRunpodApiKey ? "Configured" : "Missing"}`}</span>
+          <span>{`Runpod key: ${effectiveRunpodKey ? "Configured" : "Missing"}`}</span>
           <span>{`Endpoint: ${runEndpointId || "Not set"}`}</span>
           <CreditBalanceDisplay balance={creditBalance} />
           <span>{`Template: ${activeTemplate ? "Loaded" : "Not loaded"}`}</span>
@@ -925,10 +932,10 @@ export function App() {
         admin: (
           <div className="section-stack">
             <UserAuthPanel currentUser={currentUser} onUserChanged={setCurrentUser} />
-            {hasServerRunpodApiKey ? (
+            {!runpodKeySelection.canOverride ? (
               <section className="setup-card">
                 <h2>Runpod API Key</h2>
-                <p>Managed by pod environment variable `SERVER_RUNPOD_API_KEY`.</p>
+                <p>Managed by the server for this endpoint.</p>
               </section>
             ) : (
               <RunpodKeySettings onKeyChanged={setRunpodKey} />
