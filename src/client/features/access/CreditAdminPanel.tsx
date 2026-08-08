@@ -27,6 +27,19 @@ function toRefreshControl(intervalMs: number | undefined): { value: number; unit
   return { value: Math.max(1, Math.round(intervalMs / UNIT_MS.minutes)), unit: "minutes" };
 }
 
+function createDefaultAccount(username: string): CreditAccountDto {
+  return {
+    username,
+    walletGroupId: "default",
+    allowance: 100,
+    refreshIntervalMs: UNIT_MS.days,
+    refreshingCredits: 100,
+    staticCredits: 0,
+    maxActiveJobs: 1,
+    nextRefreshAt: new Date(Date.now() + UNIT_MS.days).toISOString()
+  };
+}
+
 export function CreditAccountEditor({
   users,
   walletGroups,
@@ -110,6 +123,39 @@ export function CreditAccountEditor({
   );
 }
 
+export function CreditAccountsTable({
+  accounts,
+  onEdit
+}: {
+  accounts: CreditAccountDto[];
+  onEdit: (account: CreditAccountDto) => void;
+}) {
+  const anonymousConfigured = accounts.some((account) => account.username === ANONYMOUS_CREDIT_USERNAME);
+
+  return (
+    <div className="credit-table-wrap">
+      <table className="credit-table">
+        <thead><tr><th>User</th><th>Wallet</th><th>Green</th><th>Gold</th><th>Allowance</th><th>Jobs</th><th>Next refresh</th><th></th></tr></thead>
+        <tbody>
+          {!anonymousConfigured ? (
+            <tr>
+              <td>{creditUsernameLabel(ANONYMOUS_CREDIT_USERNAME)}</td><td>Not configured</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>
+              <td><button className="btn btn-secondary" type="button" onClick={() => onEdit(createDefaultAccount(ANONYMOUS_CREDIT_USERNAME))}>Edit</button></td>
+            </tr>
+          ) : null}
+          {accounts.map((account) => (
+            <tr key={`${account.username}:${account.walletGroupId}`}>
+              <td>{creditUsernameLabel(account.username)}</td><td>{account.walletGroupId}</td><td>{account.refreshingCredits}</td><td>{account.staticCredits}</td>
+              <td>{account.allowance}</td><td>{account.maxActiveJobs}</td><td>{new Date(account.nextRefreshAt).toLocaleString()}</td>
+              <td><button className="btn btn-secondary" type="button" onClick={() => onEdit(account)}>Edit</button></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export function CreditAdminPanel() {
   const [data, setData] = useState<AdminCreditsDto | null>(null);
   const [error, setError] = useState("");
@@ -137,18 +183,7 @@ export function CreditAdminPanel() {
         onSaved={load}
       />
       {error ? <p className="status-inline">{error}</p> : null}
-      <div className="credit-table-wrap">
-        <table className="credit-table">
-          <thead><tr><th>User</th><th>Wallet</th><th>Green</th><th>Gold</th><th>Allowance</th><th>Jobs</th><th>Next refresh</th><th></th></tr></thead>
-          <tbody>{data?.accounts.map((account) => (
-            <tr key={`${account.username}:${account.walletGroupId}`}>
-              <td>{creditUsernameLabel(account.username)}</td><td>{account.walletGroupId}</td><td>{account.refreshingCredits}</td><td>{account.staticCredits}</td>
-              <td>{account.allowance}</td><td>{account.maxActiveJobs}</td><td>{new Date(account.nextRefreshAt).toLocaleString()}</td>
-              <td><button className="btn btn-secondary" type="button" onClick={() => setSelectedAccount(account)}>Edit</button></td>
-            </tr>
-          ))}</tbody>
-        </table>
-      </div>
+      <CreditAccountsTable accounts={data?.accounts ?? []} onEdit={setSelectedAccount} />
       <h3>Ledger</h3>
       <div className="credit-table-wrap">
         <table className="credit-table">

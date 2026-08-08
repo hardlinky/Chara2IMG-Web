@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import type { RecentJobRecord } from "../../src/shared/contracts/jobs";
 import { CreditBalanceDisplay } from "../../src/client/features/access/CreditBalanceDisplay";
 import { formatJobPrice } from "../../src/client/features/jobs/jobPrice";
-import { CreditAccountEditor } from "../../src/client/features/access/CreditAdminPanel";
+import { CreditAccountEditor, CreditAccountsTable } from "../../src/client/features/access/CreditAdminPanel";
 
 function job(overrides: Partial<RecentJobRecord> = {}): RecentJobRecord {
   return {
@@ -75,5 +75,13 @@ describe("credit presentation", () => {
     />);
 
     expect(html).toContain("Anonymous users (shared)");
+  });
+
+  it("lists the shared anonymous wallet before it is configured", () => {
+    const html = renderToStaticMarkup(<CreditAccountsTable accounts={[]} onEdit={() => undefined} />);
+
+    expect(html).toContain("Anonymous users (shared)");
+    expect(html).toContain("Not configured");
+    expect(html).toContain("Edit");
   });
 });
