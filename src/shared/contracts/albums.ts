@@ -4,6 +4,7 @@ export type AlbumImageRef = {
   addedAt: string;
   // Read-only enrichment from the server (present in API responses, never persisted).
   isPinned?: boolean;
+  createdBy?: string | null;
 };
 
 export type Album = {

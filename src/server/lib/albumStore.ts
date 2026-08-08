@@ -71,7 +71,11 @@ export function filterAlbumsAgainstPresence(
 
 async function buildJobImageState(
   albums: Album[]
-): Promise<{ present: Map<string, Set<number>>; pinned: Map<string, Set<number>> }> {
+): Promise<{
+  present: Map<string, Set<number>>;
+  pinned: Map<string, Set<number>>;
+  createdBy: Map<string, string | null>;
+}> {
   const jobIds = new Set<string>();
   for (const album of albums) {
     for (const ref of album.images) {
@@ -80,6 +84,7 @@ async function buildJobImageState(
   }
   const present = new Map<string, Set<number>>();
   const pinned = new Map<string, Set<number>>();
+  const createdBy = new Map<string, string | null>();
   await Promise.all(
     Array.from(jobIds).map(async (jobId) => {
       const job = await readJobAnywhere(jobId);
@@ -91,23 +96,28 @@ async function buildJobImageState(
       const indices = await listPresentImageIndices(jobId, job.displayName);
       present.set(jobId, new Set(indices));
       pinned.set(jobId, new Set(job.pinnedImageIndices ?? []));
+      createdBy.set(jobId, job.createdBy ?? null);
     })
   );
-  return { present, pinned };
+  return { present, pinned, createdBy };
 }
 
 // Read albums, prune dead refs + emptied albums, persist if anything changed.
-async function loadPrunedAlbums(): Promise<{ albums: Album[]; pinned: Map<string, Set<number>> }> {
+async function loadPrunedAlbums(): Promise<{
+  albums: Album[];
+  pinned: Map<string, Set<number>>;
+  createdBy: Map<string, string | null>;
+}> {
   const albums = await readAlbumsFile();
   if (albums.length === 0) {
-    return { albums: [], pinned: new Map() };
+    return { albums: [], pinned: new Map(), createdBy: new Map() };
   }
-  const { present, pinned } = await buildJobImageState(albums);
+  const { present, pinned, createdBy } = await buildJobImageState(albums);
   const { albums: pruned, changed } = filterAlbumsAgainstPresence(albums, present);
   if (changed) {
     await writeAlbumsFile(pruned);
   }
-  return { albums: pruned, pinned };
+  return { albums: pruned, pinned, createdBy };
 }
 
 function sortImagesNewestFirst(images: AlbumImageRef[]): AlbumImageRef[] {
@@ -130,14 +140,15 @@ export function canManageAlbum(album: Album, user: string | null): boolean {
 
 export async function listAlbums(user: string | null): Promise<Album[]> {
   return withLock(async () => {
-    const { albums, pinned } = await loadPrunedAlbums();
+    const { albums, pinned, createdBy } = await loadPrunedAlbums();
     return sortAlbumsNewestFirst(albums)
       .filter((album) => isAlbumVisibleTo(album, user))
       .map((album) => ({
         ...album,
         images: sortImagesNewestFirst(album.images).map((ref) => ({
           ...ref,
-          isPinned: pinned.get(ref.jobId)?.has(ref.imageIndex) ?? false
+          isPinned: pinned.get(ref.jobId)?.has(ref.imageIndex) ?? false,
+          createdBy: createdBy.get(ref.jobId) ?? null
         }))
       }));
   });

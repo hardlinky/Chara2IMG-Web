@@ -14,6 +14,7 @@ import { buildAlbumStarProps, type AlbumStarContext } from "../albums/albumStar"
 export type LightboxPerImageActions = {
   jobId: (index: number) => string;
   displayPrefix?: (index: number) => string;
+  badge?: (index: number) => string;
   onViewJob: (index: number) => void;
   onRemove?: (index: number) => void;
   onTogglePin?: (index: number, pinned: boolean) => void;
@@ -321,6 +322,7 @@ export function OutputLightbox({
                         ? perImageActions.isPinningAt?.(index) ?? false
                         : pinningOutputIndices?.has(image.outputIndex) ?? false
                     }
+                    badge={perImageActions?.badge?.(index)}
                     albumStar={perImageActions ? undefined : buildAlbumStarProps(albumStarContext, imagePrefix, image.outputIndex)}
                   />
                 </div>

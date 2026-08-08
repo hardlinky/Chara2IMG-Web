@@ -118,6 +118,14 @@ describe("anonymous album image visibility", () => {
     expect(response.status).toBe(200);
     expect(Buffer.from(await response.arrayBuffer()).toString()).toBe("shared-image");
 
+    const albumsResponse = await app.request("http://localhost/api/albums", {
+      headers: { Cookie: cookieFrom(inviteResponse) }
+    });
+    const albumsPayload = await albumsResponse.json() as {
+      albums: Array<{ images: Array<{ createdBy?: string | null }> }>;
+    };
+    expect(albumsPayload.albums[0]?.images[0]?.createdBy).toBe("uploader");
+
     const privateJob: JobRecord = {
       ...job,
       jobId: "private-owned-job",

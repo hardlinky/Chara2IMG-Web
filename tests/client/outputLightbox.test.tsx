@@ -97,4 +97,23 @@ describe("OutputLightbox", () => {
     expect(html).toContain(`Export workflow for ${displayJobId}`);
     expect(html).toContain(`Load inputs from ${displayJobId}`);
   });
+
+  it("renders a per-image badge opposite the image caption", () => {
+    const html = renderToStaticMarkup(
+      <OutputLightbox
+        imagePrefix="album-1"
+        images={sampleImages.slice(0, 1)}
+        perImageActions={{
+          jobId: () => "job-1",
+          displayPrefix: () => "aabbccdd",
+          badge: () => "uploader",
+          onViewJob: () => undefined
+        }}
+      />
+    );
+
+    expect(html).toContain("aabbccdd #1");
+    expect(html).toContain("outputs-image-counter-chip");
+    expect(html).toContain("uploader");
+  });
 });

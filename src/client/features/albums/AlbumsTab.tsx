@@ -127,6 +127,7 @@ function AlbumView({
   const perImageActions = {
     jobId: (index: number) => album.images[index]!.jobId,
     displayPrefix: (index: number) => formatOutputJobId(album.images[index]!.jobId),
+    badge: (index: number) => album.images[index]!.createdBy ?? "Anon",
     onViewJob: (index: number) => {
       // Non-owned albums may be viewed (if published) but job navigation is not allowed.
       if (!canManage) {
