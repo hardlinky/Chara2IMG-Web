@@ -7,7 +7,7 @@ import { JobOutputsView } from "./JobOutputsView";
 import { OutputImageCard } from "./OutputImageCard";
 import { confirmDeletion } from "../../lib/confirmDelete";
 import { OUTPUT_DENSITIES, type OutputDensity, useOutputGallery } from "./useOutputGallery";
-import { getRoute, navigate, useRoute } from "../../lib/appRouter";
+import { navigate, useRoute } from "../../lib/appRouter";
 import { buildAlbumStarProps, type AlbumStarContext } from "../albums/albumStar";
 import type { RecentJobOwnerFilter } from "../jobs/useRecentJobs";
 import "./outputsGallery.css";
@@ -266,7 +266,7 @@ export function OutputsTab({ active = true, clusters, onRerun, onLoadInputs, onR
     }
 
     const viewJobId = gallery.view.mode === "job" ? gallery.view.jobId : null;
-    if (getRoute().jobId !== viewJobId) {
+    if (route.jobId !== viewJobId) {
       navigate({ jobId: viewJobId }, "push");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

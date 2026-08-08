@@ -1,4 +1,5 @@
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { cleanup, render } from "@testing-library/react";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
 vi.mock("../../src/client/lib/imageCache", () => ({
@@ -20,6 +21,11 @@ beforeAll(() => {
       dispatchEvent: () => false,
     }),
   });
+});
+
+afterEach(() => {
+  cleanup();
+  window.history.replaceState(null, "", "/");
 });
 import { formatOutputJobId } from "../../src/client/features/outputs/formatOutputJobId";
 import { OutputsTab, resolveSelectedJobCluster } from "../../src/client/features/outputs/OutputsTab";
@@ -65,6 +71,22 @@ function createCluster(overrides: Partial<RecentJobOutputCluster>): RecentJobOut
 }
 
 describe("OutputsTab", () => {
+  it("does not clear a job route while activating before the route snapshot catches up", () => {
+    const props = {
+      clusters: [] as RecentJobOutputCluster[],
+      onRerun: () => undefined,
+      onLoadInputs: () => undefined,
+      onRemoveJobOutputs: () => undefined,
+      onRemoveOutputImage: () => undefined
+    };
+    const { rerender } = render(<OutputsTab {...props} active={false} />);
+
+    window.history.pushState(null, "", "/?tab=output&job=job-with-no-images");
+    rerender(<OutputsTab {...props} active />);
+
+    expect(new URLSearchParams(window.location.search).get("job")).toBe("job-with-no-images");
+  });
+
   it("prefers live job clusters over hydrated cache while in job view", () => {
     const liveCluster = createCluster({
       jobId: "job-1",

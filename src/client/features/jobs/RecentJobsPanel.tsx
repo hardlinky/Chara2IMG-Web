@@ -4,6 +4,7 @@ import { formatOutputJobId } from "../outputs/formatOutputJobId";
 import { TrackedInputsPanel } from "../outputs/TrackedInputsPanel";
 import { useTrackedInputCategories } from "../../lib/inputTrackingStorage";
 import { confirmDeletion } from "../../lib/confirmDelete";
+import { projectJobOutputCluster } from "../../lib/jobOutputProjection";
 import { JOB_POLL_INTERVAL_MS } from "./jobStatus";
 import type { RecentJobOwnerFilter, RecentJobStatusFilter } from "./useRecentJobs";
 import "../../styles/jobsOutput.css";
@@ -317,6 +318,7 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
         <ul className="jobs-list">
           {props.jobs.map((job) => {
             const displayJobId = formatOutputJobId(job.jobId);
+            const hasOutputs = projectJobOutputCluster(job) !== null;
             const isPinnedJob = Boolean(job.pinnedAt) || Boolean(job.pinnedOutputIndices?.length);
             const executionTime = formatExecutionTime(job, now);
             const failureSnippet = formatFailureSnippet(job);
@@ -407,9 +409,10 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
                         <button
                           className="jobs-icon-btn"
                           type="button"
+                          disabled={!hasOutputs}
                           onClick={() => props.onViewOutputs?.(job.jobId)}
-                          aria-label={`View outputs for ${displayJobId}`}
-                          title={`View outputs for ${displayJobId}`}
+                          aria-label={hasOutputs ? `View outputs for ${displayJobId}` : `No outputs available for ${displayJobId}`}
+                          title={hasOutputs ? `View outputs for ${displayJobId}` : "No outputs available"}
                         >
                           <ViewOutputsIcon />
                         </button>

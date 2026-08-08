@@ -155,13 +155,14 @@ describe("RecentJobsPanel", () => {
     expect(html).toContain("Worker: worker-42");
   });
 
-  it("shows export quick action only on completed jobs", () => {
+  it("shows completed-job actions and disables output navigation when no outputs remain", () => {
     const displayJobId = formatOutputJobId("job-completed");
     const html = renderToStaticMarkup(
       <RecentJobsPanel
         jobs={[
           createJob({
             jobId: "job-completed",
+            outputImageCount: 0,
             lifecycle: {
               status: "COMPLETED",
               isTerminal: true,
@@ -190,6 +191,7 @@ describe("RecentJobsPanel", () => {
 
         onLoadInputs={vi.fn()}
         onExportWorkflow={vi.fn()}
+        onViewOutputs={vi.fn()}
         onRemoveVisible={vi.fn()}
         formatSubmittedAtRelative={() => "just now"}
         lastFetchedAt={null}
@@ -197,6 +199,54 @@ describe("RecentJobsPanel", () => {
     );
 
     expect(html).toContain(`Export workflow for ${displayJobId}`);
+    expect(html).toContain(`aria-label="No outputs available for ${displayJobId}"`);
+    expect(html).toContain("disabled");
+  });
+
+  it("enables output navigation when a completed job has outputs", () => {
+    const displayJobId = formatOutputJobId("job-with-outputs");
+    const html = renderToStaticMarkup(
+      <RecentJobsPanel
+        jobs={[
+          createJob({
+            jobId: "job-with-outputs",
+            outputImageCount: 1,
+            lifecycle: {
+              status: "COMPLETED",
+              isTerminal: true,
+              terminalReason: "completed",
+              finishedAt: "2026-05-23T10:10:00.000Z",
+              lastCheckedAt: "2026-05-23T10:10:00.000Z",
+              warning: null,
+              executionTimeMs: 600000,
+              failureReason: null
+            }
+          })
+        ]}
+        warningJobIds={[]}
+        cancelingJobIds={[]}
+        statusFilter="All"
+        ownerFilter="all"
+        currentUser={null}
+        onOwnerFilterChange={vi.fn()}
+        page={1}
+        pageCount={1}
+        pageNumbers={[1]}
+        onStatusFilterChange={vi.fn()}
+        onPageChange={vi.fn()}
+        onCancel={vi.fn()}
+        onRerun={vi.fn()}
+        onLoadInputs={vi.fn()}
+        onExportWorkflow={vi.fn()}
+        onViewOutputs={vi.fn()}
+        onRemoveVisible={vi.fn()}
+        formatSubmittedAtRelative={() => "just now"}
+        lastFetchedAt={null}
+      />
+    );
+
+    expect(html).toContain(`aria-label="View outputs for ${displayJobId}"`);
+    expect(html).not.toContain(`aria-label="View outputs for ${displayJobId}" disabled`);
   });
 
   it("renders the exact empty state text when there are no visible jobs", () => {
