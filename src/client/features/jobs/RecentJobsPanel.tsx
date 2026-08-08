@@ -7,6 +7,7 @@ import { confirmDeletion } from "../../lib/confirmDelete";
 import { projectJobOutputCluster } from "../../lib/jobOutputProjection";
 import { JOB_POLL_INTERVAL_MS } from "./jobStatus";
 import type { RecentJobOwnerFilter, RecentJobStatusFilter } from "./useRecentJobs";
+import { formatJobPrice } from "./jobPrice";
 import "../../styles/jobsOutput.css";
 
 type RecentJobsPanelProps = {
@@ -328,6 +329,7 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
             const showInlineDuration = Boolean(job.lifecycle.isTerminal && executionTime);
             const completionMeta = showInlineDuration ? `${completionTimeLabel} (${executionTime})` : completionTimeLabel;
             const timestampTooltip = formatJobTimestampTooltip(job, executionTime);
+            const jobPrice = formatJobPrice(job, now);
             return (
               <li key={job.jobId} className="jobs-card">
                 <div className="jobs-card-meta">
@@ -346,6 +348,7 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
                 <span>Workflow: {job.provenance.workflowFileName ?? "Workflow unknown"}</span>
                 <div className="jobs-status-row">
                   <span className="jobs-status-chip" data-status={job.lifecycle.status}>{job.lifecycle.status}</span>
+                  {jobPrice ? <span className="jobs-price">Price: {jobPrice}</span> : null}
                   {!job.lifecycle.isTerminal ? <span className="jobs-next-poll">Next poll in {formatNextPollCountdown(props.lastFetchedAt, now)}</span> : null}
                   {props.warningJobIds.includes(job.jobId) ? (
                     <span className="jobs-status-chip jobs-warning-chip">Polling warning</span>

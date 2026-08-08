@@ -15,7 +15,7 @@ export function adaptJobRecord(job: JobRecord): RecentJobRecord {
       startedAt: job.startedAt ?? undefined,
       finishedAt: job.completedAt ?? undefined,
       warning: null,
-      executionTimeMs: undefined,
+      executionTimeMs: job.executionTimeMs,
       failureReason: job.lastError ?? null,
     },
     provenance: {
@@ -32,6 +32,8 @@ export function adaptJobRecord(job: JobRecord): RecentJobRecord {
     hiddenOutputIndices: job.deletedImageIndices ?? [],
     outputsHidden: false,
     createdBy: job.createdBy ?? null,
+    billingMode: job.billingMode,
+    creditsCharged: job.creditsCharged,
     pinnedOutputIndices: job.pinnedImageIndices,
     imageUnarchiveExpiries: job.imageUnarchiveExpiries,
   };

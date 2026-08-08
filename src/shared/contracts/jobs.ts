@@ -80,6 +80,8 @@ export type RecentJobRecord = {
   hiddenOutputIndices?: number[];
   outputsHidden?: boolean;
   createdBy?: string | null;
+  billingMode?: "managed" | "free";
+  creditsCharged?: number;
   imageUnarchiveExpiries?: Record<string, string | null>; // mirrors JobRecord field; used by client projection
 };
 
@@ -162,6 +164,12 @@ export type JobRecord = {
   lastError: string | null;
   workerId?: string | null;                               // RunPod worker that executed the job
   createdBy?: string | null;                              // reserved for future per-user scoping; always null while jobs are global
+  billingMode?: "managed" | "free";
+  walletGroupId?: string | null;
+  billingUsername?: string;
+  executionTimeMs?: number;
+  creditsCharged?: number;
+  creditSettledAt?: string;
   isArchived?: boolean;
   pinnedImageIndices?: number[];                          // indices of per-image pinned outputs
   deletedImageIndices?: number[];                        // indices permanently deleted via delete-image API

@@ -10,6 +10,8 @@ import {
 } from "../../shared/contracts/jobs.js";
 import { extractRunpodOutputImages } from "../../shared/outputImage";
 import { logServerError, logServerWarning } from "./logger";
+import { releaseSubmissionCapacity } from "./submissionCapacity";
+import { settleTerminalJobBilling } from "./jobBilling";
 
 // ─── Internal types ───────────────────────────────────────────────────────────
 
@@ -18,6 +20,7 @@ type TrackedJob = {
   jobId: string;
   apiKey: string;
   nextPollAt: number;
+  reservationId?: string;
 };
 
 type PollResult =
@@ -152,6 +155,9 @@ async function pollTrackedJob(job: TrackedJob): Promise<PollResult> {
           terminalReason: "expired-or-not-found",
         });
         trackedJobs.delete(toKey(job.endpointId, job.jobId));
+        if (job.reservationId) {
+          releaseSubmissionCapacity(job.reservationId);
+        }
       }
 
       return {
@@ -203,6 +209,22 @@ async function pollTrackedJob(job: TrackedJob): Promise<PollResult> {
       jobUpdates.expiresAt = expiresAt;
     }
 
+    if (isTerminal && existing) {
+      const terminalAt = new Date().toISOString();
+      const reportedExecutionTime = data !== null
+        && typeof data === "object"
+        && "executionTime" in data
+        && typeof (data as Record<string, unknown>).executionTime === "number"
+        ? (data as Record<string, number>).executionTime
+        : undefined;
+      const settlement = await settleTerminalJobBilling(existing, status, terminalAt, reportedExecutionTime);
+      if (settlement) {
+        jobUpdates.executionTimeMs = settlement.executionTimeMs;
+        jobUpdates.creditsCharged = settlement.creditsCharged;
+        jobUpdates.creditSettledAt = settlement.creditSettledAt;
+      }
+    }
+
     await updateJob(job.jobId, jobUpdates);
 
     // Write images only when status first becomes COMPLETED
@@ -212,6 +234,9 @@ async function pollTrackedJob(job: TrackedJob): Promise<PollResult> {
 
     if (isTerminal) {
       trackedJobs.delete(toKey(job.endpointId, job.jobId));
+      if (job.reservationId) {
+        releaseSubmissionCapacity(job.reservationId);
+      }
     }
 
     return { ok: true, statusCode: response.status, data };
@@ -262,12 +287,16 @@ export async function trackJob(
   endpointId: string,
   jobId: string,
   apiKey: string,
+  reservationId?: string,
 ): Promise<void> {
   const key = toKey(endpointId, jobId);
   const existing = await readJob(jobId);
 
   if (existing?.isTerminal) {
     trackedJobs.delete(key);
+    if (reservationId) {
+      releaseSubmissionCapacity(reservationId);
+    }
     return;
   }
 
@@ -276,9 +305,19 @@ export async function trackJob(
     jobId,
     apiKey,
     nextPollAt: Date.now(),
+    reservationId,
   });
 
   ensureTrackerRunning();
+}
+
+export function stopTrackingJob(endpointId: string, jobId: string): void {
+  const key = toKey(endpointId, jobId);
+  const tracked = trackedJobs.get(key);
+  trackedJobs.delete(key);
+  if (tracked?.reservationId) {
+    releaseSubmissionCapacity(tracked.reservationId);
+  }
 }
 
 export async function pollJobNow(

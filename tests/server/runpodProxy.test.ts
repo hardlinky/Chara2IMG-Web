@@ -33,7 +33,7 @@ describe("Runpod proxy boundary", () => {
     vi.unstubAllGlobals();
   });
 
-  it("uses SERVER_RUNPOD_API_KEY from environment when configured", async () => {
+  it("does not use SERVER_RUNPOD_API_KEY for an unknown endpoint", async () => {
     process.env.SERVER_RUNPOD_API_KEY = "rp_env_key";
     const app = createServerApp();
 
@@ -68,7 +68,7 @@ describe("Runpod proxy boundary", () => {
 
     const fetchMock = vi.mocked(fetch);
     const [, init] = fetchMock.mock.calls[0] ?? [];
-    expect((init?.headers as Record<string, string>).Authorization).toBe("Bearer rp_env_key");
+    expect((init?.headers as Record<string, string>).Authorization).toBe("Bearer rp_user_key_should_not_be_used");
   });
 
   it("forwards allowlisted run request with authorization header", async () => {

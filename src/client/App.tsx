@@ -31,6 +31,8 @@ import { sanitizeWorkflowForExport } from "./lib/workflowExport";
 import type { DynamicInputDraftValues } from "../shared/contracts/inputs";
 import type { SystemStorageStats } from "./lib/api/runpodProxyClient";
 import { deriveInputControls } from "../shared/workflow/deriveInputControls";
+import { CreditBalanceDisplay, type CreditBalanceView } from "./features/access/CreditBalanceDisplay";
+import { fetchCreditBalance } from "./lib/api/creditsClient";
 
 const APP_ACTIVE_TAB_STORAGE_KEY = "chara2imgActiveTab";
 const APP_VERSION_STORAGE_KEY = "chara2imgAppVersion";
@@ -310,6 +312,7 @@ export function App() {
   const [runpodKey, setRunpodKey] = useState(getRunpodKey());
   const [hasServerRunpodApiKey, setHasServerRunpodApiKey] = useState(false);
   const [runEndpointId, setRunEndpointId] = useState(() => getStoredEndpointId() ?? "");
+  const [creditBalance, setCreditBalance] = useState<CreditBalanceView | null>(null);
   const [runError, setRunError] = useState("");
   const [isSubmittingRun, setIsSubmittingRun] = useState(false);
   const [jobActionError, setJobActionError] = useState("");
@@ -384,6 +387,29 @@ export function App() {
         // Session bootstrap failure just leaves the user anonymous.
       });
   }, [invited]);
+
+  useEffect(() => {
+    if (!invited || !runEndpointId) {
+      setCreditBalance(null);
+      return;
+    }
+    let active = true;
+    const load = () => {
+      void fetchCreditBalance(runEndpointId)
+        .then((balance) => {
+          if (active) setCreditBalance(balance);
+        })
+        .catch(() => {
+          if (active) setCreditBalance(null);
+        });
+    };
+    load();
+    const timer = window.setInterval(load, 10_000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [invited, runEndpointId, currentUser]);
 
   function updateEndpointId(value: string): void {
     setRunEndpointId(value);
@@ -760,6 +786,7 @@ export function App() {
         <>
           <span>{`Runpod key: ${runpodKey || hasServerRunpodApiKey ? "Configured" : "Missing"}`}</span>
           <span>{`Endpoint: ${runEndpointId || "Not set"}`}</span>
+          <CreditBalanceDisplay balance={creditBalance} />
           <span>{`Template: ${activeTemplate ? "Loaded" : "Not loaded"}`}</span>
           <span>{storageStatus}</span>
         </>

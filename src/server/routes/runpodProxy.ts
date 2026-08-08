@@ -2,17 +2,20 @@ import type { Hono } from "hono";
 import { getSessionUser, requireInvitedSession } from "../middleware/session";
 import { cancelRequestSchema, purgeQueueRequestSchema, retryRequestSchema, runRequestSchema, statusBatchRequestSchema, statusRequestSchema } from "../schemas/runpodProxy";
 import { forwardRunpodRequest } from "../lib/runpodClient";
-import { trackJob, pollJobNow } from "../lib/jobTracker";
+import { trackJob, pollJobNow, stopTrackingJob } from "../lib/jobTracker";
 import { createJob, readJob, updateJob } from "../lib/jobStore";
 import { redactSecrets } from "../lib/redaction";
 import { isTerminalRunpodStatus, normalizeRunpodStatus, toTerminalReason, type JobStatus } from "../../shared/contracts/jobs";
 import { formatJobDisplayName } from "../../shared/jobDisplay";
 import { logServerError, logServerWarning } from "../lib/logger";
+import { getCreditBalance, getManagedWalletGroupId } from "../lib/creditStore";
+import { releaseSubmissionCapacity, reserveSubmissionCapacity } from "../lib/submissionCapacity";
+import { settleTerminalJobBilling } from "../lib/jobBilling";
 
-function resolveRunpodApiKey(requestApiKey: string): string {
+function resolveRunpodApiKey(endpointId: string, requestApiKey: string): string {
   // Dedicated name avoids RunPod's auto-injected pod-scoped RUNPOD_API_KEY.
   const serverApiKey = process.env.SERVER_RUNPOD_API_KEY?.trim();
-  if (serverApiKey) {
+  if (serverApiKey && getManagedWalletGroupId(endpointId)) {
     return serverApiKey;
   }
 
@@ -49,25 +52,44 @@ export function registerRunpodProxyRoutes(app: Hono): void {
       return c.json({ ok: false, error: "Invalid run request" }, 400);
     }
 
+    const createdBy = await getSessionUser(c);
+    const username = createdBy ?? "anonymous";
+    const balance = await getCreditBalance(username, parsed.data.endpointId);
+    if (balance.managed && balance.totalCredits <= 0) {
+      return c.json({ ok: false, error: "Insufficient credits" }, 402);
+    }
+    const capacity = reserveSubmissionCapacity({
+      username,
+      walletGroupId: balance.walletGroupId,
+      maxWalletActiveJobs: balance.managed ? balance.maxActiveJobs : null
+    });
+    if (!capacity.ok) {
+      const error = capacity.reason === "global-capacity"
+        ? "Server job capacity reached"
+        : "Wallet job capacity reached";
+      return c.json({ ok: false, error }, 429);
+    }
+
     try {
+      const resolvedApiKey = resolveRunpodApiKey(parsed.data.endpointId, parsed.data.apiKey);
       const response = await forwardRunpodRequest({
         endpointId: parsed.data.endpointId,
-        apiKey: resolveRunpodApiKey(parsed.data.apiKey),
+        apiKey: resolvedApiKey,
         operation: "run",
         body: { input: parsed.data.input }
       });
 
       const body = await response.text();
+      let reservationHandedOff = false;
       if (response.ok) {
         try {
           const parsedBody = JSON.parse(body) as { id?: unknown; jobId?: unknown };
           const jobId = typeof parsedBody.id === "string" ? parsedBody.id : typeof parsedBody.jobId === "string" ? parsedBody.jobId : null;
 
           if (jobId) {
-            const resolvedApiKey = resolveRunpodApiKey(parsed.data.apiKey);
             const meta = parsed.data.meta;
             const now = new Date().toISOString();
-            const createdBy = await getSessionUser(c);
+            reservationHandedOff = true;
             void createJob(
               {
                 jobId,
@@ -83,14 +105,17 @@ export function registerRunpodProxyRoutes(app: Hono): void {
                 imageCount: 0,
                 lastError: null,
                 createdBy,
+                billingMode: balance.managed ? "managed" : "free",
+                walletGroupId: balance.walletGroupId,
+                billingUsername: username,
               },
               {
                 draftValues: (meta?.draftValues ?? {}) as import("../../shared/contracts/inputs").DynamicInputDraftValues,
                 submittedInput: parsed.data.input,
               },
-            ).then(() => trackJob(parsed.data.endpointId, jobId, resolvedApiKey)).catch((err: unknown) => {
+            ).then(() => trackJob(parsed.data.endpointId, jobId, resolvedApiKey, capacity.reservationId)).catch((err: unknown) => {
               logServerWarning("Failed to persist initial job record", err, { jobId });
-              void trackJob(parsed.data.endpointId, jobId, resolvedApiKey);
+              void trackJob(parsed.data.endpointId, jobId, resolvedApiKey, capacity.reservationId);
             });
           }
         } catch (error) {
@@ -99,9 +124,13 @@ export function registerRunpodProxyRoutes(app: Hono): void {
           });
         }
       }
+      if (!response.ok || !reservationHandedOff) {
+        releaseSubmissionCapacity(capacity.reservationId);
+      }
 
       return toProxyResponse(response, body);
     } catch (error) {
+      releaseSubmissionCapacity(capacity.reservationId);
       return c.json(toSafeProxyError(error, "Runpod run proxy failed", {
         endpointId: parsed.data.endpointId
       }), 502);
@@ -117,7 +146,7 @@ export function registerRunpodProxyRoutes(app: Hono): void {
     }
 
     try {
-      const resolvedApiKey = resolveRunpodApiKey(parsed.data.apiKey);
+      const resolvedApiKey = resolveRunpodApiKey(parsed.data.endpointId, parsed.data.apiKey);
       const cached = await readJob(parsed.data.id);
       if (cached?.isTerminal) {
         return c.json(cached);
@@ -155,7 +184,7 @@ export function registerRunpodProxyRoutes(app: Hono): void {
     const items = await Promise.all(
       parsed.data.ids.map(async (id) => {
         try {
-          const resolvedApiKey = resolveRunpodApiKey(parsed.data.apiKey);
+          const resolvedApiKey = resolveRunpodApiKey(parsed.data.endpointId, parsed.data.apiKey);
           const cached = await readJob(id);
           if (cached?.isTerminal) {
             return {
@@ -215,7 +244,7 @@ export function registerRunpodProxyRoutes(app: Hono): void {
     try {
       const response = await forwardRunpodRequest({
         endpointId: parsed.data.endpointId,
-        apiKey: resolveRunpodApiKey(parsed.data.apiKey),
+        apiKey: resolveRunpodApiKey(parsed.data.endpointId, parsed.data.apiKey),
         operation: "cancel",
         id: parsed.data.id
       });
@@ -223,12 +252,30 @@ export function registerRunpodProxyRoutes(app: Hono): void {
       const body = await response.text();
       if (response.ok) {
         try {
-          const normalized = normalizeRunpodStatus((JSON.parse(body) as { status?: string })?.status ?? "CANCELLED");
-          await updateJob(parsed.data.id, {
+          const responseData = JSON.parse(body) as { status?: string; executionTime?: number };
+          const normalized = normalizeRunpodStatus(responseData.status ?? "CANCELLED");
+          const terminal = isTerminalRunpodStatus(normalized);
+          const existing = await readJob(parsed.data.id);
+          const updates: Parameters<typeof updateJob>[1] = {
             status: normalized as JobStatus,
-            isTerminal: isTerminalRunpodStatus(normalized),
+            isTerminal: terminal,
             terminalReason: toTerminalReason(normalized)
-          });
+          };
+          if (terminal && existing) {
+            const settlement = await settleTerminalJobBilling(
+              existing,
+              normalized as JobStatus,
+              new Date().toISOString(),
+              responseData.executionTime
+            );
+            if (settlement) {
+              updates.executionTimeMs = settlement.executionTimeMs;
+              updates.creditsCharged = settlement.creditsCharged;
+              updates.creditSettledAt = settlement.creditSettledAt;
+            }
+            stopTrackingJob(parsed.data.endpointId, parsed.data.id);
+          }
+          await updateJob(parsed.data.id, updates);
         } catch (error) {
           logServerWarning("Runpod cancel response was not JSON", error, {
             endpointId: parsed.data.endpointId,
@@ -257,14 +304,14 @@ export function registerRunpodProxyRoutes(app: Hono): void {
     try {
       const response = await forwardRunpodRequest({
         endpointId: parsed.data.endpointId,
-        apiKey: resolveRunpodApiKey(parsed.data.apiKey),
+        apiKey: resolveRunpodApiKey(parsed.data.endpointId, parsed.data.apiKey),
         operation: "retry",
         id: parsed.data.id
       });
 
       const body = await response.text();
       if (response.ok) {
-        void trackJob(parsed.data.endpointId, parsed.data.id, resolveRunpodApiKey(parsed.data.apiKey));
+        void trackJob(parsed.data.endpointId, parsed.data.id, resolveRunpodApiKey(parsed.data.endpointId, parsed.data.apiKey));
       }
 
       return toProxyResponse(response, body);
@@ -287,7 +334,7 @@ export function registerRunpodProxyRoutes(app: Hono): void {
     try {
       const response = await forwardRunpodRequest({
         endpointId: parsed.data.endpointId,
-        apiKey: resolveRunpodApiKey(parsed.data.apiKey),
+        apiKey: resolveRunpodApiKey(parsed.data.endpointId, parsed.data.apiKey),
         operation: "purge-queue",
         body: {}
       });

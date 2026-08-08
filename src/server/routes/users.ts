@@ -7,6 +7,7 @@ import {
 } from "../middleware/session";
 import { loginOrCreateUser } from "../lib/userStore";
 import { userLoginSchema } from "../schemas/users";
+import { getCreditBalance } from "../lib/creditStore";
 
 export function registerUserRoutes(app: Hono): void {
   app.use("/api/users/*", requireInvitedSession);
@@ -36,5 +37,14 @@ export function registerUserRoutes(app: Hono): void {
   app.get("/api/users/session", async (c) => {
     const username = await getSessionUser(c);
     return c.json({ ok: true, username });
+  });
+
+  app.get("/api/users/credits", async (c) => {
+    const endpointId = c.req.query("endpointId")?.trim();
+    if (!endpointId) {
+      return c.json({ ok: false, error: "Endpoint ID is required" }, 400);
+    }
+    const username = (await getSessionUser(c)) ?? "anonymous";
+    return c.json({ ok: true, ...(await getCreditBalance(username, endpointId)) });
   });
 }

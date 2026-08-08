@@ -9,11 +9,18 @@ import {
   requireInvitedSession
 } from "../middleware/session";
 import { deleteJobImage, listManifestImages } from "../lib/jobStore";
-import { userExists } from "../lib/userStore";
+import { listUsernames, userExists } from "../lib/userStore";
 import { impersonateRequestSchema, verifyAdminKeyRequestSchema } from "../schemas/admin";
 import { getAdminPasskey } from "../security/adminPasskey";
 import { validateWorkflowShape, validateWorkflowTemplateRules } from "../../shared/workflow/workflowSchemas";
 import { getStockWorkflowsDir } from "./stockWorkflows";
+import {
+  configureCreditAccount,
+  listCreditAccounts,
+  listCreditLedger,
+  listManagedEndpointWallets,
+  type CreditAccount
+} from "../lib/creditStore";
 
 const MAX_WORKFLOW_BYTES = 5 * 1024 * 1024;
 
@@ -51,6 +58,45 @@ export function registerAdminRoutes(app: Hono): void {
   app.post("/api/admin/logout", (c) => {
     clearAdminSessionCookie(c);
     return c.json({ ok: true, admin: false });
+  });
+
+  app.get("/api/admin/credits", async (c) => {
+    if (!(await hasAdminSession(c))) return c.json({ ok: false, error: "Forbidden" }, 403);
+    const [users, accounts, ledger] = await Promise.all([
+      listUsernames(),
+      listCreditAccounts(),
+      listCreditLedger()
+    ]);
+    return c.json({ ok: true, users, accounts, ledger, managedEndpoints: listManagedEndpointWallets() });
+  });
+
+  app.put("/api/admin/credits/accounts", async (c) => {
+    if (!(await hasAdminSession(c))) return c.json({ ok: false, error: "Forbidden" }, 403);
+    const payload = await c.req.json().catch(() => null) as Partial<CreditAccount> | null;
+    const valid = payload
+      && typeof payload.username === "string" && payload.username.trim().length > 0
+      && typeof payload.walletGroupId === "string" && payload.walletGroupId.trim().length > 0
+      && Number.isFinite(payload.allowance) && (payload.allowance ?? -1) >= 0
+      && Number.isFinite(payload.refreshIntervalMs) && (payload.refreshIntervalMs ?? 0) > 0
+      && Number.isFinite(payload.refreshingCredits)
+      && Number.isFinite(payload.staticCredits)
+      && Number.isFinite(payload.maxActiveJobs) && (payload.maxActiveJobs ?? 0) >= 1
+      && typeof payload.nextRefreshAt === "string" && Number.isFinite(Date.parse(payload.nextRefreshAt));
+    if (!valid) {
+      return c.json({ ok: false, error: "Invalid credit account" }, 400);
+    }
+    const account: CreditAccount = {
+      username: payload.username!.trim(),
+      walletGroupId: payload.walletGroupId!.trim(),
+      allowance: Math.floor(payload.allowance!),
+      refreshIntervalMs: Math.floor(payload.refreshIntervalMs!),
+      refreshingCredits: Math.floor(payload.refreshingCredits!),
+      staticCredits: Math.floor(payload.staticCredits!),
+      maxActiveJobs: Math.floor(payload.maxActiveJobs!),
+      nextRefreshAt: new Date(payload.nextRefreshAt!).toISOString()
+    };
+    await configureCreditAccount(account);
+    return c.json({ ok: true, account });
   });
 
   // Adopt an existing user's identity by issuing them a user session cookie.

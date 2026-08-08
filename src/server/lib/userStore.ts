@@ -112,3 +112,8 @@ export async function userExists(username: string): Promise<boolean> {
   const users = await readUsersFile();
   return users.some((user) => user.username === username);
 }
+
+export async function listUsernames(): Promise<string[]> {
+  const users = await readUsersFile();
+  return users.map((user) => user.username).sort((left, right) => left.localeCompare(right));
+}
