@@ -12,6 +12,11 @@ type TrackedSection = {
   controls: DynamicInputControl[];
 };
 
+type TrackedControlValue = {
+  label: string;
+  value: string;
+};
+
 function normalizeWorkflowSource(rawJson: unknown): unknown {
   if (!rawJson || typeof rawJson !== "object" || Array.isArray(rawJson)) {
     return rawJson;
@@ -36,6 +41,8 @@ function formatControlValue(control: DynamicInputControl): string {
     }
     case "multiline":
       return typeof value === "string" ? value : "";
+    case "checkpoint":
+      return typeof value === "string" ? stripModelExtension(value) : "";
     case "number":
       return typeof value === "number" || typeof value === "string" ? String(value) : "";
     case "boolean":
@@ -49,6 +56,21 @@ function formatControlValue(control: DynamicInputControl): string {
     default:
       return "";
   }
+}
+
+export function formatTrackedControlValues(control: DynamicInputControl): TrackedControlValue[] {
+  if (control.kind === "lora-list") {
+    const value = control.defaultValue;
+    if (!value || typeof value !== "object" || !("loras" in value)) {
+      return [];
+    }
+    return value.loras.map((lora) => ({
+      label: stripModelExtension(lora.loraName),
+      value: String(lora.strength)
+    }));
+  }
+
+  return [{ label: control.name, value: formatControlValue(control) }];
 }
 
 function imageDataUrl(control: DynamicInputControl): string {
@@ -228,14 +250,24 @@ export function TrackedInputsPanel({
                   );
                 }
 
-                const text = formatControlValue(control);
+                if (control.kind === "lora-list") {
+                  return formatTrackedControlValues(control).map((entry, index) => (
+                    <div className="tracked-inputs-field" key={`${control.id}:${index}`}>
+                      <span className="tracked-inputs-field-label">{entry.label}</span>
+                      <span className="tracked-inputs-field-value">{entry.value}</span>
+                    </div>
+                  ));
+                }
+
+                const [entry] = formatTrackedControlValues(control);
+                const text = entry?.value ?? "";
                 const isBlock = control.kind === "multiline";
                 return (
                   <div
                     className={`tracked-inputs-field${isBlock ? " tracked-inputs-field-block" : ""}`}
                     key={control.id}
                   >
-                    <span className="tracked-inputs-field-label">{control.name}</span>
+                    <span className="tracked-inputs-field-label">{entry?.label ?? control.name}</span>
                     <span className="tracked-inputs-field-value">{text.length > 0 ? text : "—"}</span>
                   </div>
                 );

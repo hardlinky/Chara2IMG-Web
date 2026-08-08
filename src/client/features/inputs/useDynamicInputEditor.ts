@@ -122,6 +122,14 @@ function isMeaningfulImportedValue(value: DynamicInputValue): boolean {
     return typeof value.loraName === "string" && value.loraName.trim().length > 0 && Number.isFinite(Number(value.strength));
   }
 
+  if ("loras" in value) {
+    return Array.isArray(value.loras) && value.loras.every((lora) => (
+      typeof lora.loraName === "string"
+      && lora.loraName.trim().length > 0
+      && Number.isFinite(Number(lora.strength))
+    ));
+  }
+
   return false;
 }
 

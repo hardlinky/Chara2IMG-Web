@@ -557,4 +557,63 @@ describe("dynamic input editor", () => {
     expect(result.matchedControls).toBe(1);
     expect(result.draftValues["local:text:prompt"]).toBe("");
   });
+
+  it("restores checkpoint and LoRA list values from job inputs", () => {
+    const sourceWorkflow = {
+      "24": {
+        class_type: "CheckpointLoaderSimple",
+        inputs: {
+          title: "[Input1] Models.Checkpoint",
+          ckpt_name: "job-checkpoint.safetensors"
+        }
+      },
+      "25": {
+        class_type: "Power Lora Loader (rgthree)",
+        inputs: {
+          title: "[Input2] Models.Loras",
+          lora_1: { on: true, lora: "job-style.safetensors", strength: 0.75 }
+        }
+      }
+    };
+    const currentControls: DynamicInputControl[] = [
+      {
+        id: "local:checkpoint:ckpt_name",
+        kind: "checkpoint",
+        inputIndex: 1,
+        fullTitle: "[Input1] Models.Checkpoint",
+        category: "Models",
+        name: "Checkpoint",
+        source: { nodeId: "local", titlePath: "local.inputs.title", valuePath: ["ckpt_name"] },
+        constraints: {},
+        defaultValue: "default.safetensors",
+        orderKey: "000001:[Input1] Models.Checkpoint"
+      },
+      {
+        id: "local:lora-list",
+        kind: "lora-list",
+        inputIndex: 2,
+        fullTitle: "[Input2] Models.Loras",
+        category: "Models",
+        name: "Loras",
+        source: { nodeId: "local", titlePath: "local.inputs.title", valuePath: ["lora_1"] },
+        constraints: {},
+        defaultValue: { loras: [] },
+        orderKey: "000002:[Input2] Models.Loras"
+      }
+    ];
+
+    const result = applyImportedWorkflowInputs({
+      sourceWorkflowRawJson: sourceWorkflow,
+      selectedCategories: ["Models"],
+      currentDraftValues: {},
+      currentControls
+    });
+
+    expect(result).toMatchObject({ ok: true, matchedControls: 2 });
+    if (!result.ok) return;
+    expect(result.draftValues["local:checkpoint:ckpt_name"]).toBe("job-checkpoint.safetensors");
+    expect(result.draftValues["local:lora-list"]).toEqual({
+      loras: [{ loraName: "job-style.safetensors", strength: 0.75 }]
+    });
+  });
 });
