@@ -39,13 +39,17 @@ describe("credit presentation", () => {
     expect(html).toContain("Credits: Free");
   });
 
-  it("formats free, finalized, and live running job prices", () => {
-    expect(formatJobPrice(job({ billingMode: "free" }), Date.parse("2026-08-08T00:00:20.000Z"))).toBe("Free");
-    expect(formatJobPrice(job(), Date.parse("2026-08-08T00:00:20.000Z"))).toBe("2 credits");
+  it("returns numeric-only finalized and live job prices", () => {
+    expect(formatJobPrice(job({ billingMode: "free" }), Date.parse("2026-08-08T00:00:20.000Z"))).toBeNull();
+    expect(formatJobPrice(job({ refreshingCreditsCharged: 2, staticCreditsCharged: 0 }), Date.parse("2026-08-08T00:00:20.000Z"))).toEqual({
+      refreshingCredits: 2,
+      staticCredits: 0,
+      state: "final"
+    });
     expect(formatJobPrice(job({
       creditsCharged: undefined,
       lifecycle: { status: "IN_PROGRESS", isTerminal: false, startedAt: "2026-08-08T00:00:00.000Z" }
-    }), Date.parse("2026-08-08T00:00:10.001Z"))).toBe("2 credits current");
+    }), Date.parse("2026-08-08T00:00:10.001Z"))).toEqual({ estimatedCredits: 2, state: "current" });
   });
 
   it("renders every managed wallet control for administrators", () => {

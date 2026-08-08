@@ -28,7 +28,9 @@ describe("credit billing", () => {
   it("spends refreshing credits before the static wallet and permits debt", () => {
     expect(applyCreditCharge({ refreshingCredits: 3, staticCredits: 2 }, 7)).toEqual({
       refreshingCredits: 0,
-      staticCredits: -2
+      staticCredits: -2,
+      refreshingCreditsCharged: 3,
+      staticCreditsCharged: 4
     });
   });
 

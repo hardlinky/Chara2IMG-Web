@@ -187,9 +187,9 @@ export function CreditAdminPanel() {
       <h3>Ledger</h3>
       <div className="credit-table-wrap">
         <table className="credit-table">
-          <thead><tr><th>Settled</th><th>User</th><th>Wallet</th><th>Job</th><th>Credits</th></tr></thead>
+          <thead><tr><th>Settled</th><th>User</th><th>Wallet</th><th>Job</th><th>Green</th><th>Gold</th><th>Total</th></tr></thead>
           <tbody>{data?.ledger.slice().reverse().map((entry) => (
-            <tr key={entry.jobId}><td>{new Date(entry.settledAt).toLocaleString()}</td><td>{entry.username}</td><td>{entry.walletGroupId}</td><td>{entry.jobId.slice(0, 8)}</td><td>{entry.credits}</td></tr>
+            <tr key={entry.jobId}><td>{new Date(entry.settledAt).toLocaleString()}</td><td>{entry.username}</td><td>{entry.walletGroupId}</td><td>{entry.jobId.slice(0, 8)}</td><td className="credit-balance-refreshing">{entry.refreshingCreditsCharged ?? "-"}</td><td className="credit-balance-static">{entry.staticCreditsCharged ?? "-"}</td><td>{entry.credits}</td></tr>
           ))}</tbody>
         </table>
       </div>

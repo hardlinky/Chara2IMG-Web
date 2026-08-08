@@ -236,6 +236,8 @@ async function pollTrackedJob(job: TrackedJob): Promise<PollResult> {
       if (settlement) {
         jobUpdates.executionTimeMs = settlement.executionTimeMs;
         jobUpdates.creditsCharged = settlement.creditsCharged;
+        jobUpdates.refreshingCreditsCharged = settlement.refreshingCreditsCharged;
+        jobUpdates.staticCreditsCharged = settlement.staticCreditsCharged;
         jobUpdates.creditSettledAt = settlement.creditSettledAt;
       }
     }

@@ -33,6 +33,45 @@ function createJob(overrides: Partial<RecentJobRecord>): RecentJobRecord {
 }
 
 describe("RecentJobsPanel", () => {
+  it("shows only the finalized price number in green", () => {
+    const html = renderToStaticMarkup(
+      <RecentJobsPanel
+        jobs={[createJob({
+          billingMode: "managed",
+          creditsCharged: 6,
+          refreshingCreditsCharged: 4,
+          staticCreditsCharged: 2
+        })]}
+        warningJobIds={[]}
+        cancelingJobIds={[]}
+        statusFilter="All"
+        ownerFilter="all"
+        currentUser={null}
+        onOwnerFilterChange={vi.fn()}
+        page={1}
+        pageCount={1}
+        pageNumbers={[1]}
+        onStatusFilterChange={vi.fn()}
+        onPageChange={vi.fn()}
+        onCancel={vi.fn()}
+        onRerun={vi.fn()}
+        onLoadInputs={vi.fn()}
+        onExportWorkflow={vi.fn()}
+        onRemoveVisible={vi.fn()}
+        formatSubmittedAtRelative={() => "just now"}
+        lastFetchedAt={null}
+      />
+    );
+
+    expect(html).toContain('class="jobs-price jobs-price-refreshing"');
+    expect(html).toContain('aria-label="Refreshing credits charged: 4"');
+    expect(html).toContain(">4</span>");
+    expect(html).toContain('class="jobs-price jobs-price-static"');
+    expect(html).toContain('aria-label="Static credits charged: 2"');
+    expect(html).toContain(">2</span>");
+    expect(html).not.toContain("Price:");
+  });
+
   it("renders the required compact list controls and row content", () => {
     const displayJobId = formatOutputJobId("job-123");
     const html = renderToStaticMarkup(

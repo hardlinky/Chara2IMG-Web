@@ -16,6 +16,8 @@ export type CreditLedgerEntryDto = {
   username: string;
   walletGroupId: string;
   credits: number;
+  refreshingCreditsCharged?: number;
+  staticCreditsCharged?: number;
   settledAt: string;
 };
 

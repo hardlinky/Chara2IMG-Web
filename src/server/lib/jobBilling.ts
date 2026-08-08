@@ -5,6 +5,8 @@ import { settleManagedJobCredits } from "./creditStore";
 export type JobBillingSettlement = {
   alreadySettled: boolean;
   creditsCharged: number;
+  refreshingCreditsCharged?: number;
+  staticCreditsCharged?: number;
   executionTimeMs: number;
   creditSettledAt: string;
 };
@@ -44,6 +46,8 @@ export async function settleTerminalJobBilling(
   return {
     alreadySettled: settlement.alreadySettled,
     creditsCharged: settlement.credits,
+    refreshingCreditsCharged: settlement.refreshingCreditsCharged,
+    staticCreditsCharged: settlement.staticCreditsCharged,
     executionTimeMs,
     creditSettledAt: settlement.settledAt
   };

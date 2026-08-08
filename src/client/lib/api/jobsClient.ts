@@ -34,6 +34,8 @@ export function adaptJobRecord(job: JobRecord): RecentJobRecord {
     createdBy: job.createdBy ?? null,
     billingMode: job.billingMode,
     creditsCharged: job.creditsCharged,
+    refreshingCreditsCharged: job.refreshingCreditsCharged,
+    staticCreditsCharged: job.staticCreditsCharged,
     pinnedOutputIndices: job.pinnedImageIndices,
     imageUnarchiveExpiries: job.imageUnarchiveExpiries,
   };

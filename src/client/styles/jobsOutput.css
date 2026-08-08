@@ -106,6 +106,20 @@
   gap: var(--space-2);
 }
 
+.jobs-price {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.jobs-price-refreshing {
+  color: var(--color-success-text);
+}
+
+.jobs-price-static,
+.jobs-price-current {
+  color: var(--color-warning-text);
+}
+
 .jobs-status-chip {
   border: 1px solid var(--color-border-strong);
   border-radius: 999px;

@@ -113,11 +113,20 @@ describe("credit store", () => {
     });
 
     expect(first.alreadySettled).toBe(false);
+    expect(first).toMatchObject({ credits: 7, refreshingCreditsCharged: 3, staticCreditsCharged: 4 });
     expect(duplicate.alreadySettled).toBe(true);
+    expect(duplicate).toMatchObject({ credits: 7, refreshingCreditsCharged: 3, staticCreditsCharged: 4 });
     expect(await getCreditBalance("artist", "managed-a", Date.parse("2026-08-08T00:00:02.000Z"))).toMatchObject({
       refreshingCredits: 0,
       staticCredits: -2,
       totalCredits: -2
     });
+    const { listCreditLedger } = await import("../../src/server/lib/creditStore");
+    expect(await listCreditLedger()).toEqual([expect.objectContaining({
+      jobId: "job-1",
+      credits: 7,
+      refreshingCreditsCharged: 3,
+      staticCreditsCharged: 4
+    })]);
   });
 });

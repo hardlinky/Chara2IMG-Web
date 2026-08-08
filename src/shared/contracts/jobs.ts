@@ -82,6 +82,8 @@ export type RecentJobRecord = {
   createdBy?: string | null;
   billingMode?: "managed" | "free";
   creditsCharged?: number;
+  refreshingCreditsCharged?: number;
+  staticCreditsCharged?: number;
   imageUnarchiveExpiries?: Record<string, string | null>; // mirrors JobRecord field; used by client projection
 };
 
@@ -169,6 +171,8 @@ export type JobRecord = {
   billingUsername?: string;
   executionTimeMs?: number;
   creditsCharged?: number;
+  refreshingCreditsCharged?: number;
+  staticCreditsCharged?: number;
   creditSettledAt?: string;
   isArchived?: boolean;
   pinnedImageIndices?: number[];                          // indices of per-image pinned outputs

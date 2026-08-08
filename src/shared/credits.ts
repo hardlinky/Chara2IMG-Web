@@ -27,12 +27,20 @@ export function calculateJobCredits(job: CreditPricedJob): number {
   return calculateExecutionCredits(job.executionTimeMs);
 }
 
-export function applyCreditCharge(balances: CreditBalances, credits: number): CreditBalances {
+export type CreditChargeResult = CreditBalances & {
+  refreshingCreditsCharged: number;
+  staticCreditsCharged: number;
+};
+
+export function applyCreditCharge(balances: CreditBalances, credits: number): CreditChargeResult {
   const charge = Number.isFinite(credits) ? Math.max(0, Math.ceil(credits)) : 0;
   const refreshingSpend = Math.min(Math.max(0, balances.refreshingCredits), charge);
+  const staticSpend = charge - refreshingSpend;
   return {
     refreshingCredits: balances.refreshingCredits - refreshingSpend,
-    staticCredits: balances.staticCredits - (charge - refreshingSpend)
+    staticCredits: balances.staticCredits - staticSpend,
+    refreshingCreditsCharged: refreshingSpend,
+    staticCreditsCharged: staticSpend
   };
 }
 

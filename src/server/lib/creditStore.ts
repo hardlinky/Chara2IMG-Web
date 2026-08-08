@@ -13,11 +13,13 @@ export type CreditAccount = {
   nextRefreshAt: string;
 };
 
-type CreditLedgerEntry = {
+export type CreditLedgerEntry = {
   jobId: string;
   username: string;
   walletGroupId: string;
   credits: number;
+  refreshingCreditsCharged?: number;
+  staticCreditsCharged?: number;
   settledAt: string;
 };
 
@@ -193,12 +195,20 @@ export async function getCreditAccount(username: string, walletGroupId: string):
 export async function settleManagedJobCredits(input: CreditLedgerEntry): Promise<{
   alreadySettled: boolean;
   credits: number;
+  refreshingCreditsCharged?: number;
+  staticCreditsCharged?: number;
   settledAt: string;
 }> {
   return withMutation((data) => {
     const existing = data.ledger.find((entry) => entry.jobId === input.jobId);
     if (existing) {
-      return { alreadySettled: true, credits: existing.credits, settledAt: existing.settledAt };
+      return {
+        alreadySettled: true,
+        credits: existing.credits,
+        refreshingCreditsCharged: existing.refreshingCreditsCharged,
+        staticCreditsCharged: existing.staticCreditsCharged,
+        settledAt: existing.settledAt
+      };
     }
     const account = data.accounts.find(
       (candidate) => candidate.username === input.username && candidate.walletGroupId === input.walletGroupId
@@ -209,8 +219,19 @@ export async function settleManagedJobCredits(input: CreditLedgerEntry): Promise
     const updated = applyCreditCharge(account, input.credits);
     account.refreshingCredits = updated.refreshingCredits;
     account.staticCredits = updated.staticCredits;
-    data.ledger.push({ ...input });
-    return { alreadySettled: false, credits: input.credits, settledAt: input.settledAt };
+    const entry = {
+      ...input,
+      refreshingCreditsCharged: updated.refreshingCreditsCharged,
+      staticCreditsCharged: updated.staticCreditsCharged
+    };
+    data.ledger.push(entry);
+    return {
+      alreadySettled: false,
+      credits: input.credits,
+      refreshingCreditsCharged: entry.refreshingCreditsCharged,
+      staticCreditsCharged: entry.staticCreditsCharged,
+      settledAt: input.settledAt
+    };
   });
 }
 

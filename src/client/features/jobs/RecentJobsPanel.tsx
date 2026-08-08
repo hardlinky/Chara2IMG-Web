@@ -348,7 +348,15 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
                 <span>Workflow: {job.provenance.workflowFileName ?? "Workflow unknown"}</span>
                 <div className="jobs-status-row">
                   <span className="jobs-status-chip" data-status={job.lifecycle.status}>{job.lifecycle.status}</span>
-                  {jobPrice ? <span className="jobs-price">Price: {jobPrice}</span> : null}
+                  {jobPrice?.state === "final" ? (
+                    <>
+                      <span className="jobs-price jobs-price-refreshing" aria-label={`Refreshing credits charged: ${jobPrice.refreshingCredits}`}>{jobPrice.refreshingCredits}</span>
+                      <span className="jobs-price jobs-price-static" aria-label={`Static credits charged: ${jobPrice.staticCredits}`}>{jobPrice.staticCredits}</span>
+                    </>
+                  ) : null}
+                  {jobPrice?.state === "current" ? (
+                    <span className="jobs-price jobs-price-current" aria-label={`Current estimated price: ${jobPrice.estimatedCredits} credits`}>{jobPrice.estimatedCredits}</span>
+                  ) : null}
                   {!job.lifecycle.isTerminal ? <span className="jobs-next-poll">Next poll in {formatNextPollCountdown(props.lastFetchedAt, now)}</span> : null}
                   {props.warningJobIds.includes(job.jobId) ? (
                     <span className="jobs-status-chip jobs-warning-chip">Polling warning</span>

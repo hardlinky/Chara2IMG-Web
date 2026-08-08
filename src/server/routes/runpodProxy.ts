@@ -272,6 +272,8 @@ export function registerRunpodProxyRoutes(app: Hono): void {
             if (settlement) {
               updates.executionTimeMs = settlement.executionTimeMs;
               updates.creditsCharged = settlement.creditsCharged;
+              updates.refreshingCreditsCharged = settlement.refreshingCreditsCharged;
+              updates.staticCreditsCharged = settlement.staticCreditsCharged;
               updates.creditSettledAt = settlement.creditSettledAt;
             }
             stopTrackingJob(parsed.data.endpointId, parsed.data.id);

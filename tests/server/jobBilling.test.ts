@@ -75,7 +75,13 @@ describe("terminal job billing", () => {
     const first = await settleTerminalJobBilling(runningJob, "FAILED", "2026-08-08T00:00:10.001Z");
     const duplicate = await settleTerminalJobBilling(runningJob, "FAILED", "2026-08-08T00:00:20.000Z");
 
-    expect(first).toMatchObject({ creditsCharged: 2, executionTimeMs: 10_001, alreadySettled: false });
+    expect(first).toMatchObject({
+      creditsCharged: 2,
+      refreshingCreditsCharged: 2,
+      staticCreditsCharged: 0,
+      executionTimeMs: 10_001,
+      alreadySettled: false
+    });
     if (!duplicate) throw new Error("Expected duplicate settlement");
     expect(duplicate.alreadySettled).toBe(true);
     const { getCreditAccount } = await import("../../src/server/lib/creditStore");
@@ -98,7 +104,9 @@ describe("terminal job billing", () => {
       isTerminal: true,
       status: "FAILED",
       executionTimeMs: 10_001,
-      creditsCharged: 2
+      creditsCharged: 2,
+      refreshingCreditsCharged: 2,
+      staticCreditsCharged: 0
     });
     const { getCreditAccount } = await import("../../src/server/lib/creditStore");
     expect(await getCreditAccount("artist", "shared")).toMatchObject({ refreshingCredits: 8 });
