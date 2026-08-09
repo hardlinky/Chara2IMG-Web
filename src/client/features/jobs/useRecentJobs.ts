@@ -12,6 +12,7 @@ import {
   hasJobObservationTimedOut,
   isCancellableJobStatus
 } from "./jobStatus";
+import { STANDARD_LIST_PAGE_SIZE } from "../../lib/pagination";
 
 type UseRecentJobsOptions = {
   endpointId?: string;
@@ -20,7 +21,7 @@ type UseRecentJobsOptions = {
   currentUser?: string | null;
 };
 
-export const RECENT_JOB_PAGE_SIZE = 12;
+export const RECENT_JOB_PAGE_SIZE = STANDARD_LIST_PAGE_SIZE;
 const OUTPUTS_IN_MEMORY_PER_JOB_LIMIT = 8;
 const POLL_INTERVAL_MS = 10_000;
 const ADAPTIVE_OFFLOAD_COMPLETION_GRACE_PERIOD_MS = 60 * 60 * 1000;

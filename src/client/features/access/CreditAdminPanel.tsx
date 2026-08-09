@@ -3,10 +3,12 @@ import {
   fetchAdminCredits,
   updateCreditAccount,
   type AdminCreditsDto,
-  type CreditAccountDto
+  type CreditAccountDto,
+  type CreditLedgerEntryDto
 } from "../../lib/api/creditsClient";
 import "../../styles/credits.css";
 import { ANONYMOUS_CREDIT_USERNAME } from "../../../shared/credits";
+import { STANDARD_LIST_PAGE_SIZE } from "../../lib/pagination";
 
 type RefreshUnit = "minutes" | "hours" | "days";
 
@@ -156,6 +158,39 @@ export function CreditAccountsTable({
   );
 }
 
+export function CreditLedgerTable({ ledger }: { ledger: CreditLedgerEntryDto[] }) {
+  const [page, setPage] = useState(1);
+  const newestFirst = ledger.slice().reverse();
+  const pageCount = Math.max(1, Math.ceil(newestFirst.length / STANDARD_LIST_PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const pageEntries = newestFirst.slice(
+    (currentPage - 1) * STANDARD_LIST_PAGE_SIZE,
+    currentPage * STANDARD_LIST_PAGE_SIZE
+  );
+
+  return (
+    <>
+      <div className="credit-table-wrap">
+        <table className="credit-table">
+          <thead><tr><th>Settled</th><th>User</th><th>Wallet</th><th>Job</th><th>Green</th><th>Gold</th><th>Total</th></tr></thead>
+          <tbody>{pageEntries.map((entry) => (
+            <tr key={entry.jobId}><td>{new Date(entry.settledAt).toLocaleString()}</td><td>{entry.username}</td><td>{entry.walletGroupId}</td><td>{entry.jobId.slice(0, 8)}</td><td className="credit-balance-refreshing">{entry.refreshingCreditsCharged ?? "-"}</td><td className="credit-balance-static">{entry.staticCreditsCharged ?? "-"}</td><td>{entry.credits}</td></tr>
+          ))}</tbody>
+        </table>
+      </div>
+      <div className="jobs-pagination credit-ledger-pagination" aria-label="credit ledger pagination">
+        <button className="btn btn-secondary" type="button" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)}>
+          Prev page
+        </button>
+        <span>{`Page ${currentPage} / ${pageCount}`}</span>
+        <button className="btn btn-secondary" type="button" disabled={currentPage >= pageCount} onClick={() => setPage(currentPage + 1)}>
+          Next page
+        </button>
+      </div>
+    </>
+  );
+}
+
 export function CreditAdminPanel() {
   const [data, setData] = useState<AdminCreditsDto | null>(null);
   const [error, setError] = useState("");
@@ -185,14 +220,7 @@ export function CreditAdminPanel() {
       {error ? <p className="status-inline">{error}</p> : null}
       <CreditAccountsTable accounts={data?.accounts ?? []} onEdit={setSelectedAccount} />
       <h3>Ledger</h3>
-      <div className="credit-table-wrap">
-        <table className="credit-table">
-          <thead><tr><th>Settled</th><th>User</th><th>Wallet</th><th>Job</th><th>Green</th><th>Gold</th><th>Total</th></tr></thead>
-          <tbody>{data?.ledger.slice().reverse().map((entry) => (
-            <tr key={entry.jobId}><td>{new Date(entry.settledAt).toLocaleString()}</td><td>{entry.username}</td><td>{entry.walletGroupId}</td><td>{entry.jobId.slice(0, 8)}</td><td className="credit-balance-refreshing">{entry.refreshingCreditsCharged ?? "-"}</td><td className="credit-balance-static">{entry.staticCreditsCharged ?? "-"}</td><td>{entry.credits}</td></tr>
-          ))}</tbody>
-        </table>
-      </div>
+      <CreditLedgerTable ledger={data?.ledger ?? []} />
     </section>
   );
 }

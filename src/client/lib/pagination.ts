@@ -1,0 +1,1 @@
+export const STANDARD_LIST_PAGE_SIZE = 12;

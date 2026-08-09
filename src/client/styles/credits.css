@@ -44,3 +44,7 @@
 .credit-balance-static {
   color: var(--color-warning-text);
 }
+
+.credit-ledger-pagination {
+  margin-top: var(--space-3);
+}
