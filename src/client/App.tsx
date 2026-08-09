@@ -821,7 +821,7 @@ export function App() {
                 <WorkflowImport onImported={persistTemplate} onImportInputs={onImportInputs} currentTemplate={activeTemplate} />
               </div>
             </details>
-            <p>Workflow template loaded: {activeTemplate ? "Yes" : "No"}</p>
+            <p>Workflow template loaded: {activeTemplate?.displayName ?? "No"}</p>
             {activeTemplate ? (
               <DynamicInputEditor
                 activeTemplate={activeTemplate}
