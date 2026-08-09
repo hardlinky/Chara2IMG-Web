@@ -12,7 +12,7 @@ import { useDynamicInputEditor } from "./useDynamicInputEditor";
 import { buildVariableTokenParts, isNameField, getCategoriesWithName } from "./inputVariables";
 import { toggleCategoryTracked, useTrackedInputCategories } from "../../lib/inputTrackingStorage";
 import { toImageDataUrl, stripModelExtension } from "../../lib/modelAssets";
-import { fetchAvailableLoras, fetchAvailableCheckpoints } from "../../lib/api/modelsClient";
+import { fetchAvailableCheckpoints, fetchLoraCatalog } from "../../lib/api/modelsClient";
 import "../../styles/setupInput.css";
 
 // Integer-valued inputs step by 1; every other number spinner steps by 0.05.
@@ -225,6 +225,24 @@ export function CheckpointSelect({ value, onChange }: { value: string; onChange:
   );
 }
 
+export function findLoraDownloadUrl(loraName: string, downloadUrls: Record<string, string>): string | undefined {
+  const normalizedName = loraName.replaceAll("\\", "/").toLowerCase();
+  const matchingEntry = Object.entries(downloadUrls).find(([name]) => (
+    name.replaceAll("\\", "/").toLowerCase() === normalizedName
+  ));
+  const matchedUrl = matchingEntry?.[1] ?? Object.entries(downloadUrls).find(([name]) => (
+    name.toLowerCase() === normalizedName.split("/").at(-1)
+  ))?.[1];
+  if (!matchedUrl) return undefined;
+
+  try {
+    const parsed = new URL(matchedUrl);
+    return parsed.protocol === "http:" || parsed.protocol === "https:" ? matchedUrl : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function LoraListInput({
   controlId,
   sliderMin,
@@ -239,10 +257,14 @@ function LoraListInput({
   onChange: (loras: Array<{ loraName: string; strength: number }>) => void;
 }) {
   const [available, setAvailable] = useState<string[] | null>(null);
+  const [downloadUrls, setDownloadUrls] = useState<Record<string, string>>({});
   const sliderStep = 0.05;
 
   useEffect(() => {
-    void fetchAvailableLoras().then(setAvailable);
+    void fetchLoraCatalog().then((catalog) => {
+      setAvailable(catalog.loras);
+      setDownloadUrls(catalog.downloadUrls);
+    });
   }, []);
 
   function updateStrength(index: number, strength: number) {
@@ -269,15 +291,24 @@ function LoraListInput({
       {currentLoras.map((lora, index) => {
         const missing = available !== null && !available.includes(lora.loraName);
         const displayName = stripModelExtension(lora.loraName);
+        const downloadUrl = findLoraDownloadUrl(lora.loraName, downloadUrls);
         return (
           <div key={`${controlId}-${lora.loraName}-${index}`} className="input-lora-list-item">
             <div className="input-lora-list-item-header">
-              <span
+              {downloadUrl ? <a
+                className={`input-lora-list-item-name${missing ? " input-lora-list-item-name--missing" : ""}`}
+                href={downloadUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={`Open source: ${downloadUrl}`}
+              >
+                {displayName}{missing ? " (not found)" : ""}
+              </a> : <span
                 className={`input-lora-list-item-name${missing ? " input-lora-list-item-name--missing" : ""}`}
                 title={missing ? `${lora.loraName} — file not found on disk` : lora.loraName}
               >
                 {displayName}{missing ? " (not found)" : ""}
-              </span>
+              </span>}
               <button
                 type="button"
                 className="input-lora-list-item-delete"

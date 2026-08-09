@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import type { DynamicInputControl, DynamicInputWarning } from "../../src/shared/contracts/inputs";
 import type { WorkflowTemplateRecord } from "../../src/shared/contracts/workflow";
 import { DynamicInputEditor } from "../../src/client/features/inputs/DynamicInputEditor";
-import { DynamicInputEditorView } from "../../src/client/features/inputs/DynamicInputEditor";
+import { DynamicInputEditorView, findLoraDownloadUrl } from "../../src/client/features/inputs/DynamicInputEditor";
 import {
   applyExternalDraftValues,
   applyImportedWorkflowInputs,
@@ -72,6 +72,18 @@ function createDimensionControl(): DynamicInputControl {
 }
 
 describe("dynamic input editor", () => {
+  it("matches active LoRAs to safe download source URLs", () => {
+    const urls = {
+      "styles/Ink.SAFETENSORS": "https://civitai.com/models/123",
+      "portrait.safetensors": "https://huggingface.co/example/portrait"
+    };
+
+    expect(findLoraDownloadUrl("styles\\ink.safetensors", urls)).toBe("https://civitai.com/models/123");
+    expect(findLoraDownloadUrl("nested/portrait.safetensors", urls)).toBe("https://huggingface.co/example/portrait");
+    expect(findLoraDownloadUrl("unknown.safetensors", urls)).toBeUndefined();
+    expect(findLoraDownloadUrl("unsafe.safetensors", { "unsafe.safetensors": "javascript:alert(1)" })).toBeUndefined();
+  });
+
   it("increments width and height controls in steps of 32", () => {
     const control = createDimensionControl();
     const html = renderToStaticMarkup(

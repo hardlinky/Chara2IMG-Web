@@ -528,6 +528,16 @@
   flex: 1 1 0;
 }
 
+a.input-lora-list-item-name {
+  color: var(--color-accent-primary);
+  text-decoration: underline;
+  text-underline-offset: 0.16em;
+}
+
+a.input-lora-list-item-name:hover {
+  color: var(--color-accent-primary-hover);
+}
+
 .input-lora-list-item-name--missing {
   color: var(--color-danger-text);
 }

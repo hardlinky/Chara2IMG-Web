@@ -1,5 +1,10 @@
-let cache: string[] | null = null;
-let pending: Promise<string[]> | null = null;
+export type LoraCatalog = {
+  loras: string[];
+  downloadUrls: Record<string, string>;
+};
+
+let cache: LoraCatalog | null = null;
+let pending: Promise<LoraCatalog> | null = null;
 
 export function invalidateLoraCache(): void {
   cache = null;
@@ -7,18 +12,25 @@ export function invalidateLoraCache(): void {
 }
 
 export async function fetchAvailableLoras(): Promise<string[]> {
+  return (await fetchLoraCatalog()).loras;
+}
+
+export async function fetchLoraCatalog(): Promise<LoraCatalog> {
   if (cache !== null) return cache;
   if (!pending) {
     pending = fetch("/api/models/loras", { credentials: "include" })
-      .then((res) => (res.ok ? res.json() : { loras: [] }))
+      .then((res) => (res.ok ? res.json() : { loras: [], downloadUrls: {} }))
       .then((data: unknown) => {
-        const loras = (data as { loras?: string[] }).loras;
-        cache = Array.isArray(loras) ? loras : [];
+        const result = data as { loras?: string[]; downloadUrls?: Record<string, string> };
+        cache = {
+          loras: Array.isArray(result.loras) ? result.loras : [],
+          downloadUrls: result.downloadUrls && typeof result.downloadUrls === "object" ? result.downloadUrls : {}
+        };
         return cache;
       })
       .catch(() => {
         pending = null;
-        return [];
+        return { loras: [], downloadUrls: {} };
       });
   }
   return pending;
