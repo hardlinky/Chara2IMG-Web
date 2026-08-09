@@ -1,4 +1,4 @@
-import { cleanup, render } from "@testing-library/react";
+import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
@@ -71,6 +71,28 @@ function createCluster(overrides: Partial<RecentJobOutputCluster>): RecentJobOut
 }
 
 describe("OutputsTab", () => {
+  it("keeps an externally selected job route stable while active", async () => {
+    const cluster = createCluster({ jobId: "job-route-stable" });
+    render(
+      <OutputsTab
+        clusters={[cluster]}
+        active
+        onRerun={() => undefined}
+        onLoadInputs={() => undefined}
+        onRemoveJobOutputs={() => undefined}
+        onRemoveOutputImage={() => undefined}
+      />
+    );
+
+    await act(async () => {
+      window.history.pushState(null, "", "/?tab=output&job=job-route-stable");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+
+    expect(new URLSearchParams(window.location.search).get("job")).toBe("job-route-stable");
+    expect(screen.getAllByRole("button", { name: `Load inputs from ${formatOutputJobId("job-route-stable")}` }).length).toBeGreaterThan(0);
+  });
+
   it("does not clear a job route while activating before the route snapshot catches up", () => {
     const props = {
       clusters: [] as RecentJobOutputCluster[],

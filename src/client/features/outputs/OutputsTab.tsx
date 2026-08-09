@@ -239,10 +239,8 @@ export function OutputsTab({ active = true, clusters, onRerun, onLoadInputs, onR
     window.localStorage.setItem(OUTPUTS_VIEW_MODE_STORAGE_KEY, galleryMode);
   }, [galleryMode]);
 
-  // Sync the open job with the URL `job` param. Only the active tab owns it.
-  // Reader reacts solely to URL changes (deep links, back/forward, cross-tab);
-  // writer reflects view changes into the URL. Keeping the reader off view
-  // changes avoids a lag-window feedback loop between the two effects.
+  // The URL is the single source of truth for the open job. User actions write
+  // the route, and this effect alone updates local gallery state from it.
   const galleryViewRef = useRef(gallery.view);
   galleryViewRef.current = gallery.view;
 
@@ -260,32 +258,24 @@ export function OutputsTab({ active = true, clusters, onRerun, onLoadInputs, onR
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, route.jobId]);
 
-  useEffect(() => {
-    if (!active) {
-      return;
-    }
-
-    const viewJobId = gallery.view.mode === "job" ? gallery.view.jobId : null;
-    if (route.jobId !== viewJobId) {
-      navigate({ jobId: viewJobId }, "push");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, gallery.view]);
-
   if (gallery.view.mode === "job" && selectedJobCluster) {
     return (
       <JobOutputsView
         cluster={selectedJobCluster}
         density={gallery.density}
-        onBack={gallery.goBackToGallery}
-        onPreviousJob={gallery.selectedClusterIndex > 0 ? gallery.goToPreviousJob : undefined}
-        onNextJob={gallery.selectedClusterIndex >= 0 && gallery.selectedClusterIndex + 1 < clusters.length ? gallery.goToNextJob : undefined}
+        onBack={() => navigate({ jobId: null }, "push")}
+        onPreviousJob={gallery.selectedClusterIndex > 0
+          ? () => navigate({ jobId: clusters[gallery.selectedClusterIndex - 1]?.jobId ?? null }, "push")
+          : undefined}
+        onNextJob={gallery.selectedClusterIndex >= 0 && gallery.selectedClusterIndex + 1 < clusters.length
+          ? () => navigate({ jobId: clusters[gallery.selectedClusterIndex + 1]?.jobId ?? null }, "push")
+          : undefined}
         onRerun={() => onRerun(selectedJobCluster.jobId)}
         onLoadInputs={() => onLoadInputs(selectedJobCluster.jobId)}
         onRemoveImage={(outputIndex) => onRemoveOutputImage(selectedJobCluster.jobId, outputIndex)}
         onRemoveAllOutputs={() => {
           onRemoveJobOutputs(selectedJobCluster.jobId);
-          gallery.goBackToGallery();
+          navigate({ jobId: null }, "push");
         }}
         onExportWorkflow={onExportWorkflow ? () => onExportWorkflow(selectedJobCluster.jobId) : undefined}
         onTogglePinnedImage={onToggleOutputPinned ? (outputIndex, pinned) => onToggleOutputPinned(selectedJobCluster.jobId, outputIndex, pinned) : undefined}
@@ -418,7 +408,7 @@ export function OutputsTab({ active = true, clusters, onRerun, onLoadInputs, onR
           onViewJobCurrent={(index) => {
             const cluster = pagedClusters[index];
             if (cluster) {
-              gallery.openJobOutputs(cluster.jobId);
+              navigate({ jobId: cluster.jobId }, "push");
             }
           }}
           onLoadImg2ImgCurrent={
@@ -475,7 +465,7 @@ export function OutputsTab({ active = true, clusters, onRerun, onLoadInputs, onR
                         imageLabel="1"
                         onOpen={open}
                         onImageLoad={(event) => handleImageLoad(cluster.jobId, cluster.representative.outputIndex, event)}
-                        onViewJobOutputs={() => gallery.openJobOutputs(cluster.jobId)}
+                        onViewJobOutputs={() => navigate({ jobId: cluster.jobId }, "push")}
                         onRemoveImage={onRemoveOutputImage ? () => onRemoveOutputImage(cluster.jobId, cluster.representative.outputIndex) : undefined}
                         onTogglePin={onToggleOutputPinned ? () => onToggleOutputPinned(cluster.jobId, cluster.representative.outputIndex, !cluster.representative.isPinned) : undefined}
                         canPinMore={canPinMore}
@@ -518,7 +508,7 @@ export function OutputsTab({ active = true, clusters, onRerun, onLoadInputs, onR
           onViewJobCurrent={(index) => {
             const outputImage = pagedAllOutputImages[index];
             if (outputImage) {
-              gallery.openJobOutputs(outputImage.jobId);
+              navigate({ jobId: outputImage.jobId }, "push");
             }
           }}
           onLoadImg2ImgCurrent={
@@ -575,7 +565,7 @@ export function OutputsTab({ active = true, clusters, onRerun, onLoadInputs, onR
                         imageLabel={`${outputImage.outputIndex + 1}`}
                         onOpen={open}
                         onImageLoad={(event) => handleImageLoad(outputImage.jobId, outputImage.outputIndex, event)}
-                        onViewJobOutputs={() => gallery.openJobOutputs(outputImage.jobId)}
+                        onViewJobOutputs={() => navigate({ jobId: outputImage.jobId }, "push")}
                         onRemoveImage={onRemoveOutputImage ? () => onRemoveOutputImage(outputImage.jobId, outputImage.outputIndex) : undefined}
                         onTogglePin={onToggleOutputPinned ? () => onToggleOutputPinned(outputImage.jobId, outputImage.outputIndex, !outputImage.isPinned) : undefined}
                         canPinMore={canPinMore}
