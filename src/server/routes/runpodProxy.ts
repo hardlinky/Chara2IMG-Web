@@ -3,6 +3,7 @@ import { getSessionUser, requireInvitedSession } from "../middleware/session";
 import { cancelRequestSchema, purgeQueueRequestSchema, retryRequestSchema, runRequestSchema, statusBatchRequestSchema, statusRequestSchema } from "../schemas/runpodProxy";
 import { forwardRunpodRequest } from "../lib/runpodClient";
 import { trackJob, pollJobNow, stopTrackingJob } from "../lib/jobTracker";
+import { refreshJobWalletCreditEstimates } from "../lib/jobCreditEstimates";
 import { createJob, readJob, updateJob } from "../lib/jobStore";
 import { redactSecrets } from "../lib/redaction";
 import { isTerminalRunpodStatus, normalizeRunpodStatus, toTerminalReason, type JobStatus } from "../../shared/contracts/jobs";
@@ -278,7 +279,10 @@ export function registerRunpodProxyRoutes(app: Hono): void {
             }
             stopTrackingJob(parsed.data.endpointId, parsed.data.id);
           }
-          await updateJob(parsed.data.id, updates);
+          const updatedJob = await updateJob(parsed.data.id, updates);
+          if (updatedJob) {
+            await refreshJobWalletCreditEstimates(updatedJob);
+          }
         } catch (error) {
           logServerWarning("Runpod cancel response was not JSON", error, {
             endpointId: parsed.data.endpointId,

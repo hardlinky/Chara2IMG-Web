@@ -39,27 +39,22 @@ describe("credit presentation", () => {
     expect(html).toContain("Credits: Free");
   });
 
-  it("returns numeric-only finalized and live job prices", () => {
-    expect(formatJobPrice(job({ billingMode: "free" }), Date.parse("2026-08-08T00:00:20.000Z"))).toBeNull();
-    expect(formatJobPrice(job({ refreshingCreditsCharged: 2, staticCreditsCharged: 0 }), Date.parse("2026-08-08T00:00:20.000Z"))).toEqual({
+  it("returns finalized and server-estimated job prices", () => {
+    expect(formatJobPrice(job({ billingMode: "free" }))).toBeNull();
+    expect(formatJobPrice(job({ refreshingCreditsCharged: 2, staticCreditsCharged: 0 }))).toEqual({
       refreshingCredits: 2,
       staticCredits: 0,
       state: "final"
     });
     expect(formatJobPrice(job({
       creditsCharged: undefined,
+      estimatedCredits: 2,
+      estimatedRefreshingCredits: 2,
+      estimatedStaticCredits: 0,
       lifecycle: { status: "IN_PROGRESS", isTerminal: false, startedAt: "2026-08-08T00:00:00.000Z" }
-    }), Date.parse("2026-08-08T00:00:10.001Z"), 5)).toEqual({
+    }))).toEqual({
       refreshingCredits: 2,
       staticCredits: 0,
-      state: "current"
-    });
-    expect(formatJobPrice(job({
-      creditsCharged: undefined,
-      lifecycle: { status: "IN_PROGRESS", isTerminal: false, startedAt: "2026-08-08T00:00:00.000Z" }
-    }), Date.parse("2026-08-08T00:01:00.000Z"), 5)).toEqual({
-      refreshingCredits: 5,
-      staticCredits: 1,
       state: "current"
     });
   });

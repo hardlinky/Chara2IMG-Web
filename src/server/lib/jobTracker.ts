@@ -12,6 +12,7 @@ import { extractRunpodOutputImages } from "../../shared/outputImage";
 import { logServerError, logServerWarning } from "./logger";
 import { releaseSubmissionCapacity } from "./submissionCapacity";
 import { settleTerminalJobBilling } from "./jobBilling";
+import { refreshJobWalletCreditEstimates } from "./jobCreditEstimates";
 
 // ─── Internal types ───────────────────────────────────────────────────────────
 
@@ -155,6 +156,9 @@ async function pollTrackedJob(job: TrackedJob): Promise<PollResult> {
           isTerminal: true,
           terminalReason: "expired-or-not-found",
         });
+        if (existing) {
+          await refreshJobWalletCreditEstimates(existing);
+        }
         trackedJobs.delete(toKey(job.endpointId, job.jobId));
         if (job.reservationId) {
           releaseSubmissionCapacity(job.reservationId);
@@ -242,7 +246,10 @@ async function pollTrackedJob(job: TrackedJob): Promise<PollResult> {
       }
     }
 
-    await updateJob(job.jobId, jobUpdates);
+    const updatedJob = await updateJob(job.jobId, jobUpdates);
+    if (updatedJob) {
+      await refreshJobWalletCreditEstimates(updatedJob);
+    }
 
     if (isTerminal) {
       trackedJobs.delete(toKey(job.endpointId, job.jobId));

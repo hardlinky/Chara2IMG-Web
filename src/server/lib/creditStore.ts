@@ -192,6 +192,21 @@ export async function getCreditAccount(username: string, walletGroupId: string):
   return account ? { ...account } : null;
 }
 
+export async function getRefreshedCreditAccount(
+  username: string,
+  walletGroupId: string,
+  nowMs = Date.now()
+): Promise<CreditAccount | null> {
+  return withMutation((data) => {
+    const account = data.accounts.find(
+      (candidate) => candidate.username === username && candidate.walletGroupId === walletGroupId
+    );
+    if (!account) return null;
+    refreshAccount(account, nowMs);
+    return { ...account };
+  });
+}
+
 export async function settleManagedJobCredits(input: CreditLedgerEntry): Promise<{
   alreadySettled: boolean;
   credits: number;

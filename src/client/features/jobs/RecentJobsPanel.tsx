@@ -19,7 +19,6 @@ type RecentJobsPanelProps = {
   statusFilter: RecentJobStatusFilter;
   ownerFilter: RecentJobOwnerFilter;
   currentUser: string | null;
-  refreshingCredits?: number;
   page: number;
   pageCount: number;
   pageNumbers: number[];
@@ -330,7 +329,7 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
             const showInlineDuration = Boolean(job.lifecycle.isTerminal && executionTime);
             const completionMeta = showInlineDuration ? `${completionTimeLabel} (${executionTime})` : completionTimeLabel;
             const timestampTooltip = formatJobTimestampTooltip(job, executionTime);
-            const jobPrice = formatJobPrice(job, now, props.refreshingCredits);
+            const jobPrice = formatJobPrice(job);
             return (
               <li key={job.jobId} className="jobs-card">
                 <div className="jobs-card-meta">

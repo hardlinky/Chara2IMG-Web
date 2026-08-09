@@ -72,7 +72,7 @@ describe("RecentJobsPanel", () => {
     expect(html).not.toContain("Price:");
   });
 
-  it("shows a running estimate against green credits before gold", () => {
+  it("shows a running estimate supplied by the server", () => {
     const html = renderToStaticMarkup(
       <RecentJobsPanel
         jobs={[createJob({
@@ -81,9 +81,11 @@ describe("RecentJobsPanel", () => {
             status: "IN_PROGRESS",
             isTerminal: false,
             startedAt: "2026-08-08T00:00:00.000Z"
-          }
+          },
+          estimatedCredits: 6,
+          estimatedRefreshingCredits: 5,
+          estimatedStaticCredits: 1
         })]}
-        refreshingCredits={5}
         warningJobIds={[]}
         cancelingJobIds={[]}
         statusFilter="All"

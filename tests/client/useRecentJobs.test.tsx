@@ -217,6 +217,7 @@ describe("useRecentJobs hook", () => {
 
     expect(buildRecentJobsRevision([{ ...job }])).toBe(revision);
     expect(buildRecentJobsRevision([{ ...job, availableImageIndices: [0, 1] }])).not.toBe(revision);
+    expect(buildRecentJobsRevision([{ ...job, estimatedCredits: 2, estimatedRefreshingCredits: 1, estimatedStaticCredits: 1 }])).not.toBe(revision);
   });
 
   beforeEach(() => {

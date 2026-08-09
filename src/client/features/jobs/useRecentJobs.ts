@@ -45,6 +45,13 @@ export function buildRecentJobsRevision(jobs: RecentJobRecord[]): string {
     job.hiddenOutputIndices?.join(",") ?? "",
     job.outputsHidden ? "1" : "0",
     job.createdBy ?? "",
+    job.creditsCharged ?? "",
+    job.refreshingCreditsCharged ?? "",
+    job.staticCreditsCharged ?? "",
+    job.estimatedCredits ?? "",
+    job.estimatedRefreshingCredits ?? "",
+    job.estimatedStaticCredits ?? "",
+    job.creditEstimateUpdatedAt ?? "",
     Object.entries(job.imageUnarchiveExpiries ?? {}).sort(([left], [right]) => left.localeCompare(right)).map(([index, expiry]) => `${index}:${expiry ?? ""}`).join(",")
   ].join("|")).join("\n");
 }
