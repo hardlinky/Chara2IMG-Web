@@ -243,6 +243,35 @@ export function findLoraDownloadUrl(loraName: string, downloadUrls: Record<strin
   }
 }
 
+export function findLoraTriggerWords(loraName: string, triggerWords: Record<string, string[]>): string[] {
+  const normalizedName = loraName.replaceAll("\\", "/").toLowerCase();
+  return Object.entries(triggerWords).find(([name]) => (
+    name.replaceAll("\\", "/").toLowerCase() === normalizedName
+  ))?.[1] ?? Object.entries(triggerWords).find(([name]) => (
+    name.toLowerCase() === normalizedName.split("/").at(-1)
+  ))?.[1] ?? [];
+}
+
+export function LoraTriggerTags({ words }: { words: string[] }) {
+  if (words.length === 0) return null;
+  return (
+    <div className="input-lora-trigger-tags" aria-label="Trigger words">
+      {words.map((word) => (
+        <button
+          key={word}
+          type="button"
+          className="input-lora-trigger-tag"
+          title={`Copy trigger word: ${word}`}
+          aria-label={`Copy trigger word ${word}`}
+          onClick={() => copyVariableToClipboard(word)}
+        >
+          {word}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function LoraListInput({
   controlId,
   sliderMin,
@@ -258,12 +287,14 @@ function LoraListInput({
 }) {
   const [available, setAvailable] = useState<string[] | null>(null);
   const [downloadUrls, setDownloadUrls] = useState<Record<string, string>>({});
+  const [triggerWords, setTriggerWords] = useState<Record<string, string[]>>({});
   const sliderStep = 0.05;
 
   useEffect(() => {
     void fetchLoraCatalog().then((catalog) => {
       setAvailable(catalog.loras);
       setDownloadUrls(catalog.downloadUrls);
+      setTriggerWords(catalog.triggerWords);
     });
   }, []);
 
@@ -292,6 +323,7 @@ function LoraListInput({
         const missing = available !== null && !available.includes(lora.loraName);
         const displayName = stripModelExtension(lora.loraName);
         const downloadUrl = findLoraDownloadUrl(lora.loraName, downloadUrls);
+        const loraTriggerWords = findLoraTriggerWords(lora.loraName, triggerWords);
         return (
           <div key={`${controlId}-${lora.loraName}-${index}`} className="input-lora-list-item">
             <div className="input-lora-list-item-header">
@@ -318,6 +350,7 @@ function LoraListInput({
                 ×
               </button>
             </div>
+            <LoraTriggerTags words={loraTriggerWords} />
             <div className="input-lora-list-strength">
               <input
                 type="range"

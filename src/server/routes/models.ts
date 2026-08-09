@@ -23,6 +23,21 @@ export function buildLoraDownloadUrls(downloads: DownloadEntry[] = listDownloads
   return urls;
 }
 
+export function buildLoraTriggerWords(downloads: DownloadEntry[] = listDownloads()): Record<string, string[]> {
+  const triggerWords: Record<string, string[]> = {};
+  for (const download of downloads) {
+    const pathParts = download.destPath.replaceAll("\\", "/").split("/").filter(Boolean);
+    if (pathParts[0]?.toLowerCase() !== "loras" || !download.triggerWords?.length) continue;
+
+    const relativePath = [...pathParts.slice(1), download.filename].join("/");
+    triggerWords[relativePath] = download.triggerWords;
+    if (!(download.filename in triggerWords)) {
+      triggerWords[download.filename] = download.triggerWords;
+    }
+  }
+  return triggerWords;
+}
+
 export function registerModelRoutes(app: Hono): void {
   app.use("/api/models/*", requireInvitedSession);
 
@@ -34,11 +49,11 @@ export function registerModelRoutes(app: Hono): void {
       files = entries.filter((e) => e.isFile() && MODEL_FILE.test(e.name)).map((e) => e.name);
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code === "ENOENT") {
-        return c.json({ ok: true, loras: [], downloadUrls: buildLoraDownloadUrls() });
+        return c.json({ ok: true, loras: [], downloadUrls: buildLoraDownloadUrls(), triggerWords: buildLoraTriggerWords() });
       }
       throw err;
     }
-    return c.json({ ok: true, loras: files.sort(), downloadUrls: buildLoraDownloadUrls() });
+    return c.json({ ok: true, loras: files.sort(), downloadUrls: buildLoraDownloadUrls(), triggerWords: buildLoraTriggerWords() });
   });
 
   app.get("/api/models/checkpoints", async (c) => {

@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import type { DynamicInputControl, DynamicInputWarning } from "../../src/shared/contracts/inputs";
 import type { WorkflowTemplateRecord } from "../../src/shared/contracts/workflow";
 import { DynamicInputEditor } from "../../src/client/features/inputs/DynamicInputEditor";
-import { DynamicInputEditorView, findLoraDownloadUrl } from "../../src/client/features/inputs/DynamicInputEditor";
+import { DynamicInputEditorView, LoraTriggerTags, findLoraDownloadUrl, findLoraTriggerWords } from "../../src/client/features/inputs/DynamicInputEditor";
 import {
   applyExternalDraftValues,
   applyImportedWorkflowInputs,
@@ -82,6 +82,17 @@ describe("dynamic input editor", () => {
     expect(findLoraDownloadUrl("nested/portrait.safetensors", urls)).toBe("https://huggingface.co/example/portrait");
     expect(findLoraDownloadUrl("unknown.safetensors", urls)).toBeUndefined();
     expect(findLoraDownloadUrl("unsafe.safetensors", { "unsafe.safetensors": "javascript:alert(1)" })).toBeUndefined();
+  });
+
+  it("matches and renders clickable LoRA trigger-word tags", () => {
+    const triggerWords = { "Styles/Ink.SAFETENSORS": ["ink style", "bold lines"] };
+    expect(findLoraTriggerWords("styles\\ink.safetensors", triggerWords)).toEqual(["ink style", "bold lines"]);
+
+    const html = renderToStaticMarkup(<LoraTriggerTags words={["ink style", "bold lines"]} />);
+    expect(html).toContain('aria-label="Trigger words"');
+    expect(html).toContain('aria-label="Copy trigger word ink style"');
+    expect(html).toContain(">ink style</button>");
+    expect(html).toContain(">bold lines</button>");
   });
 
   it("increments width and height controls in steps of 32", () => {

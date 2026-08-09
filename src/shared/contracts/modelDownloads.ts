@@ -8,6 +8,7 @@ export type DownloadEntry = {
   url: string;
   destPath: string;
   filename: string;
+  triggerWords?: string[];
   status: DownloadStatus;
   bytesDownloaded: number;
   totalBytes: number;

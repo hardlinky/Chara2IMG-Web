@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DownloadEntry } from "../../src/shared/contracts/modelDownloads";
-import { buildLoraDownloadUrls } from "../../src/server/routes/models";
+import { buildLoraDownloadUrls, buildLoraTriggerWords } from "../../src/server/routes/models";
 
 function download(overrides: Partial<DownloadEntry>): DownloadEntry {
   return {
@@ -29,6 +29,17 @@ describe("model routes", () => {
       "styles/ink.safetensors": "https://civitai.com/models/123",
       "ink.safetensors": "https://civitai.com/models/123",
       "queued.safetensors": "https://civitai.com/models/123"
+    });
+  });
+
+  it("maps stored trigger words by relative path and filename", () => {
+    expect(buildLoraTriggerWords([
+      download({ destPath: "loras/styles", filename: "ink.safetensors", triggerWords: ["ink style", "bold lines"] }),
+      download({ id: "empty", filename: "empty.safetensors", triggerWords: [] }),
+      download({ id: "checkpoint", destPath: "checkpoints", triggerWords: ["ignore"] })
+    ])).toEqual({
+      "styles/ink.safetensors": ["ink style", "bold lines"],
+      "ink.safetensors": ["ink style", "bold lines"]
     });
   });
 });

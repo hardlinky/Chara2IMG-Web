@@ -1,6 +1,7 @@
 export type LoraCatalog = {
   loras: string[];
   downloadUrls: Record<string, string>;
+  triggerWords: Record<string, string[]>;
 };
 
 let cache: LoraCatalog | null = null;
@@ -19,18 +20,19 @@ export async function fetchLoraCatalog(): Promise<LoraCatalog> {
   if (cache !== null) return cache;
   if (!pending) {
     pending = fetch("/api/models/loras", { credentials: "include" })
-      .then((res) => (res.ok ? res.json() : { loras: [], downloadUrls: {} }))
+      .then((res) => (res.ok ? res.json() : { loras: [], downloadUrls: {}, triggerWords: {} }))
       .then((data: unknown) => {
-        const result = data as { loras?: string[]; downloadUrls?: Record<string, string> };
+        const result = data as { loras?: string[]; downloadUrls?: Record<string, string>; triggerWords?: Record<string, string[]> };
         cache = {
           loras: Array.isArray(result.loras) ? result.loras : [],
-          downloadUrls: result.downloadUrls && typeof result.downloadUrls === "object" ? result.downloadUrls : {}
+          downloadUrls: result.downloadUrls && typeof result.downloadUrls === "object" ? result.downloadUrls : {},
+          triggerWords: result.triggerWords && typeof result.triggerWords === "object" ? result.triggerWords : {}
         };
         return cache;
       })
       .catch(() => {
         pending = null;
-        return { loras: [], downloadUrls: {} };
+        return { loras: [], downloadUrls: {}, triggerWords: {} };
       });
   }
   return pending;

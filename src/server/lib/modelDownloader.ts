@@ -63,6 +63,36 @@ function buildFetchHeaders(source: DownloadSource, apiKey: string): Record<strin
   return {};
 }
 
+function normalizeTriggerWords(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value.filter((word): word is string => typeof word === "string").map((word) => word.trim()).filter(Boolean))];
+}
+
+export async function fetchCivitaiTriggerWords(
+  sourceUrl: string,
+  apiKey: string,
+  signal?: AbortSignal
+): Promise<string[]> {
+  const parsed = new URL(sourceUrl);
+  const versionId = parsed.searchParams.get("modelVersionId")
+    ?? /\/api\/(?:download\/models|v1\/model-versions)\/(\d+)/.exec(parsed.pathname)?.[1];
+  const headers = { Authorization: `Bearer ${apiKey}` };
+
+  if (versionId) {
+    const response = await fetch(`https://civitai.com/api/v1/model-versions/${versionId}`, { headers, signal });
+    if (!response.ok) return [];
+    const data = await response.json() as { trainedWords?: unknown };
+    return normalizeTriggerWords(data.trainedWords);
+  }
+
+  const modelId = /^\/models\/(\d+)/.exec(parsed.pathname)?.[1];
+  if (!modelId) return [];
+  const response = await fetch(`https://civitai.com/api/v1/models/${modelId}`, { headers, signal });
+  if (!response.ok) return [];
+  const data = await response.json() as { modelVersions?: Array<{ trainedWords?: unknown }> };
+  return normalizeTriggerWords(data.modelVersions?.[0]?.trainedWords);
+}
+
 function guessFilenameFromUrl(url: string): string {
   try {
     const seg = new URL(url).pathname.split("/").filter(Boolean).pop() ?? "";
@@ -125,6 +155,11 @@ async function runDownload(entry: DownloadEntry, signal: AbortSignal): Promise<v
   if (!apiKey) throw new Error("No API key available for this download");
 
   await updateEntry(entry.id, { status: "in_progress" });
+
+  if (entry.source === "civitai") {
+    const triggerWords = await fetchCivitaiTriggerWords(entry.url, apiKey, signal).catch(() => []);
+    await updateEntry(entry.id, { triggerWords });
+  }
 
   const downloadUrl = buildDownloadUrl(entry.url, entry.source, apiKey);
   const headers = buildFetchHeaders(entry.source, apiKey);
