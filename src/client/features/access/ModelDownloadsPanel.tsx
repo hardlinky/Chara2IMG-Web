@@ -7,6 +7,7 @@ import {
   fetchDownloadFolders,
   fetchDownloads,
   fetchDownloadsConfig,
+  refreshDownloadMetadata,
   restartDownload,
   type DownloadsConfig,
 } from "../../lib/api/modelDownloadsClient";
@@ -62,7 +63,28 @@ function ProgressBar({ entry }: { entry: DownloadEntry }) {
   );
 }
 
-function DownloadCard({
+export function getCivitaiVersionStatus(entry: DownloadEntry): {
+  kind: "latest" | "newer" | "unknown";
+  label: string;
+  url?: string;
+} | null {
+  if (entry.source !== "civitai" || !entry.metadataUpdatedAt) return null;
+  if (!entry.civitaiModelVersionId || !entry.civitaiLatestModelVersionId) {
+    return { kind: "unknown", label: "Version comparison unavailable" };
+  }
+  if (entry.civitaiModelVersionId === entry.civitaiLatestModelVersionId) {
+    return { kind: "latest", label: "Latest version" };
+  }
+  return {
+    kind: "newer",
+    label: "Newer version available",
+    url: entry.civitaiModelId
+      ? `https://civitai.com/models/${entry.civitaiModelId}?modelVersionId=${entry.civitaiLatestModelVersionId}`
+      : undefined
+  };
+}
+
+export function DownloadCard({
   entry,
   civitaiKey,
   huggingfaceKey,
@@ -74,6 +96,8 @@ function DownloadCard({
   onUpdated: () => void;
 }) {
   const [busy, setBusy] = useState(false);
+  const [metadataMessage, setMetadataMessage] = useState("");
+  const [metadataError, setMetadataError] = useState(false);
 
   async function handleCancel() {
     setBusy(true);
@@ -95,9 +119,31 @@ function DownloadCard({
     } finally { setBusy(false); }
   }
 
+  async function handleMetadataRefresh() {
+    setBusy(true);
+    setMetadataMessage("");
+    setMetadataError(false);
+    try {
+      const result = await refreshDownloadMetadata(entry.id, civitaiKey || undefined);
+      if (!result.ok) {
+        setMetadataError(true);
+        setMetadataMessage(result.error);
+        return;
+      }
+      setMetadataMessage(`Metadata updated: ${result.entry.triggerWords?.length ?? 0} trigger words`);
+      onUpdated();
+    } catch (error) {
+      setMetadataError(true);
+      setMetadataMessage(error instanceof Error ? error.message : "Metadata refresh failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const isActive = entry.status === "queued" || entry.status === "in_progress";
   const isTerminal = entry.status === "finished" || entry.status === "cancelled" || entry.status === "failed";
   const canRestart = entry.status === "cancelled" || entry.status === "failed";
+  const versionStatus = getCivitaiVersionStatus(entry);
 
   return (
     <li className="model-dl-card">
@@ -114,13 +160,25 @@ function DownloadCard({
       <div className="model-dl-card-meta">
         <span>Path: <strong>{entry.destPath}</strong></span>
         <a className="model-dl-card-meta-url" href={entry.url} target="_blank" rel="noopener noreferrer" title={entry.url}>URL: {entry.url}</a>
+        {entry.source === "civitai" && entry.triggerWords ? <span>{entry.triggerWords.length} trigger words</span> : null}
+        {versionStatus?.url ? (
+          <a className="model-dl-version-status" data-kind={versionStatus.kind} href={versionStatus.url} target="_blank" rel="noopener noreferrer">{versionStatus.label}</a>
+        ) : versionStatus ? (
+          <span className="model-dl-version-status" data-kind={versionStatus.kind}>{versionStatus.label}</span>
+        ) : null}
       </div>
 
       <ProgressBar entry={entry} />
 
       {entry.error && <p className="model-dl-error">{entry.error}</p>}
+      {metadataMessage ? <p className="model-dl-metadata-message" data-tone={metadataError ? "error" : "success"}>{metadataMessage}</p> : null}
 
       <div className="model-dl-actions">
+        {entry.source === "civitai" && !isActive ? (
+          <button className="btn btn-secondary" type="button" onClick={() => void handleMetadataRefresh()} disabled={busy}>
+            Fetch newest metadata
+          </button>
+        ) : null}
         {isActive && (
           <button className="btn btn-secondary" type="button" onClick={() => void handleCancel()} disabled={busy}>
             Cancel

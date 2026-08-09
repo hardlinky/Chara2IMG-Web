@@ -8,6 +8,7 @@ import {
   enqueueDownload,
   cancelDownload,
   restartDownload,
+  refreshDownloadMetadata,
   getNetworkModelsRoot,
   getCivitaiApiKey,
   getHuggingfaceApiKey,
@@ -92,6 +93,17 @@ export function registerModelDownloadRoutes(app: Hono): void {
       c.req.param("id"),
       typeof payload.civitaiApiKey === "string" ? payload.civitaiApiKey : undefined,
       typeof payload.huggingfaceApiKey === "string" ? payload.huggingfaceApiKey : undefined,
+    );
+    if (!result.ok) return c.json({ ok: false, error: result.error }, 400);
+    return c.json({ ok: true, entry: result.entry });
+  });
+
+  app.post("/api/admin/model-downloads/:id/metadata", async (c) => {
+    if (!(await hasAdminSession(c))) return c.json({ ok: false, error: "Forbidden" }, 403);
+    const payload = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+    const result = await refreshDownloadMetadata(
+      c.req.param("id"),
+      typeof payload.civitaiApiKey === "string" ? payload.civitaiApiKey : undefined
     );
     if (!result.ok) return c.json({ ok: false, error: result.error }, 400);
     return c.json({ ok: true, entry: result.entry });

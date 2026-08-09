@@ -37,7 +37,7 @@ export function detectSource(url: string): DownloadSource | null {
   return null;
 }
 
-function buildDownloadUrl(url: string, source: DownloadSource, apiKey: string): string {
+function buildDownloadUrl(url: string, source: DownloadSource, apiKey: string, resolvedVersionId?: number): string {
   if (source === "civitai") {
     let normalized = url;
     // Convert model page URL (civitai.com or civitai.red) to API download URL
@@ -45,7 +45,7 @@ function buildDownloadUrl(url: string, source: DownloadSource, apiKey: string): 
     if (pageMatch && !url.includes("/api/download/")) {
       const versionMatch = /[?&]modelVersionId=(\d+)/.exec(url);
       // Download API uses the modelVersionId as the path param, not the model ID
-      const downloadId = versionMatch ? versionMatch[1] : pageMatch[1];
+      const downloadId = resolvedVersionId ?? (versionMatch ? versionMatch[1] : pageMatch[1]);
       normalized = `https://civitai.com/api/download/models/${downloadId}`;
     }
     const parsed = new URL(normalized);
@@ -68,29 +68,54 @@ function normalizeTriggerWords(value: unknown): string[] {
   return [...new Set(value.filter((word): word is string => typeof word === "string").map((word) => word.trim()).filter(Boolean))];
 }
 
-export async function fetchCivitaiTriggerWords(
+export type CivitaiMetadata = {
+  triggerWords: string[];
+  modelId?: number;
+  selectedVersionId?: number;
+  latestVersionId?: number;
+};
+
+async function fetchCivitaiJson<T>(url: string, apiKey: string, signal?: AbortSignal): Promise<T | null> {
+  const response = await fetch(url, { headers: { Authorization: `Bearer ${apiKey}` }, signal });
+  return response.ok ? await response.json() as T : null;
+}
+
+export async function fetchCivitaiMetadata(
   sourceUrl: string,
   apiKey: string,
   signal?: AbortSignal
-): Promise<string[]> {
+): Promise<CivitaiMetadata> {
   const parsed = new URL(sourceUrl);
-  const versionId = parsed.searchParams.get("modelVersionId")
+  const explicitVersionIdText = parsed.searchParams.get("modelVersionId")
     ?? /\/api\/(?:download\/models|v1\/model-versions)\/(\d+)/.exec(parsed.pathname)?.[1];
-  const headers = { Authorization: `Bearer ${apiKey}` };
+  const explicitVersionId = explicitVersionIdText ? Number(explicitVersionIdText) : undefined;
+  const pageModelIdText = /^\/models\/(\d+)/.exec(parsed.pathname)?.[1];
+  let modelId = pageModelIdText ? Number(pageModelIdText) : undefined;
+  let selectedVersionId = explicitVersionId;
+  let triggerWords: string[] = [];
 
-  if (versionId) {
-    const response = await fetch(`https://civitai.com/api/v1/model-versions/${versionId}`, { headers, signal });
-    if (!response.ok) return [];
-    const data = await response.json() as { trainedWords?: unknown };
-    return normalizeTriggerWords(data.trainedWords);
+  if (explicitVersionId) {
+    const version = await fetchCivitaiJson<{ id?: number; modelId?: number; trainedWords?: unknown }>(
+      `https://civitai.com/api/v1/model-versions/${explicitVersionId}`,
+      apiKey,
+      signal
+    );
+    modelId = version?.modelId ?? modelId;
+    triggerWords = normalizeTriggerWords(version?.trainedWords);
   }
 
-  const modelId = /^\/models\/(\d+)/.exec(parsed.pathname)?.[1];
-  if (!modelId) return [];
-  const response = await fetch(`https://civitai.com/api/v1/models/${modelId}`, { headers, signal });
-  if (!response.ok) return [];
-  const data = await response.json() as { modelVersions?: Array<{ trainedWords?: unknown }> };
-  return normalizeTriggerWords(data.modelVersions?.[0]?.trainedWords);
+  if (!modelId) return { triggerWords, selectedVersionId };
+  const model = await fetchCivitaiJson<{ modelVersions?: Array<{ id?: number; trainedWords?: unknown }> }>(
+    `https://civitai.com/api/v1/models/${modelId}`,
+    apiKey,
+    signal
+  );
+  const latestVersion = model?.modelVersions?.[0];
+  if (!selectedVersionId) {
+    selectedVersionId = latestVersion?.id;
+    triggerWords = normalizeTriggerWords(latestVersion?.trainedWords);
+  }
+  return { triggerWords, modelId, selectedVersionId, latestVersionId: latestVersion?.id };
 }
 
 function guessFilenameFromUrl(url: string): string {
@@ -156,12 +181,20 @@ async function runDownload(entry: DownloadEntry, signal: AbortSignal): Promise<v
 
   await updateEntry(entry.id, { status: "in_progress" });
 
-  if (entry.source === "civitai") {
-    const triggerWords = await fetchCivitaiTriggerWords(entry.url, apiKey, signal).catch(() => []);
-    await updateEntry(entry.id, { triggerWords });
+  const civitaiMetadata = entry.source === "civitai"
+    ? await fetchCivitaiMetadata(entry.url, apiKey, signal).catch(() => null)
+    : null;
+  if (civitaiMetadata) {
+    await updateEntry(entry.id, {
+      triggerWords: civitaiMetadata.triggerWords,
+      civitaiModelId: civitaiMetadata.modelId,
+      civitaiModelVersionId: civitaiMetadata.selectedVersionId,
+      civitaiLatestModelVersionId: civitaiMetadata.latestVersionId,
+      metadataUpdatedAt: new Date().toISOString()
+    });
   }
 
-  const downloadUrl = buildDownloadUrl(entry.url, entry.source, apiKey);
+  const downloadUrl = buildDownloadUrl(entry.url, entry.source, apiKey, civitaiMetadata?.selectedVersionId);
   const headers = buildFetchHeaders(entry.source, apiKey);
 
   const response = await fetch(downloadUrl, { headers, signal, redirect: "follow" });
@@ -277,6 +310,32 @@ export async function restartDownload(
   });
   apiKeyCache.set(id, apiKey);
   void processQueue();
+  return { ok: true, entry: getDownload(id)! };
+}
+
+export async function refreshDownloadMetadata(
+  id: string,
+  civitaiApiKey?: string
+): Promise<{ ok: true; entry: DownloadEntry } | { ok: false; error: string }> {
+  const entry = getDownload(id);
+  if (!entry) return { ok: false, error: "Not found" };
+  if (entry.source !== "civitai") return { ok: false, error: "Metadata refresh is only available for CivitAI downloads" };
+
+  const apiKey = civitaiApiKey?.trim() || getCivitaiApiKey();
+  if (!apiKey) return { ok: false, error: "No API key available for civitai" };
+
+  const metadata = await fetchCivitaiMetadata(entry.url, apiKey);
+  const sourceHasExplicitVersion = Boolean(
+    new URL(entry.url).searchParams.get("modelVersionId")
+    || /\/api\/(?:download\/models|v1\/model-versions)\/\d+/.test(new URL(entry.url).pathname)
+  );
+  await updateEntry(id, {
+    triggerWords: metadata.triggerWords,
+    civitaiModelId: metadata.modelId,
+    civitaiModelVersionId: entry.civitaiModelVersionId ?? (sourceHasExplicitVersion ? metadata.selectedVersionId : undefined),
+    civitaiLatestModelVersionId: metadata.latestVersionId,
+    metadataUpdatedAt: new Date().toISOString()
+  });
   return { ok: true, entry: getDownload(id)! };
 }
 

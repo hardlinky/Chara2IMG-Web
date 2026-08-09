@@ -9,6 +9,10 @@ export type DownloadEntry = {
   destPath: string;
   filename: string;
   triggerWords?: string[];
+  civitaiModelId?: number;
+  civitaiModelVersionId?: number;
+  civitaiLatestModelVersionId?: number;
+  metadataUpdatedAt?: string;
   status: DownloadStatus;
   bytesDownloaded: number;
   totalBytes: number;

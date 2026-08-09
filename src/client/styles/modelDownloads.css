@@ -164,6 +164,32 @@
   word-break: break-word;
 }
 
+.model-dl-version-status[data-kind="newer"] {
+  color: var(--color-warning-text);
+  font-weight: 600;
+}
+
+.model-dl-version-status[data-kind="latest"] {
+  color: var(--color-success-text);
+}
+
+.model-dl-version-status[data-kind="unknown"] {
+  color: var(--color-text-muted);
+}
+
+.model-dl-metadata-message {
+  margin: 0;
+  font-size: var(--font-size-xs);
+}
+
+.model-dl-metadata-message[data-tone="success"] {
+  color: var(--color-success-text);
+}
+
+.model-dl-metadata-message[data-tone="error"] {
+  color: var(--color-error-text);
+}
+
 .model-dl-pagination {
   display: flex;
   align-items: center;

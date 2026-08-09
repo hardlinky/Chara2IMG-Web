@@ -66,6 +66,21 @@ export async function restartDownload(
   return { ok: true, entry: data.entry! };
 }
 
+export async function refreshDownloadMetadata(
+  id: string,
+  civitaiApiKey?: string
+): Promise<{ ok: true; entry: DownloadEntry } | { ok: false; error: string }> {
+  const res = await fetch(`/api/admin/model-downloads/${encodeURIComponent(id)}/metadata`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ civitaiApiKey })
+  });
+  const data = (await res.json()) as { ok: boolean; entry?: DownloadEntry; error?: string };
+  if (!data.ok) return { ok: false, error: data.error ?? "Metadata refresh failed" };
+  return { ok: true, entry: data.entry! };
+}
+
 export async function deleteDownload(id: string): Promise<void> {
   await fetch(`/api/admin/model-downloads/${encodeURIComponent(id)}`, {
     method: "DELETE",
