@@ -8,6 +8,7 @@ import { filterJobsByOwner, type RecentJobOwnerFilter } from "../jobs/useRecentJ
 import "../../styles/albums.css";
 
 type AlbumsTabProps = {
+  active?: boolean;
   albums: Album[];
   isLoading: boolean;
   error: string | null;
@@ -64,6 +65,7 @@ function AlbumGrid({
 }
 
 function AlbumView({
+  active,
   album,
   onBack,
   onUpdateAlbum,
@@ -75,6 +77,7 @@ function AlbumView({
   onNextAlbum,
   currentUser
 }: {
+  active: boolean;
   album: Album;
   onBack: () => void;
   onUpdateAlbum: AlbumsTabProps["onUpdateAlbum"];
@@ -243,6 +246,7 @@ function AlbumView({
       ) : (
         <div className="outputs-gallery outputs-gallery-comfortable">
           <OutputLightbox
+            active={active}
             images={images}
             imagePrefix={album.id}
             perImageActions={perImageActions}
@@ -257,6 +261,7 @@ function AlbumView({
 }
 
 export function AlbumsTab({
+  active = true,
   albums,
   isLoading,
   error,
@@ -278,6 +283,7 @@ export function AlbumsTab({
     const nextAlbum = currentIndex >= 0 && currentIndex + 1 < albums.length ? albums[currentIndex + 1] : undefined;
     return (
       <AlbumView
+        active={active}
         album={selectedAlbum}
         onBack={() => onSelectAlbum(null)}
         onUpdateAlbum={onUpdateAlbum}

@@ -261,6 +261,7 @@ export function OutputsTab({ active = true, clusters, onRerun, onLoadInputs, onR
   if (gallery.view.mode === "job" && selectedJobCluster) {
     return (
       <JobOutputsView
+        active={active}
         cluster={selectedJobCluster}
         density={gallery.density}
         onBack={() => navigate({ jobId: null }, "push")}
@@ -385,6 +386,7 @@ export function OutputsTab({ active = true, clusters, onRerun, onLoadInputs, onR
 
       {galleryMode === "per-job" ? (
         <FToggleGallery
+          active={active}
           apiRef={galleryApiRef}
           itemCount={pagedClusters.length}
           onTogglePinCurrent={
@@ -485,6 +487,7 @@ export function OutputsTab({ active = true, clusters, onRerun, onLoadInputs, onR
         </FToggleGallery>
       ) : (
         <FToggleGallery
+          active={active}
           apiRef={galleryApiRef}
           itemCount={pagedAllOutputImages.length}
           onTogglePinCurrent={

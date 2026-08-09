@@ -15,6 +15,7 @@ type FToggleGalleryProps = {
   options: PhotoSwipeOptions;
   itemCount: number;
   children: ReactNode;
+  active?: boolean;
   apiRef?: MutableRefObject<GalleryApi | null>;
   onBeforeOpen?: (photoswipe: PhotoSwipe) => void;
   onTogglePinCurrent?: (index: number) => void;
@@ -30,6 +31,7 @@ export function FToggleGallery({
   options,
   itemCount,
   children,
+  active = true,
   apiRef,
   onBeforeOpen,
   onTogglePinCurrent,
@@ -45,6 +47,8 @@ export function FToggleGallery({
   const pswpRef = useRef<PhotoSwipe | null>(null);
   const itemCountRef = useRef(itemCount);
   itemCountRef.current = itemCount;
+  const activeRef = useRef(active);
+  activeRef.current = active;
   const onBeforeOpenRef = useRef(onBeforeOpen);
   onBeforeOpenRef.current = onBeforeOpen;
   const onTogglePinRef = useRef(onTogglePinCurrent);
@@ -70,7 +74,16 @@ export function FToggleGallery({
   }, []);
 
   useEffect(() => {
+    if (!active && openRef.current) {
+      galleryApiRef.current?.close();
+    }
+  }, [active, galleryApiRef]);
+
+  useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (!activeRef.current) {
+        return;
+      }
       if (event.ctrlKey || event.metaKey || event.altKey) {
         return;
       }
@@ -83,6 +96,7 @@ export function FToggleGallery({
 
       if (key === "f" || key === "F") {
         event.preventDefault();
+        event.stopImmediatePropagation();
         if (openRef.current) {
           galleryApiRef.current?.close();
           return;

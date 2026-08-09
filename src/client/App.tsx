@@ -900,6 +900,7 @@ export function App() {
         ),
         albums: (
           <AlbumsTab
+            active={activeTab === "albums"}
             albums={albums.albums}
             isLoading={albums.isLoading}
             error={albums.error}

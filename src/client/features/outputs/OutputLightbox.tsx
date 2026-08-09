@@ -40,6 +40,7 @@ type OutputLightboxProps = {
   albumStarContext?: AlbumStarContext;
   perImageActions?: LightboxPerImageActions;
   badge?: string;
+  active?: boolean;
 };
 
 export function OutputLightbox({
@@ -60,7 +61,8 @@ export function OutputLightbox({
   enableJobNav = false,
   albumStarContext,
   perImageActions,
-  badge
+  badge,
+  active = true
 }: OutputLightboxProps) {
   const [imageDimensions, setImageDimensions] = useState<Record<number, { width: number; height: number }>>({});
   const visibleImages = images.slice(0, maxVisible);
@@ -197,6 +199,7 @@ export function OutputLightbox({
 
   return (
     <FToggleGallery
+      active={active}
       apiRef={galleryApiRef}
       itemCount={visibleImages.length}
       onBeforeOpen={handleBeforeOpen}

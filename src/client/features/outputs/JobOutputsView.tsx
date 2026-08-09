@@ -8,6 +8,7 @@ import type { OutputDensity } from "./useOutputGallery";
 import type { AlbumStarContext } from "../albums/albumStar";
 
 type JobOutputsViewProps = {
+  active?: boolean;
   cluster: RecentJobOutputCluster;
   density?: OutputDensity;
   onBack: () => void;
@@ -56,7 +57,7 @@ function toRelativeTimestamp(isoValue: string | null): string {
   return `${deltaDays}d ago`;
 }
 
-export function JobOutputsView({ cluster, density = "comfortable", onBack, onPreviousJob, onNextJob, onRerun, onLoadInputs, onRemoveImage, onRemoveAllOutputs, onExportWorkflow, onTogglePinnedImage, canPinMore = true, pinningOutputIndices, img2imgInputAvailable = false, onLoadImageIntoImg2Img, albumStarContext, currentUser = null }: JobOutputsViewProps) {
+export function JobOutputsView({ active = true, cluster, density = "comfortable", onBack, onPreviousJob, onNextJob, onRerun, onLoadInputs, onRemoveImage, onRemoveAllOutputs, onExportWorkflow, onTogglePinnedImage, canPinMore = true, pinningOutputIndices, img2imgInputAvailable = false, onLoadImageIntoImg2Img, albumStarContext, currentUser = null }: JobOutputsViewProps) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const displayJobId = formatOutputJobId(cluster.jobId);
 
@@ -113,6 +114,7 @@ export function JobOutputsView({ cluster, density = "comfortable", onBack, onPre
 
       <div className={`outputs-gallery outputs-gallery-${density}`}>
         <OutputLightbox
+          active={active}
           images={cluster.outputs}
           imagePrefix={cluster.jobId}
           displayPrefix={displayJobId}
