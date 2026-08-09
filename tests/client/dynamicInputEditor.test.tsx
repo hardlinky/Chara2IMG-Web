@@ -95,6 +95,43 @@ describe("dynamic input editor", () => {
     expect(html).toContain(">bold lines</button>");
   });
 
+  it("labels a non-empty active LoRA list from the workflow input name", () => {
+    const control: DynamicInputControl = {
+      id: "models:loras",
+      kind: "lora-list",
+      inputIndex: 1,
+      fullTitle: "[Input1] Model.Loras",
+      category: "Model",
+      name: "Character Style LoRAs",
+      source: { nodeId: "model", titlePath: "model.inputs.title", valuePath: ["lora_1"] },
+      constraints: {},
+      defaultValue: { loras: [{ loraName: "style.safetensors", strength: 1 }] },
+      orderKey: "000001:models:loras"
+    };
+    const html = renderToStaticMarkup(
+      <DynamicInputEditorView
+        controls={[control]}
+        sections={buildSectionsFromControls([control])}
+        sectionColumnByCategory={{}}
+        columnsSplitRatio={0.5}
+        warnings={[]}
+        draftValues={{ [control.id]: control.defaultValue }}
+        hasDraftDiffFromTemplate={false}
+        editedControlIds={new Set()}
+        inlineErrorsByControlId={{}}
+        runBlockingMessage={null}
+        setValue={vi.fn()}
+        moveSection={vi.fn()}
+        toggleSectionColumn={vi.fn()}
+        setColumnsSplitRatio={vi.fn()}
+        resetToTemplateDefaults={vi.fn()}
+        onRun={vi.fn()}
+      />
+    );
+
+    expect(html).toContain('<h4 class="input-lora-list-title">Character Style LoRAs</h4>');
+  });
+
   it("increments width and height controls in steps of 32", () => {
     const control = createDimensionControl();
     const html = renderToStaticMarkup(

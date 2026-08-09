@@ -274,12 +274,14 @@ export function LoraTriggerTags({ words }: { words: string[] }) {
 
 function LoraListInput({
   controlId,
+  inputName,
   sliderMin,
   sliderMax,
   currentLoras,
   onChange,
 }: {
   controlId: string;
+  inputName: string;
   sliderMin: number;
   sliderMax: number;
   currentLoras: Array<{ loraName: string; strength: number }>;
@@ -319,6 +321,7 @@ function LoraListInput({
 
   return (
     <div className="input-lora-list">
+      {currentLoras.length > 0 ? <h4 className="input-lora-list-title">{inputName}</h4> : null}
       {currentLoras.map((lora, index) => {
         const missing = available !== null && !available.includes(lora.loraName);
         const displayName = stripModelExtension(lora.loraName);
@@ -627,6 +630,7 @@ function renderInputControl(
       return (
         <LoraListInput
           controlId={control.id}
+          inputName={control.name}
           sliderMin={control.constraints.min ?? 0}
           sliderMax={control.constraints.max ?? 2}
           currentLoras={listValue.loras}

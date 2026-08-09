@@ -503,6 +503,14 @@
   gap: var(--space-2);
 }
 
+.input-lora-list-title {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
 .input-lora-list-item {
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-sm);
