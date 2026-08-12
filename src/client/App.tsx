@@ -199,6 +199,18 @@ function getJobCompletionNotificationIcon(job: { jobId: string; availableImageIn
   return `/api/jobs/${encodeURIComponent(job.jobId)}/images/${imageIndex}`;
 }
 
+export function getNewlyCompletedJobsForNotification<T extends { jobId: string; lifecycle: { isTerminal: boolean; status: string } }>(
+  jobs: T[],
+  lastNotifiedJobIds: ReadonlySet<string>
+): T[] {
+  const terminalJobs = jobs.filter((job) => job.lifecycle.isTerminal);
+  if (lastNotifiedJobIds.size === 0) {
+    return [];
+  }
+
+  return terminalJobs.filter((job) => !lastNotifiedJobIds.has(job.jobId));
+}
+
 function persistActiveTab(tabId: "input" | "jobs" | "output" | "albums" | "admin"): void {
   if (typeof window === "undefined") {
     return;
@@ -498,7 +510,12 @@ export function App() {
     }
 
     const terminalJobs = recentJobs.visibleJobs.filter((job) => job.lifecycle.isTerminal);
-    const newlyCompleted = terminalJobs.filter((job) => !lastNotifiedTerminalJobIdsRef.current.has(job.jobId));
+    if (lastNotifiedTerminalJobIdsRef.current.size === 0) {
+      lastNotifiedTerminalJobIdsRef.current = new Set(terminalJobs.map((job) => job.jobId));
+      return;
+    }
+
+    const newlyCompleted = getNewlyCompletedJobsForNotification(terminalJobs, lastNotifiedTerminalJobIdsRef.current);
     lastNotifiedTerminalJobIdsRef.current = new Set(terminalJobs.map((job) => job.jobId));
 
     if (newlyCompleted.length === 0) {
