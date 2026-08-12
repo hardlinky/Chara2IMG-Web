@@ -12,32 +12,35 @@ fi
 
 mkdir -p "$COMFY_MODELS_ROOT"
 
-for bucket in checkpoints loras vae upscale_models; do
-  mkdir -p "$SHARED_ROOT/$bucket"
-  target="$SHARED_ROOT/$bucket"
-  link="$COMFY_MODELS_ROOT/$bucket"
+link_bucket() {
+  local bucket="$1"
+  local target="$SHARED_ROOT/$bucket"
+  local link="$COMFY_MODELS_ROOT/$bucket"
 
-  if [[ -L "$link" || -e "$link" ]]; then
-    echo "Keeping existing: $link"
-  else
-    ln -s "$target" "$link"
-    echo "Linked: $link -> $target"
+  mkdir -p "$(dirname "$link")"
+  mkdir -p "$target"
+
+  if [[ -L "$link" ]]; then
+    echo "Already linked: $link -> $(readlink "$link")"
+    return
   fi
+
+  if [[ -d "$link" ]]; then
+    local backup="${link}.bak.$(date +%s)"
+    echo "Replacing directory with symlink: $link -> $target"
+    mv "$link" "$backup"
+  fi
+
+  ln -s "$target" "$link"
+  echo "Linked: $link -> $target"
+}
+
+for bucket in checkpoints loras vae upscale_models; do
+  link_bucket "$bucket"
 done
 
 for bucket in ultralytics/segm ultralytics/bbox; do
-  mkdir -p "$SHARED_ROOT/$bucket"
-  target="$SHARED_ROOT/$bucket"
-  link="$COMFY_MODELS_ROOT/$bucket"
-
-  mkdir -p "$(dirname "$link")"
-
-  if [[ -L "$link" || -e "$link" ]]; then
-    echo "Keeping existing: $link"
-  else
-    ln -s "$target" "$link"
-    echo "Linked: $link -> $target"
-  fi
+  link_bucket "$bucket"
 done
 
 echo
