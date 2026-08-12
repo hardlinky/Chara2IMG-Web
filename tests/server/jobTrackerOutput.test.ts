@@ -125,7 +125,12 @@ describe("job tracker output validation", () => {
       billingUsername: "anonymous"
     }, { draftValues: {}, submittedInput: {} });
 
-    const updated = await reconcileStaleActiveJob(await jobStore.readJob("stale-job")!);
+    const existing = await jobStore.readJob("stale-job");
+    if (!existing) {
+      throw new Error("Expected stale job to exist after createJob");
+    }
+
+    const updated = await reconcileStaleActiveJob(existing);
 
     expect(updated).toMatchObject({
       status: "COMPLETED",
