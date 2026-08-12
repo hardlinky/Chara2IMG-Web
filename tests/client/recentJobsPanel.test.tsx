@@ -283,6 +283,36 @@ describe("RecentJobsPanel", () => {
     expect(html).toContain("disabled");
   });
 
+  it("disables rerun while a submission is in flight", () => {
+    const html = renderToStaticMarkup(
+      <RecentJobsPanel
+        jobs={[createJob({ jobId: "job-rerun-pending" })]}
+        warningJobIds={[]}
+        cancelingJobIds={[]}
+        statusFilter="All"
+        ownerFilter="all"
+        currentUser={null}
+        onOwnerFilterChange={vi.fn()}
+        page={1}
+        pageCount={1}
+        pageNumbers={[1]}
+        onStatusFilterChange={vi.fn()}
+        onPageChange={vi.fn()}
+        onCancel={vi.fn()}
+        onRerun={vi.fn()}
+        onLoadInputs={vi.fn()}
+        onExportWorkflow={vi.fn()}
+        onRemoveVisible={vi.fn()}
+        isSubmitting={true}
+        formatSubmittedAtRelative={() => "just now"}
+        lastFetchedAt={null}
+      />
+    );
+
+    expect(html).toContain("Submitting…");
+    expect(html).toContain("disabled");
+  });
+
   it("enables output navigation when a completed job has outputs", () => {
     const displayJobId = formatOutputJobId("job-with-outputs");
     const html = renderToStaticMarkup(

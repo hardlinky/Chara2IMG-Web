@@ -558,11 +558,18 @@ export function App() {
   }
 
   async function handleRerun(jobId: string): Promise<void> {
+    if (isSubmittingRun) {
+      return;
+    }
+
     try {
+      setIsSubmittingRun(true);
       await recentJobs.rerunJob(jobId);
       showToast("Job resubmitted \u2014 it will appear in Jobs shortly.", { tone: "success" });
     } catch (rerunError) {
       showToast(rerunError instanceof Error ? rerunError.message : "Rerun failed.", { tone: "error" });
+    } finally {
+      setIsSubmittingRun(false);
     }
   }
 
@@ -865,6 +872,7 @@ export function App() {
               onViewOutputs={(jobId) => {
                 navigate({ tab: "output", jobId }, "push");
               }}
+              isSubmitting={isSubmittingRun}
               formatSubmittedAtRelative={formatSubmittedAtRelative}
               lastFetchedAt={recentJobs.lastFetchedAt}
             />
@@ -876,6 +884,7 @@ export function App() {
             clusters={recentJobs.completedOutputClusters}
             onLoadOutputCluster={(jobId) => recentJobs.loadOutputCluster(jobId)}
             onRerun={(jobId) => void handleRerun(jobId)}
+            isSubmitting={isSubmittingRun}
             onLoadInputs={(jobId) => void onLoadInputs(jobId)}
             onRemoveJobOutputs={(jobId) => void recentJobs.removeJobOutputs(jobId)}
             onRemoveOutputImage={(jobId, outputIndex) => void recentJobs.removeOutputImage(jobId, outputIndex)}

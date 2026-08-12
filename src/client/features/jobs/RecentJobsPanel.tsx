@@ -31,6 +31,7 @@ type RecentJobsPanelProps = {
   onExportWorkflow: (jobId: string) => void;
   onRemoveVisible: (jobId: string) => void;
   onViewOutputs?: (jobId: string) => void;
+  isSubmitting?: boolean;
   formatSubmittedAtRelative: (submittedAt: string) => string;
   lastFetchedAt: number | null;
 };
@@ -389,8 +390,13 @@ export function RecentJobsPanel(props: RecentJobsPanelProps) {
                       Cancel
                     </button>
                   ) : null}
-                  <button className="btn btn-primary" type="button" onClick={() => props.onRerun(job.jobId)}>
-                    Rerun
+                  <button
+                    className="btn btn-primary"
+                    type="button"
+                    disabled={props.isSubmitting}
+                    onClick={() => props.onRerun(job.jobId)}
+                  >
+                    {props.isSubmitting ? "Submitting…" : "Rerun"}
                   </button>
                   <div className="jobs-icon-actions" aria-label={`Quick actions for ${displayJobId}`}>
                     <button

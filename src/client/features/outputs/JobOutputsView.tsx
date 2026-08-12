@@ -26,6 +26,7 @@ type JobOutputsViewProps = {
   onLoadImageIntoImg2Img?: (imageUrl: string) => void;
   albumStarContext?: AlbumStarContext;
   currentUser?: string | null;
+  isSubmitting?: boolean;
 };
 
 const PAGE_SIZE = 12;
@@ -57,7 +58,7 @@ function toRelativeTimestamp(isoValue: string | null): string {
   return `${deltaDays}d ago`;
 }
 
-export function JobOutputsView({ active = true, cluster, density = "comfortable", onBack, onPreviousJob, onNextJob, onRerun, onLoadInputs, onRemoveImage, onRemoveAllOutputs, onExportWorkflow, onTogglePinnedImage, canPinMore = true, pinningOutputIndices, img2imgInputAvailable = false, onLoadImageIntoImg2Img, albumStarContext, currentUser = null }: JobOutputsViewProps) {
+export function JobOutputsView({ active = true, cluster, density = "comfortable", onBack, onPreviousJob, onNextJob, onRerun, onLoadInputs, onRemoveImage, onRemoveAllOutputs, onExportWorkflow, onTogglePinnedImage, canPinMore = true, pinningOutputIndices, img2imgInputAvailable = false, onLoadImageIntoImg2Img, albumStarContext, currentUser = null, isSubmitting = false }: JobOutputsViewProps) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const displayJobId = formatOutputJobId(cluster.jobId);
 
@@ -80,8 +81,8 @@ export function JobOutputsView({ active = true, cluster, density = "comfortable"
           </div>
           <div className="outputs-job-actions-spacer"></div>
           <div className="outputs-job-actions-group">
-            <button className="btn btn-primary" type="button" onClick={onRerun}>
-              Rerun
+            <button className="btn btn-primary" type="button" disabled={isSubmitting} onClick={onRerun}>
+              {isSubmitting ? "Submitting…" : "Rerun"}
             </button>
             <button className="btn btn-secondary" type="button" onClick={onLoadInputs}>
               Load Inputs

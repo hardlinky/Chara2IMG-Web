@@ -56,6 +56,7 @@ type OutputsTabProps = {
   ownerFilter?: RecentJobOwnerFilter;
   onOwnerFilterChange?: (next: RecentJobOwnerFilter) => void;
   currentUser?: string | null;
+  isSubmitting?: boolean;
 };
 
 function getGalleryClassName(density: (typeof OUTPUT_DENSITIES)[number]): string {
@@ -80,7 +81,7 @@ export function resolveSelectedJobCluster(
   return hydratedJobClusters[selectedJobId] ?? gallerySelectedCluster;
 }
 
-export function OutputsTab({ active = true, clusters, onRerun, onLoadInputs, onRemoveJobOutputs, onRemoveOutputImage, onExportWorkflow, onToggleOutputPinned, canPinMore = true, onLoadOutputCluster, pinningImageKeys, img2imgInputAvailable = false, onLoadImageIntoImg2Img, albumStarContext, ownerFilter = "all", onOwnerFilterChange, currentUser = null }: OutputsTabProps) {
+export function OutputsTab({ active = true, clusters, onRerun, onLoadInputs, onRemoveJobOutputs, onRemoveOutputImage, onExportWorkflow, onToggleOutputPinned, canPinMore = true, onLoadOutputCluster, pinningImageKeys, img2imgInputAvailable = false, onLoadImageIntoImg2Img, albumStarContext, ownerFilter = "all", onOwnerFilterChange, currentUser = null, isSubmitting = false }: OutputsTabProps) {
   const gallery = useOutputGallery(clusters);
   const route = useRoute();
   const galleryApiRef = useRef<GalleryApi | null>(null);
@@ -272,6 +273,7 @@ export function OutputsTab({ active = true, clusters, onRerun, onLoadInputs, onR
           ? () => navigate({ jobId: clusters[gallery.selectedClusterIndex + 1]?.jobId ?? null }, "push")
           : undefined}
         onRerun={() => onRerun(selectedJobCluster.jobId)}
+        isSubmitting={isSubmitting}
         onLoadInputs={() => onLoadInputs(selectedJobCluster.jobId)}
         onRemoveImage={(outputIndex) => onRemoveOutputImage(selectedJobCluster.jobId, outputIndex)}
         onRemoveAllOutputs={() => {
