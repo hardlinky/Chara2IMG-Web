@@ -2,9 +2,11 @@ import { writeFile } from "node:fs/promises";
 import { forwardRunpodRequest } from "./runpodClient";
 import { readJob, updateJob, getJobImagePath } from "./jobStore";
 import {
+  isActiveRunpodStatus,
   isTerminalRunpodStatus,
   normalizeRunpodStatus,
   toTerminalReason,
+  type JobRecord,
   type JobStatus,
   JOB_IMAGE_TTL_MS,
 } from "../../shared/contracts/jobs.js";
@@ -13,6 +15,7 @@ import { logServerError, logServerWarning } from "./logger";
 import { releaseSubmissionCapacity } from "./submissionCapacity";
 import { settleTerminalJobBilling } from "./jobBilling";
 import { refreshJobWalletCreditEstimates } from "./jobCreditEstimates";
+import { getManagedWalletGroupId } from "./creditStore";
 
 // ─── Internal types ───────────────────────────────────────────────────────────
 
@@ -34,6 +37,10 @@ const trackedJobs = new Map<string, TrackedJob>();
 const POLL_INTERVAL_MS = Math.max(
   1_000,
   Number(process.env.RUNPOD_TRACKER_POLL_INTERVAL_MS ?? 10_000),
+);
+const STALE_ACTIVE_JOB_REFRESH_MS = Math.max(
+  60_000,
+  Number(process.env.RUNPOD_STALE_ACTIVE_JOB_REFRESH_MS ?? 5 * 60_000),
 );
 let trackerTimer: NodeJS.Timeout | null = null;
 let trackerTickRunning = false;
@@ -131,6 +138,50 @@ function ensureTrackerRunning(): void {
   trackerTimer = setInterval(() => {
     void runTrackerTick();
   }, POLL_INTERVAL_MS);
+}
+
+export function shouldRefreshStaleActiveJob(job: Pick<JobRecord, "status" | "isTerminal" | "submittedAt" | "startedAt" | "endpointId">): boolean {
+  if (job.isTerminal || !isActiveRunpodStatus(job.status)) {
+    return false;
+  }
+
+  const referenceTime = job.startedAt ? Date.parse(job.startedAt) : Date.parse(job.submittedAt);
+  if (!Number.isFinite(referenceTime)) {
+    return false;
+  }
+
+  return Date.now() - referenceTime >= STALE_ACTIVE_JOB_REFRESH_MS;
+}
+
+export async function reconcileStaleActiveJob(job: JobRecord): Promise<JobRecord> {
+  if (!shouldRefreshStaleActiveJob(job)) {
+    return job;
+  }
+
+  const serverApiKey = process.env.SERVER_RUNPOD_API_KEY?.trim();
+  const managedEndpoint = getManagedWalletGroupId(job.endpointId);
+  const defaultEndpoint = process.env.RUNPOD_ENDPOINT_ID?.trim();
+  const resolvedApiKey = serverApiKey && ((defaultEndpoint && job.endpointId === defaultEndpoint) || managedEndpoint)
+    ? serverApiKey
+    : null;
+
+  if (!resolvedApiKey) {
+    return job;
+  }
+
+  const result = await pollTrackedJob({
+    endpointId: job.endpointId,
+    jobId: job.jobId,
+    apiKey: resolvedApiKey,
+    nextPollAt: Date.now(),
+  });
+
+  if (!result.ok) {
+    return job;
+  }
+
+  const refreshed = await readJob(job.jobId);
+  return refreshed ?? job;
 }
 
 // ─── Poll ─────────────────────────────────────────────────────────────────────

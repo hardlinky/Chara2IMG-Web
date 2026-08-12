@@ -94,4 +94,44 @@ describe("job tracker output validation", () => {
       lastError: null
     });
   });
+
+  it("reconciles a stale active job once it has finished on RunPod", async () => {
+    process.env.SERVER_RUNPOD_API_KEY = "server-key";
+    process.env.RUNPOD_ENDPOINT_ID = "endpoint";
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
+      status: "COMPLETED",
+      output: { images: [{ image: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO5WvJwAAAAASUVORK5CYII=" }] }
+    }), { status: 200, headers: { "Content-Type": "application/json" } })));
+
+    const jobStore = await import("../../src/server/lib/jobStore");
+    const { reconcileStaleActiveJob } = await import("../../src/server/lib/jobTracker");
+
+    await jobStore.createJob({
+      jobId: "stale-job",
+      displayName: "deadbeef",
+      endpointId: "endpoint",
+      workflowFileName: null,
+      submittedAt: "2020-01-01T00:00:00.000Z",
+      startedAt: "2020-01-01T00:00:01.000Z",
+      completedAt: null,
+      expiresAt: null,
+      status: "IN_PROGRESS",
+      isTerminal: false,
+      imageCount: 0,
+      lastError: null,
+      createdBy: null,
+      billingMode: "free",
+      walletGroupId: null,
+      billingUsername: "anonymous"
+    }, { draftValues: {}, submittedInput: {} });
+
+    const updated = await reconcileStaleActiveJob(await jobStore.readJob("stale-job")!);
+
+    expect(updated).toMatchObject({
+      status: "COMPLETED",
+      isTerminal: true,
+      terminalReason: "completed",
+      imageCount: 1,
+    });
+  });
 });

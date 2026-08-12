@@ -3,6 +3,7 @@ import { join } from "node:path";
 import type { Hono } from "hono";
 import { getSessionUser, requireInvitedSession } from "../middleware/session";
 import { listJobs, readJob, readJobAnywhere, deleteJob, deleteJobImage, getJobTmpDir, getJobArchiveDir, pinImage, unpinImage, listPresentImageIndices } from "../lib/jobStore";
+import { reconcileStaleActiveJob } from "../lib/jobTracker";
 import { isImageInVisibleAlbum, removeImageFromAllAlbums } from "../lib/albumStore";
 import type { JobRecord } from "../../shared/contracts/jobs";
 
@@ -17,14 +18,22 @@ export function registerJobsRoutes(app: Hono): void {
 
   app.get("/api/jobs", async (c) => {
     const user = await getSessionUser(c);
-    const jobs = (await listJobs()).filter((job) => canSeeJob(job, user));
-    return c.json({ ok: true, jobs });
+    const jobs = await Promise.all((await listJobs()).map(async (job) => {
+      if (canSeeJob(job, user)) {
+        return reconcileStaleActiveJob(job);
+      }
+      return null;
+    }));
+    return c.json({ ok: true, jobs: jobs.filter((job): job is JobRecord => job !== null) });
   });
 
   app.get("/api/jobs/:jobId", async (c) => {
     const jobId = c.req.param("jobId");
     const user = await getSessionUser(c);
-    const job = await readJob(jobId);
+    let job = await readJob(jobId);
+    if (job !== null) {
+      job = await reconcileStaleActiveJob(job);
+    }
     if (job === null || !canSeeJob(job, user)) {
       return c.json({ ok: false, error: "Not found" }, 404);
     }
