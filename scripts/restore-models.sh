@@ -8,12 +8,13 @@
 #   CIVITAI_API_KEY=your_key ./restore-models.sh
 #
 # Optional env vars:
-#   MODELS_ROOT   — destination root (default: /workspace/models)
-#   CIVITAI_API_KEY — required for the CivitAI model
+#   NETWORK_MODELS_ROOT — destination root (preferred, default: /workspace/models)
+#   MODELS_ROOT         — legacy alias retained for compatibility
+#   CIVITAI_API_KEY     — required for the CivitAI model
 
 set -euo pipefail
 
-MODELS_ROOT="${MODELS_ROOT:-/workspace/models}"
+MODELS_ROOT="${NETWORK_MODELS_ROOT:-${MODELS_ROOT:-/workspace/models}}"
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC='\033[0m'
 info()    { echo -e "${BLUE}[INFO]${NC} $*"; }
