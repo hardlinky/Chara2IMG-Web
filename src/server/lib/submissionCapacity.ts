@@ -1,8 +1,12 @@
 import { randomUUID } from "node:crypto";
+import { listJobs } from "./jobStore";
+import { isActiveRunpodStatus } from "../../shared/contracts/jobs";
 
 type CapacityReservation = {
   username: string;
   walletGroupId: string | null;
+  createdAt: number;
+  jobId?: string | null;
 };
 
 type CapacityRequest = CapacityReservation & {
@@ -20,17 +24,41 @@ function getGlobalCapacity(): number {
   return Number.isFinite(configured) ? Math.max(1, Math.floor(configured)) : 20;
 }
 
-export function reserveSubmissionCapacity(request: CapacityRequest): CapacityResult {
+async function getActiveWalletJobIds(username: string, walletGroupId: string): Promise<Set<string>> {
+  const jobs = await listJobs();
+  return new Set(
+    jobs
+      .filter((job) => !job.isTerminal
+        && job.walletGroupId === walletGroupId
+        && (job.billingUsername ?? job.createdBy) === username
+        && isActiveRunpodStatus(job.status))
+      .map((job) => job.jobId),
+  );
+}
+
+export function attachReservationJobId(reservationId: string, jobId: string): void {
+  const reservation = reservations.get(reservationId);
+  if (reservation) {
+    reservation.jobId = jobId;
+  }
+}
+
+export async function reserveSubmissionCapacity(request: CapacityRequest): Promise<CapacityResult> {
   if (reservations.size >= getGlobalCapacity()) {
     return { ok: false, reason: "global-capacity" };
   }
 
   if (request.walletGroupId && request.maxWalletActiveJobs !== null) {
-    const activeForWallet = [...reservations.values()].filter(
-      (reservation) => reservation.username === request.username
-        && reservation.walletGroupId === request.walletGroupId
-    ).length;
-    if (activeForWallet >= Math.max(1, Math.floor(request.maxWalletActiveJobs))) {
+    const activeWalletJobIds = await getActiveWalletJobIds(request.username, request.walletGroupId);
+    const maxActiveJobs = Math.max(1, Math.floor(request.maxWalletActiveJobs));
+    const activeReservationCount = [...reservations.values()].filter((reservation) => {
+      if (reservation.username !== request.username || reservation.walletGroupId !== request.walletGroupId) {
+        return false;
+      }
+      return Boolean(reservation.jobId) && activeWalletJobIds.has(reservation.jobId as string);
+    }).length;
+
+    if (activeWalletJobIds.size + activeReservationCount >= maxActiveJobs) {
       return { ok: false, reason: "wallet-capacity" };
     }
   }
@@ -38,7 +66,8 @@ export function reserveSubmissionCapacity(request: CapacityRequest): CapacityRes
   const reservationId = randomUUID();
   reservations.set(reservationId, {
     username: request.username,
-    walletGroupId: request.walletGroupId
+    walletGroupId: request.walletGroupId,
+    createdAt: Date.now(),
   });
   return { ok: true, reservationId };
 }

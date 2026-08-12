@@ -11,7 +11,7 @@ import { formatJobDisplayName } from "../../shared/jobDisplay";
 import { logServerError, logServerWarning } from "../lib/logger";
 import { ANONYMOUS_CREDIT_USERNAME } from "../../shared/credits";
 import { getCreditBalance, getManagedWalletGroupId } from "../lib/creditStore";
-import { releaseSubmissionCapacity, reserveSubmissionCapacity } from "../lib/submissionCapacity";
+import { attachReservationJobId, releaseSubmissionCapacity, reserveSubmissionCapacity } from "../lib/submissionCapacity";
 import { settleTerminalJobBilling } from "../lib/jobBilling";
 
 function resolveRunpodApiKey(endpointId: string, requestApiKey: string): string {
@@ -60,10 +60,11 @@ export function registerRunpodProxyRoutes(app: Hono): void {
     if (balance.managed && balance.totalCredits <= 0) {
       return c.json({ ok: false, error: "Insufficient credits" }, 402);
     }
-    const capacity = reserveSubmissionCapacity({
+    const capacity = await reserveSubmissionCapacity({
       username,
       walletGroupId: balance.walletGroupId,
-      maxWalletActiveJobs: balance.managed ? balance.maxActiveJobs : null
+      maxWalletActiveJobs: balance.managed ? balance.maxActiveJobs : null,
+      createdAt: Date.now(),
     });
     if (!capacity.ok) {
       const error = capacity.reason === "global-capacity"
@@ -89,6 +90,7 @@ export function registerRunpodProxyRoutes(app: Hono): void {
           const jobId = typeof parsedBody.id === "string" ? parsedBody.id : typeof parsedBody.jobId === "string" ? parsedBody.jobId : null;
 
           if (jobId) {
+            attachReservationJobId(capacity.reservationId, jobId);
             const meta = parsed.data.meta;
             const now = new Date().toISOString();
             reservationHandedOff = true;
