@@ -37,6 +37,7 @@ import { selectRunpodApiKey } from "./lib/selectRunpodApiKey";
 
 const APP_ACTIVE_TAB_STORAGE_KEY = "chara2imgActiveTab";
 const APP_VERSION_STORAGE_KEY = "chara2imgAppVersion";
+const JOB_COMPLETION_NOTIFICATION_STORAGE_KEY = "chara2imgJobCompletionNotifications";
 
 type AppTabId = "input" | "jobs" | "output" | "albums" | "admin";
 
@@ -178,6 +179,24 @@ function getStoredActiveTab(): "input" | "jobs" | "output" | "albums" | "admin" 
 
   const stored = window.localStorage.getItem(APP_ACTIVE_TAB_STORAGE_KEY);
   return stored === "input" || stored === "jobs" || stored === "output" || stored === "albums" || stored === "admin" ? stored : "input";
+}
+
+function getJobCompletionNotificationPreference(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  const stored = window.localStorage.getItem(JOB_COMPLETION_NOTIFICATION_STORAGE_KEY);
+  return stored === "true";
+}
+
+function getJobCompletionNotificationIcon(job: { jobId: string; availableImageIndices?: number[]; outputImageCount?: number }): string | null {
+  const imageIndex = job.availableImageIndices?.find((index) => Number.isInteger(index));
+  if (imageIndex === undefined) {
+    return null;
+  }
+
+  return `/api/jobs/${encodeURIComponent(job.jobId)}/images/${imageIndex}`;
 }
 
 function persistActiveTab(tabId: "input" | "jobs" | "output" | "albums" | "admin"): void {
@@ -353,6 +372,7 @@ export function App() {
   } | null>(null);
   const [selectedJobInputCategories, setSelectedJobInputCategories] = useState<string[]>([]);
   const [isImportingJobInputs, setIsImportingJobInputs] = useState(false);
+  const lastNotifiedTerminalJobIdsRef = useRef<Set<string>>(new Set());
 
   const { activeTemplate, recentTemplates, isLoading, error, persistTemplate, clearTemplate, removeRecentTemplate } = useActiveWorkflowTemplate();
 
@@ -467,6 +487,69 @@ export function App() {
   useEffect(() => {
     document.title = transientJobsCount > 0 ? `(${transientJobsCount}) Chara2Img Web` : "Chara2Img Web";
   }, [transientJobsCount]);
+
+  useEffect(() => {
+    if (!invited || !getJobCompletionNotificationPreference()) {
+      return;
+    }
+
+    if (!("Notification" in window)) {
+      return;
+    }
+
+    const terminalJobs = recentJobs.visibleJobs.filter((job) => job.lifecycle.isTerminal);
+    const newlyCompleted = terminalJobs.filter((job) => !lastNotifiedTerminalJobIdsRef.current.has(job.jobId));
+    lastNotifiedTerminalJobIdsRef.current = new Set(terminalJobs.map((job) => job.jobId));
+
+    if (newlyCompleted.length === 0) {
+      return;
+    }
+
+    const permissionRequest = async () => {
+      const permission = Notification.permission;
+      if (permission === "granted") {
+        for (const job of newlyCompleted) {
+          const imageCount = (job.availableImageIndices?.length ?? 0) || (job.outputImageCount ?? 0);
+          const firstImageUrl = getJobCompletionNotificationIcon(job);
+          const statusText = job.lifecycle.status.toLowerCase().replace(/_/g, " ");
+          const title = `Job ${statusText}`;
+          const body = job.lifecycle.status === "COMPLETED"
+            ? `Job ${job.jobId.slice(0, 8)} • ${imageCount} image${imageCount === 1 ? "" : "s"} ready`
+            : `Job ${job.jobId.slice(0, 8)} • ${statusText}`;
+
+          new Notification(title, {
+            body,
+            icon: firstImageUrl ?? undefined,
+          });
+        }
+        return;
+      }
+
+      if (permission === "default") {
+        const nextPermission = await Notification.requestPermission();
+        if (nextPermission !== "granted") {
+          return;
+        }
+
+        for (const job of newlyCompleted) {
+          const imageCount = (job.availableImageIndices?.length ?? 0) || (job.outputImageCount ?? 0);
+          const firstImageUrl = getJobCompletionNotificationIcon(job);
+          const statusText = job.lifecycle.status.toLowerCase().replace(/_/g, " ");
+          const title = `Job ${statusText}`;
+          const body = job.lifecycle.status === "COMPLETED"
+            ? `Job ${job.jobId.slice(0, 8)} • ${imageCount} image${imageCount === 1 ? "" : "s"} ready`
+            : `Job ${job.jobId.slice(0, 8)} • ${statusText}`;
+
+          new Notification(title, {
+            body,
+            icon: firstImageUrl ?? undefined,
+          });
+        }
+      }
+    };
+
+    void permissionRequest();
+  }, [invited, recentJobs.visibleJobs]);
 
   useEffect(() => {
     persistActiveTab(activeTab);
