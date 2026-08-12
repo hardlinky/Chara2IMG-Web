@@ -590,35 +590,44 @@ export function App() {
     }
 
     let cancelled = false;
+    let timer: number | undefined;
 
-    const browserStorageEstimatePromise =
-      typeof navigator !== "undefined" && navigator.storage?.estimate
-        ? navigator.storage.estimate().catch(() => null)
-        : Promise.resolve<StorageEstimate | null>(null);
+    const refreshStorageStatus = () => {
+      const browserStorageEstimatePromise =
+        typeof navigator !== "undefined" && navigator.storage?.estimate
+          ? navigator.storage.estimate().catch(() => null)
+          : Promise.resolve<StorageEstimate | null>(null);
 
-    const serverStorageStatsPromise = fetchSystemStorageStats().catch((error: unknown) => error);
+      const serverStorageStatsPromise = fetchSystemStorageStats().catch((error: unknown) => error);
 
-    void Promise.all([browserStorageEstimatePromise, serverStorageStatsPromise]).then(([browserEstimate, serverStatsResult]) => {
-      if (cancelled) {
-        return;
-      }
+      void Promise.all([browserStorageEstimatePromise, serverStorageStatsPromise]).then(([browserEstimate, serverStatsResult]) => {
+        if (cancelled) {
+          return;
+        }
 
-      const browserUsedBytes = typeof browserEstimate?.usage === "number" ? browserEstimate.usage : null;
-      const browserUsedLabel = browserUsedBytes !== null ? formatBytes(browserUsedBytes) : "unavailable";
+        const browserUsedBytes = typeof browserEstimate?.usage === "number" ? browserEstimate.usage : null;
+        const browserUsedLabel = browserUsedBytes !== null ? formatBytes(browserUsedBytes) : "unavailable";
 
-      const hasServerStats = isSystemStorageStats(serverStatsResult);
-      const serverAllUsedLabel = hasServerStats ? formatBytes(serverStatsResult.allUsersUsedBytes) : "unavailable";
-      const serverErrorLabel = hasServerStats ? "" : describeStorageStatsError(serverStatsResult);
+        const hasServerStats = isSystemStorageStats(serverStatsResult);
+        const serverAllUsedLabel = hasServerStats ? formatBytes(serverStatsResult.allUsersUsedBytes) : "unavailable";
+        const serverErrorLabel = hasServerStats ? "" : describeStorageStatsError(serverStatsResult);
 
-      setStorageStatus(
-        `Storage: cache ${browserUsedLabel} | archive (all) ${serverAllUsedLabel}${serverErrorLabel}`
-      );
-    });
+        setStorageStatus(
+          `Storage: cache ${browserUsedLabel} | archive (all) ${serverAllUsedLabel}${serverErrorLabel}`
+        );
+      });
+    };
+
+    refreshStorageStatus();
+    timer = window.setInterval(refreshStorageStatus, 30_000);
 
     return () => {
       cancelled = true;
+      if (timer !== undefined) {
+        window.clearInterval(timer);
+      }
     };
-  }, [invited, recentJobs.pinnedImageCount, recentJobs.visibleJobs.length, recentJobs.completedOutputClusters.length, recentJobs.storageRefreshToken]);
+  }, [invited, currentUser, runEndpointId, recentJobs.pinnedImageCount, recentJobs.visibleJobs.length, recentJobs.completedOutputClusters.length, recentJobs.storageRefreshToken]);
 
   async function onRunPayloadBuilt(snapshot: {
     payload: Record<string, unknown>;
