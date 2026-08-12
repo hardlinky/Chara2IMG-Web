@@ -232,10 +232,12 @@
   gap: 0;
 }
 
-.outputs-image-download-btn {
+.outputs-image-right-actions {
   position: absolute;
   right: 0.45rem;
   bottom: 0.45rem;
+  display: flex;
+  gap: 0.3rem;
   padding: 0.2rem;
   border: 1px solid rgba(95, 110, 132, 0.55);
   border-radius: 999px;
@@ -245,8 +247,16 @@
   transition: opacity 140ms ease;
 }
 
-.outputs-image-tile-wrapper:hover .outputs-image-download-btn,
-.outputs-image-tile-wrapper:focus-within .outputs-image-download-btn {
+.outputs-image-download-btn {
+  padding: 0.2rem;
+  border: 1px solid rgba(95, 110, 132, 0.55);
+  border-radius: 999px;
+  background: rgba(14, 20, 29, 0.76);
+  backdrop-filter: blur(4px);
+}
+
+.outputs-image-tile-wrapper:hover .outputs-image-right-actions,
+.outputs-image-tile-wrapper:focus-within .outputs-image-right-actions {
   opacity: 1;
 }
 

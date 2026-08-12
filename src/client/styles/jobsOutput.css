@@ -538,10 +538,16 @@
   color: var(--color-text-muted);
 }
 
-.outputs-image-download-btn {
+.outputs-image-right-actions {
   position: absolute;
   bottom: var(--space-2);
   right: var(--space-2);
+  display: flex;
+  gap: var(--space-1);
+  z-index: 1;
+}
+
+.outputs-image-download-btn {
   z-index: 1;
 }
 

@@ -310,18 +310,31 @@ export function OutputImageCard({
           />
         ) : null}
         {showBottomActions ? (
-          <button
-            type="button"
-            className="outputs-image-action-btn outputs-image-download-btn"
-            aria-label={`Download ${displayPrefix} image ${imageLabel}`}
-            title={`Download ${displayPrefix} image ${imageLabel}`}
-            onClick={() => triggerDownload(image, displayPrefix, imageLabel)}
-          >
-            <DownloadIcon />
-          </button>
+          <div className="outputs-image-right-actions" aria-label={`Actions for ${displayPrefix} image ${imageLabel}`}>
+            {onExportWorkflow ? (
+              <button
+                type="button"
+                className="outputs-image-action-btn"
+                aria-label={`Export workflow for ${displayPrefix}`}
+                title={`Export workflow for ${displayPrefix}`}
+                onClick={onExportWorkflow}
+              >
+                <ExportIcon />
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="outputs-image-action-btn outputs-image-download-btn"
+              aria-label={`Download ${displayPrefix} image ${imageLabel}`}
+              title={`Download ${displayPrefix} image ${imageLabel}`}
+              onClick={() => triggerDownload(image, displayPrefix, imageLabel)}
+            >
+              <DownloadIcon />
+            </button>
+          </div>
         ) : null}
         {showBottomActions ? (
-          <div className="outputs-image-bottom-actions" aria-label={`Actions for ${displayPrefix} image ${imageLabel}`}>
+          <div className="outputs-image-bottom-actions" aria-label={`More actions for ${displayPrefix} image ${imageLabel}`}>
             {onLoadIntoImg2Img ? (
               <button
                 type="button"
@@ -342,17 +355,6 @@ export function OutputImageCard({
                 onClick={onViewJobOutputs}
               >
                 <ViewJobOutputsIcon />
-              </button>
-            ) : null}
-            {onExportWorkflow ? (
-              <button
-                type="button"
-                className="outputs-image-action-btn"
-                aria-label={`Export workflow for ${displayPrefix}`}
-                title={`Export workflow for ${displayPrefix}`}
-                onClick={onExportWorkflow}
-              >
-                <ExportIcon />
               </button>
             ) : null}
             {onLoadInputs ? (
