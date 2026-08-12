@@ -29,6 +29,11 @@ link_bucket() {
     local backup="${link}.bak.$(date +%s)"
     echo "Replacing directory with symlink: $link -> $target"
     mv "$link" "$backup"
+
+    if [[ -d "$backup" && -n "$(find "$backup" -mindepth 1 -maxdepth 1 2>/dev/null)" ]]; then
+      echo "Merging backup contents into shared target: $backup -> $target"
+      cp -a "$backup/." "$target/"
+    fi
   fi
 
   ln -s "$target" "$link"
