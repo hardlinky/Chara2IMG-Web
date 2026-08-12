@@ -51,14 +51,14 @@ export async function reserveSubmissionCapacity(request: CapacityRequest): Promi
   if (request.walletGroupId && request.maxWalletActiveJobs !== null) {
     const activeWalletJobIds = await getActiveWalletJobIds(request.username, request.walletGroupId);
     const maxActiveJobs = Math.max(1, Math.floor(request.maxWalletActiveJobs));
-    const activeReservationCount = [...reservations.values()].filter((reservation) => {
+    const pendingReservationCount = [...reservations.values()].filter((reservation) => {
       if (reservation.username !== request.username || reservation.walletGroupId !== request.walletGroupId) {
         return false;
       }
-      return Boolean(reservation.jobId) && activeWalletJobIds.has(reservation.jobId as string);
+      return !reservation.jobId || !activeWalletJobIds.has(reservation.jobId);
     }).length;
 
-    if (activeWalletJobIds.size + activeReservationCount >= maxActiveJobs) {
+    if (activeWalletJobIds.size + pendingReservationCount >= maxActiveJobs) {
       return { ok: false, reason: "wallet-capacity" };
     }
   }
