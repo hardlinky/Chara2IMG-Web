@@ -12,6 +12,7 @@ import {
   getNetworkModelsRoot,
   getCivitaiApiKey,
   getHuggingfaceApiKey,
+  removeDownloadFiles,
 } from "../lib/modelDownloader.js";
 
 async function listNetworkFolders(): Promise<string[]> {
@@ -116,6 +117,11 @@ export function registerModelDownloadRoutes(app: Hono): void {
     if (!entry) return c.json({ ok: false, error: "Not found" }, 404);
     if (entry.status === "queued" || entry.status === "in_progress") {
       return c.json({ ok: false, error: "Cancel the download before removing it" }, 400);
+    }
+
+    const payload = (await c.req.json().catch(() => ({}))) as { removeFiles?: boolean };
+    if (payload.removeFiles) {
+      await removeDownloadFiles(entry);
     }
 
     await removeDownload(c.req.param("id"));

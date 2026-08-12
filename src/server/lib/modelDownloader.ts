@@ -1,5 +1,5 @@
-import { mkdir, open, rename, unlink } from "node:fs/promises";
-import { join } from "node:path";
+import { mkdir, open, readFile, rename, unlink, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import {
   addDownload,
   getDownload,
@@ -137,7 +137,68 @@ function extractFilenameFromResponse(response: Response, fallbackUrl: string): s
   }
   return guessFilenameFromUrl(fallbackUrl);
 }
+export async function ensureModelDownloadPaths(): Promise<void> {
+  await mkdir(getNetworkModelsRoot(), { recursive: true });
+}
 
+export function getModelFilePath(entry: Pick<DownloadEntry, "destPath" | "filename">): string {
+  return join(getNetworkModelsRoot(), entry.destPath, entry.filename);
+}
+
+export function getModelMetadataPath(entry: Pick<DownloadEntry, "destPath" | "filename">): string {
+  return `${getModelFilePath(entry)}.json`;
+}
+
+export async function writeDownloadMetadata(entry: DownloadEntry, modelPath?: string): Promise<void> {
+  const filePath = modelPath ?? getModelFilePath(entry);
+  const metadataPath = `${filePath}.json`;
+  const payload = {
+    id: entry.id,
+    source: entry.source,
+    url: entry.url,
+    destPath: entry.destPath,
+    filename: entry.filename,
+    triggerWords: entry.triggerWords ?? [],
+    civitaiModelId: entry.civitaiModelId,
+    civitaiModelVersionId: entry.civitaiModelVersionId,
+    civitaiLatestModelVersionId: entry.civitaiLatestModelVersionId,
+    metadataUpdatedAt: entry.metadataUpdatedAt ?? null,
+    status: entry.status,
+    bytesDownloaded: entry.bytesDownloaded,
+    totalBytes: entry.totalBytes,
+    createdAt: entry.createdAt,
+    completedAt: entry.completedAt,
+    error: entry.error,
+  };
+  await mkdir(dirname(filePath), { recursive: true });
+  await writeFile(metadataPath, JSON.stringify(payload, null, 2), "utf8");
+}
+
+export async function readDownloadMetadata(entry: Pick<DownloadEntry, "destPath" | "filename">): Promise<Partial<DownloadEntry> | null> {
+  const metadataPath = getModelMetadataPath(entry);
+  try {
+    const raw = await readFile(metadataPath, "utf8");
+    const parsed = JSON.parse(raw) as Partial<DownloadEntry>;
+    return parsed;
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") return null;
+    throw err;
+  }
+}
+
+export async function removeDownloadFiles(entry: Pick<DownloadEntry, "destPath" | "filename">): Promise<void> {
+  const filePath = getModelFilePath(entry);
+  const metadataPath = getModelMetadataPath(entry);
+
+  await Promise.all([
+    unlink(filePath).catch((err) => {
+      if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
+    }),
+    unlink(metadataPath).catch((err) => {
+      if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
+    }),
+  ]);
+}
 // ─── Queue processor ─────────────────────────────────────────────────────────
 
 let isProcessing = false;
@@ -209,6 +270,7 @@ async function runDownload(entry: DownloadEntry, signal: AbortSignal): Promise<v
 
   const destDir = join(getNetworkModelsRoot(), entry.destPath);
   await mkdir(destDir, { recursive: true });
+  const modelPath = join(destDir, filename);
 
   const partPath = join(destDir, `${filename}.part`);
   const fileHandle = await open(partPath, "w");
@@ -224,13 +286,18 @@ async function runDownload(entry: DownloadEntry, signal: AbortSignal): Promise<v
       updateProgress(entry.id, bytesDownloaded, totalBytes || bytesDownloaded);
     }
     await fileHandle.close();
-    await rename(partPath, join(destDir, filename));
-    await updateEntry(entry.id, {
+    await rename(partPath, modelPath);
+    const completedAt = new Date().toISOString();
+    const completedEntry: DownloadEntry = {
+      ...entry,
+      filename,
       status: "finished",
       bytesDownloaded,
       totalBytes: totalBytes || bytesDownloaded,
-      completedAt: new Date().toISOString(),
-    });
+      completedAt,
+    };
+    await updateEntry(entry.id, completedEntry);
+    await writeDownloadMetadata(completedEntry, modelPath);
   } catch (err) {
     await fileHandle.close().catch(() => {});
     await unlink(partPath).catch(() => {});

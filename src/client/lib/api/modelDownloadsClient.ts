@@ -81,9 +81,11 @@ export async function refreshDownloadMetadata(
   return { ok: true, entry: data.entry! };
 }
 
-export async function deleteDownload(id: string): Promise<void> {
+export async function deleteDownload(id: string, removeFiles = false): Promise<void> {
   await fetch(`/api/admin/model-downloads/${encodeURIComponent(id)}`, {
     method: "DELETE",
+    headers: { "Content-Type": "application/json" },
     credentials: "include",
+    body: JSON.stringify({ removeFiles }),
   });
 }

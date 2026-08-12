@@ -105,9 +105,11 @@ export function DownloadCard({
     finally { setBusy(false); }
   }
 
+  const [removeFiles, setRemoveFiles] = useState(false);
+
   async function handleDelete() {
     setBusy(true);
-    try { await deleteDownload(entry.id); onUpdated(); }
+    try { await deleteDownload(entry.id, removeFiles); onUpdated(); }
     finally { setBusy(false); }
   }
 
@@ -190,9 +192,19 @@ export function DownloadCard({
           </button>
         )}
         {isTerminal && (
-          <button className="btn btn-secondary" type="button" onClick={() => void handleDelete()} disabled={busy}>
-            Delete
-          </button>
+          <>
+            <label className="model-dl-delete-toggle">
+              <input
+                type="checkbox"
+                checked={removeFiles}
+                onChange={(e) => setRemoveFiles(e.target.checked)}
+              />
+              Remove file(s)
+            </label>
+            <button className="btn btn-secondary" type="button" onClick={() => void handleDelete()} disabled={busy}>
+              Delete
+            </button>
+          </>
         )}
       </div>
     </li>
