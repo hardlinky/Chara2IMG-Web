@@ -4,12 +4,30 @@ export type LoraCatalog = {
   triggerWords: Record<string, string[]>;
 };
 
+const MODEL_CATALOG_REFRESH_EVENT = "model-catalog-refresh";
+
 let cache: LoraCatalog | null = null;
 let pending: Promise<LoraCatalog> | null = null;
 
 export function invalidateLoraCache(): void {
   cache = null;
   pending = null;
+}
+
+export function invalidateModelCatalogCaches(): void {
+  invalidateLoraCache();
+  checkpointCache = null;
+  checkpointPending = null;
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(MODEL_CATALOG_REFRESH_EVENT));
+  }
+}
+
+export function subscribeModelCatalogRefresh(listener: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  const handler = () => listener();
+  window.addEventListener(MODEL_CATALOG_REFRESH_EVENT, handler);
+  return () => window.removeEventListener(MODEL_CATALOG_REFRESH_EVENT, handler);
 }
 
 export async function fetchAvailableLoras(): Promise<string[]> {

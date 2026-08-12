@@ -12,7 +12,11 @@ import { useDynamicInputEditor } from "./useDynamicInputEditor";
 import { buildVariableTokenParts, isNameField, getCategoriesWithName } from "./inputVariables";
 import { toggleCategoryTracked, useTrackedInputCategories } from "../../lib/inputTrackingStorage";
 import { toImageDataUrl, stripModelExtension } from "../../lib/modelAssets";
-import { fetchAvailableCheckpoints, fetchLoraCatalog } from "../../lib/api/modelsClient";
+import {
+  fetchAvailableCheckpoints,
+  fetchLoraCatalog,
+  subscribeModelCatalogRefresh,
+} from "../../lib/api/modelsClient";
 import "../../styles/setupInput.css";
 
 // Integer-valued inputs step by 1; every other number spinner steps by 0.05.
@@ -196,7 +200,22 @@ export function CheckpointSelect({ value, onChange }: { value: string; onChange:
   const [available, setAvailable] = useState<string[] | null>(null);
 
   useEffect(() => {
-    void fetchAvailableCheckpoints().then(setAvailable);
+    let cancelled = false;
+    async function refresh() {
+      const next = await fetchAvailableCheckpoints();
+      if (!cancelled) setAvailable(next);
+    }
+    void refresh();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = subscribeModelCatalogRefresh(() => {
+      void fetchAvailableCheckpoints().then((next) => setAvailable(next));
+    });
+    return unsubscribe;
   }, []);
 
   useEffect(() => {
@@ -294,11 +313,30 @@ function LoraListInput({
   const sliderStep = 0.05;
 
   useEffect(() => {
-    void fetchLoraCatalog().then((catalog) => {
-      setAvailable(catalog.loras);
-      setDownloadUrls(catalog.downloadUrls);
-      setTriggerWords(catalog.triggerWords);
+    let cancelled = false;
+    async function refreshCatalog() {
+      const catalog = await fetchLoraCatalog();
+      if (!cancelled) {
+        setAvailable(catalog.loras);
+        setDownloadUrls(catalog.downloadUrls);
+        setTriggerWords(catalog.triggerWords);
+      }
+    }
+    void refreshCatalog();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = subscribeModelCatalogRefresh(() => {
+      void fetchLoraCatalog().then((catalog) => {
+        setAvailable(catalog.loras);
+        setDownloadUrls(catalog.downloadUrls);
+        setTriggerWords(catalog.triggerWords);
+      });
     });
+    return unsubscribe;
   }, []);
 
   function updateStrength(index: number, strength: number) {

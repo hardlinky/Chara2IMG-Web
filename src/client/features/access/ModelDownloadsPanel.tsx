@@ -11,6 +11,7 @@ import {
   restartDownload,
   type DownloadsConfig,
 } from "../../lib/api/modelDownloadsClient";
+import { invalidateModelCatalogCaches } from "../../lib/api/modelsClient";
 import "../../styles/modelDownloads.css";
 
 const PAGE_SIZE = 10;
@@ -246,6 +247,7 @@ export function ModelDownloadsPanel({ enabled }: { enabled: boolean }) {
         );
         const hasActive = data.some((d) => d.status === "queued" || d.status === "in_progress");
         if (hadActive && !hasActive) {
+          invalidateModelCatalogCaches();
           void fetchDownloadFolders().then(setFolders).catch(() => {});
         }
       } catch {
