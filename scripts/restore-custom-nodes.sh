@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SHARED_ROOT="${SHARED_ROOT:-/workspace/custom_nodes}"
+SHARED_ROOT="${NETWORK_CUSTOM_NODES_ROOT:-${SHARED_ROOT:-/workspace/custom_nodes}}"
 
 if [[ ! -d "$SHARED_ROOT" ]]; then
   echo "Shared custom nodes root does not exist: $SHARED_ROOT"
-  echo "Create it first or set SHARED_ROOT to the correct mount path."
+  echo "Create it first or set NETWORK_CUSTOM_NODES_ROOT (or SHARED_ROOT) to the correct mount path."
   exit 1
 fi
 

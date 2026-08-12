@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SHARED_ROOT="${SHARED_ROOT:-/workspace/models}"
+SHARED_ROOT="${NETWORK_MODELS_ROOT:-${SHARED_ROOT:-/workspace/models}}"
 COMFY_MODELS_ROOT="${COMFY_MODELS_ROOT:-${COMFYUI_ROOT:-/workspace/runpod-slim/ComfyUI/models}}"
 
 if [[ ! -d "$SHARED_ROOT" ]]; then
   echo "Shared models root does not exist: $SHARED_ROOT"
-  echo "Create it first or set SHARED_ROOT to the correct mount path."
+  echo "Create it first or set NETWORK_MODELS_ROOT (or SHARED_ROOT) to the correct mount path."
   exit 1
 fi
 
