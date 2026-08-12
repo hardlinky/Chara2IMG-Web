@@ -1,4 +1,4 @@
-import { copyFile, mkdir, readdir, rm, stat, writeFile, readFile } from "node:fs/promises";
+import { copyFile, mkdir, readdir, rename, rm, stat, writeFile, readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -12,7 +12,7 @@ import {
   type JobRecord,
 } from "../../shared/contracts/jobs.js";
 import { formatJobDisplayName } from "../../shared/jobDisplay.js";
-import { logServerError } from "./logger.js";
+import { logServerError, logServerWarning } from "./logger.js";
 
 // ─── Directory resolution ─────────────────────────────────────────────────────
 
@@ -24,6 +24,7 @@ function resolveDir(envNew: string, envLegacy: string, defaultVal: string): stri
 
 const JOB_TMP_BASE = resolveDir("JOBS_TMP_DIR", "RECENT_JOBS_STORAGE_DIR", JOBS_TMP_DIR_DEFAULT);
 const JOB_ARCHIVE_BASE = resolveDir("JOBS_ARCHIVE_DIR", "PINNED_IMAGES_STORAGE_DIR", JOBS_ARCHIVE_DIR_DEFAULT);
+const malformedJobWarnings = new Set<string>();
 
 // ─── Path helpers ─────────────────────────────────────────────────────────────
 
@@ -95,19 +96,40 @@ export async function ensureJobStoreDirs(): Promise<void> {
 
 // ─── CRUD ─────────────────────────────────────────────────────────────────────
 
+async function writeJsonAtomically(path: string, value: unknown): Promise<void> {
+  const temporaryPath = `${path}.${process.pid}.${crypto.randomUUID()}.tmp`;
+  try {
+    await writeFile(temporaryPath, JSON.stringify(value, null, 2), "utf8");
+    await rename(temporaryPath, path);
+  } catch (err: unknown) {
+    await rm(temporaryPath, { force: true }).catch(() => undefined);
+    throw err;
+  }
+}
+
 export async function createJob(record: JobRecord, inputs: JobInputs): Promise<void> {
   const jobDir = join(JOB_TMP_BASE, "jobs", record.jobId);
   await mkdir(jobDir, { recursive: true });
-  await writeFile(join(jobDir, "job.json"), JSON.stringify(record, null, 2), "utf8");
-  await writeFile(join(jobDir, "inputs.json"), JSON.stringify(inputs, null, 2), "utf8");
+  await writeJsonAtomically(join(jobDir, "job.json"), record);
+  await writeJsonAtomically(join(jobDir, "inputs.json"), inputs);
 }
 
 export async function readJob(jobId: string): Promise<JobRecord | null> {
+  const warningKey = `tmp:${jobId}`;
   try {
     const raw = await readFile(join(JOB_TMP_BASE, "jobs", jobId, "job.json"), "utf8");
-    return JSON.parse(raw) as JobRecord;
+    const record = JSON.parse(raw) as JobRecord;
+    malformedJobWarnings.delete(warningKey);
+    return record;
   } catch (err: unknown) {
     if ((err as NodeJS.ErrnoException).code === "ENOENT") return null;
+    if (err instanceof SyntaxError) {
+      if (!malformedJobWarnings.has(warningKey)) {
+        malformedJobWarnings.add(warningKey);
+        logServerWarning("Ignoring malformed job metadata", err, { jobId });
+      }
+      return null;
+    }
     throw err;
   }
 }
@@ -116,7 +138,7 @@ export async function updateJob(jobId: string, updates: Partial<JobRecord>): Pro
   const existing = await readJob(jobId);
   if (existing === null) return null;
   const next: JobRecord = { ...existing, ...updates };
-  await writeFile(join(JOB_TMP_BASE, "jobs", jobId, "job.json"), JSON.stringify(next, null, 2), "utf8");
+  await writeJsonAtomically(join(JOB_TMP_BASE, "jobs", jobId, "job.json"), next);
   return next;
 }
 
@@ -201,7 +223,7 @@ export async function archiveJob(jobId: string): Promise<boolean> {
   const archiveJobPath = join(destDir, "job.json");
   const raw = await readFile(archiveJobPath, "utf8");
   const archiveRecord = { ...(JSON.parse(raw) as JobRecord), isArchived: true };
-  await writeFile(archiveJobPath, JSON.stringify(archiveRecord, null, 2), "utf8");
+  await writeJsonAtomically(archiveJobPath, archiveRecord);
 
   // Stamp the tmp dir record so listJobs() reflects isArchived
   await updateJob(jobId, { isArchived: true });
@@ -329,11 +351,21 @@ const MIME_BY_EXT: Record<(typeof IMAGE_EXTENSIONS)[number], JobOutputImageMimeT
 
 /** Read the archive copy of a job.json (ENOENT → null). */
 async function readArchiveJob(jobId: string): Promise<JobRecord | null> {
+  const warningKey = `archive:${jobId}`;
   try {
     const raw = await readFile(join(JOB_ARCHIVE_BASE, "jobs", jobId, "job.json"), "utf8");
-    return JSON.parse(raw) as JobRecord;
+    const record = JSON.parse(raw) as JobRecord;
+    malformedJobWarnings.delete(warningKey);
+    return record;
   } catch (err: unknown) {
     if ((err as NodeJS.ErrnoException).code === "ENOENT") return null;
+    if (err instanceof SyntaxError) {
+      if (!malformedJobWarnings.has(warningKey)) {
+        malformedJobWarnings.add(warningKey);
+        logServerWarning("Ignoring malformed archived job metadata", err, { jobId });
+      }
+      return null;
+    }
     throw err;
   }
 }
@@ -342,7 +374,7 @@ async function readArchiveJob(jobId: string): Promise<JobRecord | null> {
 async function writeArchiveJobRecord(jobId: string, record: JobRecord): Promise<void> {
   const archiveDir = join(JOB_ARCHIVE_BASE, "jobs", jobId);
   await mkdir(archiveDir, { recursive: true });
-  await writeFile(join(archiveDir, "job.json"), JSON.stringify(record, null, 2), "utf8");
+  await writeJsonAtomically(join(archiveDir, "job.json"), record);
 }
 
 /** Read a job from tmp, falling back to the archive copy (for tmp-wiped pinned jobs). */
@@ -586,7 +618,7 @@ export async function deleteJobImage(jobId: string, imageIndex: number): Promise
     if (!hasRemainingArchiveImages) {
       await rm(archiveDir, { recursive: true, force: true });
     } else {
-      await writeFile(archiveJobPath, JSON.stringify(next, null, 2), "utf8");
+      await writeJsonAtomically(archiveJobPath, next);
     }
   } catch (err: unknown) {
     if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
