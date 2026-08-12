@@ -290,6 +290,7 @@ function LoraListInput({
   const [available, setAvailable] = useState<string[] | null>(null);
   const [downloadUrls, setDownloadUrls] = useState<Record<string, string>>({});
   const [triggerWords, setTriggerWords] = useState<Record<string, string[]>>({});
+  const [searchQuery, setSearchQuery] = useState("");
   const sliderStep = 0.05;
 
   useEffect(() => {
@@ -318,6 +319,12 @@ function LoraListInput({
   const addableOptions = available
     ? available.filter((name) => !currentLoras.some((l) => l.loraName === name))
     : [];
+  const visibleAddableOptions = addableOptions.filter((name) => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return true;
+    const label = stripModelExtension(name).toLowerCase();
+    return label.includes(query) || name.toLowerCase().includes(query);
+  });
 
   return (
     <div className="input-lora-list">
@@ -383,14 +390,34 @@ function LoraListInput({
       {currentLoras.length < 10 && (available === null || addableOptions.length > 0) && (
         <div className="input-lora-add-row">
           <span>Add LoRA:</span>
+          <input
+            className="input"
+            type="search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search LoRAs…"
+            aria-label="Search LoRAs"
+            disabled={available === null}
+          />
           <select
             className="select"
             value=""
             disabled={available === null}
-            onChange={(e) => { if (e.target.value) addLora(e.target.value); }}
+            onChange={(e) => {
+              if (e.target.value) {
+                addLora(e.target.value);
+                setSearchQuery("");
+              }
+            }}
           >
-            <option value="">{available === null ? "Loading\u2026" : "Select a LoRA\u2026"}</option>
-            {addableOptions.map((name) => (
+            <option value="">
+              {available === null
+                ? "Loading\u2026"
+                : visibleAddableOptions.length === 0
+                  ? "No matching LoRAs"
+                  : "Select a LoRA\u2026"}
+            </option>
+            {visibleAddableOptions.map((name) => (
               <option key={name} value={name}>{stripModelExtension(name)}</option>
             ))}
           </select>
