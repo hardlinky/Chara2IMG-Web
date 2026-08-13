@@ -1,14 +1,12 @@
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
+import { resolveNetworkPath } from "./networkPaths.js";
 
-// Resolve relative to the repo root so the default lives beside jobs/archive.
-const PROJECT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
-const USERS_DIR_DEFAULT = "../chara2img/users";
+const USERS_DIR_DEFAULT = "chara2img/users";
 
 function getUsersDir(): string {
-  return resolve(PROJECT_ROOT, process.env.USERS_DIR?.trim() || USERS_DIR_DEFAULT);
+  return resolveNetworkPath("USERS_DIR", USERS_DIR_DEFAULT);
 }
 
 function usersFilePath(): string {

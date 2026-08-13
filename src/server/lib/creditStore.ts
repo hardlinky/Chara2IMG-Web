@@ -1,6 +1,7 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { applyCreditCharge, refreshCreditBalances } from "../../shared/credits";
+import { resolveNetworkPath } from "./networkPaths.js";
 
 export type CreditAccount = {
   username: string;
@@ -44,7 +45,7 @@ const EMPTY_STORE: CreditStoreData = { accounts: [], ledger: [] };
 let writeChain: Promise<void> = Promise.resolve();
 
 function getCreditsDir(): string {
-  return process.env.CREDITS_DIR?.trim() || join(process.cwd(), "..", "chara2img", "credits");
+  return resolveNetworkPath("CREDITS_DIR", "chara2img/credits");
 }
 
 function getManagedEndpointWallets(): Map<string, string> {

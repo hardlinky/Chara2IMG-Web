@@ -1,7 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SHARED_ROOT="${NETWORK_CUSTOM_NODES_ROOT:-${SHARED_ROOT:-/workspace/custom_nodes}}"
+NETWORK_MOUNT_DIR="${NETWORK_MOUNT_DIR:-/workspace}"
+resolve_network_path() {
+  case "$1" in
+    /*) echo "$1" ;;
+    *) echo "$NETWORK_MOUNT_DIR/$1" ;;
+  esac
+}
+
+SHARED_ROOT="$(resolve_network_path "${NETWORK_CUSTOM_NODES_ROOT:-${SHARED_ROOT:-runpod-slim/ComfyUI/custom_nodes}}")"
 
 if [[ ! -d "$SHARED_ROOT" ]]; then
   echo "Shared custom nodes root does not exist: $SHARED_ROOT"

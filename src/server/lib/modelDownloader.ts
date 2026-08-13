@@ -10,11 +10,12 @@ import {
 } from "./modelDownloadStore.js";
 import { logServerError } from "./logger.js";
 import type { DownloadEntry, DownloadSource } from "../../shared/contracts/modelDownloads.js";
+import { resolveNetworkPath } from "./networkPaths.js";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
 export function getNetworkModelsRoot(): string {
-  return process.env.NETWORK_MODELS_ROOT?.trim() || "/workspace/models";
+  return resolveNetworkPath("NETWORK_MODELS_ROOT", "runpod-slim/ComfyUI/models");
 }
 
 export function getCivitaiApiKey(): string | undefined {

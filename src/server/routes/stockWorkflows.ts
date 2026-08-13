@@ -2,9 +2,10 @@ import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Hono } from "hono";
 import { requireInvitedSession } from "../middleware/session.js";
+import { resolveNetworkPath } from "../lib/networkPaths.js";
 
 export function getStockWorkflowsDir(): string {
-  return process.env.STOCK_WORKFLOWS_DIR?.trim() || "/workspace/workflows";
+  return resolveNetworkPath("STOCK_WORKFLOWS_DIR", "workflows");
 }
 
 export function registerWorkflowsRoutes(app: Hono): void {

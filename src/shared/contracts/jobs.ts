@@ -137,8 +137,8 @@ export function isTerminalRunpodStatus(status: string): boolean {
 
 // Default base directories (overridable via env vars in server code).
 // Stored here so shared contracts document the layout convention.
-export const JOBS_TMP_DIR_DEFAULT = "../chara2img/jobs-tmp";
-export const JOBS_ARCHIVE_DIR_DEFAULT = "../chara2img/archive";
+export const JOBS_TMP_DIR_DEFAULT = "chara2img/jobs-tmp";
+export const JOBS_ARCHIVE_DIR_DEFAULT = "chara2img/archive";
 export const JOB_IMAGE_TTL_MS = 60 * 60 * 1000; // 1 hour in ms
 
 export type JobStatus = RunpodJobStatus | "PENDING" | "UNKNOWN";

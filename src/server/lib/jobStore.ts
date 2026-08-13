@@ -1,6 +1,5 @@
 import { copyFile, mkdir, readdir, rename, rm, stat, writeFile, readFile } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import {
   JOBS_ARCHIVE_DIR_DEFAULT,
   JOBS_TMP_DIR_DEFAULT,
@@ -13,13 +12,13 @@ import {
 } from "../../shared/contracts/jobs.js";
 import { formatJobDisplayName } from "../../shared/jobDisplay.js";
 import { logServerError, logServerWarning } from "./logger.js";
+import { resolveNetworkPath } from "./networkPaths.js";
 
 // ─── Directory resolution ─────────────────────────────────────────────────────
 
-const PROJECT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
-
 function resolveDir(envNew: string, envLegacy: string, defaultVal: string): string {
-  return resolve(PROJECT_ROOT, process.env[envNew]?.trim() || process.env[envLegacy]?.trim() || defaultVal);
+  const legacyVal = process.env[envLegacy]?.trim();
+  return resolveNetworkPath(envNew, process.env[envNew]?.trim() || legacyVal || defaultVal);
 }
 
 const JOB_TMP_BASE = resolveDir("JOBS_TMP_DIR", "RECENT_JOBS_STORAGE_DIR", JOBS_TMP_DIR_DEFAULT);

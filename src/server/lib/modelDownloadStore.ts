@@ -1,13 +1,11 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import type { DownloadEntry, DownloadSource } from "../../shared/contracts/modelDownloads.js";
-
-const PROJECT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
+import { resolveNetworkPath } from "./networkPaths.js";
 
 function getDownloadsDir(): string {
-  return resolve(PROJECT_ROOT, process.env.DOWNLOADS_LOG_DIR?.trim() || "../chara2img/downloads");
+  return resolveNetworkPath("DOWNLOADS_LOG_DIR", "chara2img/downloads");
 }
 
 function storeFilePath(): string {
