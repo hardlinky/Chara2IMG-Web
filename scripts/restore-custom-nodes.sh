@@ -1,25 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Network volume mounts at different paths depending on resource type:
-# /workspace on Pods, /runpod-volume on serverless workers. Auto-detect so
-# the same subpath env var works everywhere; NETWORK_VOLUME_ROOT can force it.
-detect_volume_root() {
-  if [[ -n "${NETWORK_VOLUME_ROOT:-}" ]]; then
-    echo "$NETWORK_VOLUME_ROOT"
-  elif [[ -d /runpod-volume && -n "$(ls -A /runpod-volume 2>/dev/null)" ]]; then
-    echo /runpod-volume
-  else
-    echo /workspace
-  fi
-}
-
-# NETWORK_CUSTOM_NODES_ROOT (or legacy SHARED_ROOT) remains an absolute-path override.
-SHARED_ROOT="${NETWORK_CUSTOM_NODES_ROOT:-${SHARED_ROOT:-$(detect_volume_root)/${NETWORK_CUSTOM_NODES_SUBPATH:-custom_nodes}}}"
+SHARED_ROOT="${NETWORK_CUSTOM_NODES_ROOT:-${SHARED_ROOT:-/workspace/custom_nodes}}"
 
 if [[ ! -d "$SHARED_ROOT" ]]; then
   echo "Shared custom nodes root does not exist: $SHARED_ROOT"
-  echo "Create it first or set NETWORK_CUSTOM_NODES_SUBPATH (or NETWORK_CUSTOM_NODES_ROOT) to the correct mount path."
+  echo "Create it first or set NETWORK_CUSTOM_NODES_ROOT (or SHARED_ROOT) to the correct mount path."
   exit 1
 fi
 
