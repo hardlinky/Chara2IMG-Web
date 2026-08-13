@@ -26,17 +26,15 @@ restore_repo() {
 }
 
 restore_repo "https://github.com/Smirnov75/ComfyUI-mxToolkit.git" "ComfyUI-mxToolkit"
-restore_repo "https://github.com/kijai/ComfyUI-KJNodes.git" "ComfyUI-KJNodes"
-restore_repo "https://github.com/ssitu/ComfyUI_UltimateSDUpscale.git" "ComfyUI_UltimateSDUpscale"
 restore_repo "https://github.com/yolain/ComfyUI-Easy-Use.git" "ComfyUI-Easy-Use"
-restore_repo "https://github.com/rgthree/rgthree-comfy.git" "rgthree-comfy"
+restore_repo "https://github.com/kijai/ComfyUI-KJNodes.git" "ComfyUI-KJNodes"
 restore_repo "https://github.com/ltdrdata/ComfyUI-Impact-Pack.git" "ComfyUI-Impact-Pack"
 restore_repo "https://github.com/ltdrdata/ComfyUI-Impact-Subpack.git" "ComfyUI-Impact-Subpack"
-restore_repo "https://github.com/Acly/ComfyUI-Image-Saver.git" "ComfyUI-Image-Saver"
-restore_repo "https://github.com/Comfy-Org/ComfyUI-Advanced-CLIP.git" "ComfyUI-Advanced-CLIP"
-restore_repo "https://github.com/shiimizu/ComfyUI-FBCNN.git" "ComfyUI-FBCNN"
-restore_repo "https://github.com/Comfy-Org/ComfyUI-Manager.git" "ComfyUI-Manager"
-restore_repo "https://github.com/phantom/ComfyUI-Prompt-Builder.git" "ComfyUI-Prompt-Builder"
+restore_repo "https://github.com/alexopus/ComfyUI-Image-Saver.git" "ComfyUI-Image-Saver"
+restore_repo "https://github.com/BlenderNeko/ComfyUI_ADV_CLIP_emb.git" "ComfyUI_ADV_CLIP_emb"
+restore_repo "https://github.com/rgthree/rgthree-comfy.git" "rgthree-comfy"
+restore_repo "https://github.com/Miosp/ComfyUI-FBCNN.git" "ComfyUI-FBCNN"
+restore_repo "https://github.com/aimoviestudio/comfyui-promptbuilder.git" "comfyui-promptbuilder"
 
 echo
 echo "Custom nodes restored to: $SHARED_ROOT"
