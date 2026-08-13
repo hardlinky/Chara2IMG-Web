@@ -59,7 +59,8 @@ mkdir -p \
   "$MODELS_ROOT/loras" \
   "$MODELS_ROOT/upscale_models" \
   "$MODELS_ROOT/ultralytics/segm" \
-  "$MODELS_ROOT/ultralytics/bbox"
+  "$MODELS_ROOT/ultralytics/bbox" \
+  "$MODELS_ROOT/sam"
 
 # ─── Checkpoint ───────────────────────────────────────────────────────────────
 
@@ -100,6 +101,12 @@ download \
 download \
   "https://huggingface.co/Bingsu/adetailer/resolve/main/face_yolov8m.pt" \
   "$MODELS_ROOT/ultralytics/bbox/face_yolov8m.pt"
+
+# ─── SAM checkpoint ───────────────────────────────────────────────────────────
+
+download \
+  "https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth" \
+  "$MODELS_ROOT/sam/sam_vit_b_01ec64.pth"
 
 # ─── Summary ─────────────────────────────────────────────────────────────────
 
