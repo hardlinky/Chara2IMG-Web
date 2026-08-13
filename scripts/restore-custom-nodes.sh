@@ -28,6 +28,7 @@ restore_repo() {
 restore_repo "https://github.com/Smirnov75/ComfyUI-mxToolkit.git" "ComfyUI-mxToolkit"
 restore_repo "https://github.com/kijai/ComfyUI-KJNodes.git" "ComfyUI-KJNodes"
 restore_repo "https://github.com/ssitu/ComfyUI_UltimateSDUpscale.git" "ComfyUI_UltimateSDUpscale"
+restore_repo "https://github.com/WASasquatch/was-node-suite-comfyui.git" "was-node-suite-comfyui"
 
 echo
 echo "Custom nodes restored to: $SHARED_ROOT"
