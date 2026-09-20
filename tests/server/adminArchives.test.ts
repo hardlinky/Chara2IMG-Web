@@ -56,6 +56,19 @@ async function seedJob(base: string, job: JobRecord, imageBytes: number): Promis
   await writeFile(join(dir, `${job.displayName}-0.png`), Buffer.alloc(imageBytes, 7));
 }
 
+async function waitForImport(uploadId: string): Promise<Record<string, unknown>> {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    const response = await app.request(`http://localhost/api/admin/archives/import/session/${uploadId}`, {
+      headers: { Cookie: adminCookie }
+    });
+    const body = (await response.json()) as { status: string; result?: Record<string, unknown>; error?: string };
+    if (body.status === "done") return body.result!;
+    if (body.status === "failed") throw new Error(body.error);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  throw new Error("Import did not finish in time");
+}
+
 beforeAll(async () => {
   tmpBase = await mkdtemp(join(tmpdir(), "archives-tmp-"));
   archiveBase = await mkdtemp(join(tmpdir(), "archives-archive-"));
@@ -144,18 +157,18 @@ describe("admin archive downloads", () => {
   it("rejects requests without an admin session", async () => {
     const summaries = await app.request("http://localhost/api/admin/archives");
     const download = await app.request("http://localhost/api/admin/archives/alice/download");
-    const upload = await app.request("http://localhost/api/admin/archives/import", {
+    const session = await app.request("http://localhost/api/admin/archives/import/session", {
       method: "POST",
-      headers: { "Content-Type": "application/zip" },
-      body: Buffer.from("PK")
+      headers: { "Content-Type": "application/json", Origin: "http://localhost" },
+      body: JSON.stringify({ fileName: "a.zip", fileSize: 1, fingerprint: "a" })
     });
 
     expect(summaries.status).toBe(401);
     expect(download.status).toBe(401);
-    expect(upload.status).toBe(401);
+    expect(session.status).toBe(401);
   });
 
-  it("imports an exported zip into the archive dir and ignores unsafe entries", async () => {
+  it("imports a chunked upload, resumes from the server offset, and ignores unsafe entries", async () => {
     const exported = await app.request("http://localhost/api/admin/archives/alice/download", {
       headers: { Cookie: adminCookie }
     });
@@ -165,19 +178,47 @@ describe("admin archive downloads", () => {
     await rm(join(tmpBase, "jobs", "job-alice"), { recursive: true, force: true });
     await rm(join(archiveBase, "jobs", "job-alice"), { recursive: true, force: true });
 
-    const response = await app.request("http://localhost/api/admin/archives/import", {
+    const created = await app.request("http://localhost/api/admin/archives/import/session", {
       method: "POST",
-      headers: { "Content-Type": "application/zip", Cookie: adminCookie },
-      body: zipBytes
+      headers: { "Content-Type": "application/json", Cookie: adminCookie, Origin: "http://localhost" },
+      body: JSON.stringify({ fileName: "archive.zip", fileSize: zipBytes.byteLength, fingerprint: "fp-1" })
+    });
+    const { uploadId } = (await created.json()) as { uploadId: string };
+
+    const half = Math.floor(zipBytes.byteLength / 2);
+    const sendChunk = (index: number, data: Buffer) =>
+      app.request(`http://localhost/api/admin/archives/import/session/${uploadId}/chunk?index=${index}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/octet-stream", Cookie: adminCookie, Origin: "http://localhost" },
+        body: new Uint8Array(data)
+      });
+
+    expect((await sendChunk(0, zipBytes.subarray(0, half))).status).toBe(200);
+
+    // A resumed client asks where the server left off before sending more.
+    const statusResponse = await app.request(`http://localhost/api/admin/archives/import/session/${uploadId}`, {
+      headers: { Cookie: adminCookie }
+    });
+    expect(await statusResponse.json()).toMatchObject({
+      status: "uploading",
+      receivedBytes: half,
+      nextChunkIndex: 1,
+      fingerprint: "fp-1"
     });
 
-    expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({
-      ok: true,
-      importedJobs: 1,
-      importedImages: 1,
-      skippedExistingJobs: 0
+    // A duplicate of the last chunk is acknowledged instead of corrupting the file.
+    expect((await sendChunk(0, zipBytes.subarray(0, half))).status).toBe(200);
+    expect((await sendChunk(1, zipBytes.subarray(half))).status).toBe(200);
+    expect((await sendChunk(5, Buffer.from("x"))).status).toBe(409);
+
+    const finished = await app.request(`http://localhost/api/admin/archives/import/session/${uploadId}/finish`, {
+      method: "POST",
+      headers: { Cookie: adminCookie, Origin: "http://localhost" }
     });
+    expect(finished.status).toBe(200);
+
+    const result = await waitForImport(uploadId);
+    expect(result).toMatchObject({ importedJobs: 1, importedImages: 1, skippedExistingJobs: 0, ignoredEntries: 1 });
 
     const restored = JSON.parse(
       await readFile(join(archiveBase, "jobs", "job-alice", "job.json"), "utf8")
@@ -185,13 +226,5 @@ describe("admin archive downloads", () => {
     expect(restored).toMatchObject({ jobId: "job-alice", createdBy: "alice", isArchived: true, expiresAt: null });
     expect(restored.pinnedImageIndices).toEqual([0]);
     await expect(stat(join(archiveBase, "jobs", "job-alice", "aaaa1111-0.png"))).resolves.toBeTruthy();
-
-    // manifest.json sits outside jobs/ and is counted as ignored, not extracted.
-    const repeat = await app.request("http://localhost/api/admin/archives/import", {
-      method: "POST",
-      headers: { "Content-Type": "application/zip", Cookie: adminCookie },
-      body: zipBytes
-    });
-    expect(await repeat.json()).toMatchObject({ ok: true, importedJobs: 0, skippedExistingJobs: 1, ignoredEntries: 1 });
   });
 });

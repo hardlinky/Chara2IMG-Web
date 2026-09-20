@@ -1,10 +1,7 @@
 import type { Hono } from "hono";
-import { createWriteStream } from "node:fs";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { Readable, Transform } from "node:stream";
-import { pipeline } from "node:stream/promises";
+import { Readable } from "node:stream";
 import { ZipFile } from "yazl";
 import {
   clearAdminSessionCookie,
@@ -15,11 +12,13 @@ import {
 } from "../middleware/session";
 import { deleteJobImage, listManifestImages } from "../lib/jobStore";
 import {
-  importArchiveZip,
-  listUserArchiveJobs,
-  listUserArchiveSummaries,
-  type UserArchiveJob
-} from "../lib/userArchiveStore";
+  abortArchiveUpload,
+  appendArchiveUploadChunk,
+  createArchiveUploadSession,
+  getArchiveUploadProgress,
+  startArchiveUploadImport
+} from "../lib/archiveUploadSessions";
+import { listUserArchiveJobs, listUserArchiveSummaries, type UserArchiveJob } from "../lib/userArchiveStore";
 import { listUsernames, userExists } from "../lib/userStore";
 import { impersonateRequestSchema, verifyAdminKeyRequestSchema } from "../schemas/admin";
 import { getAdminPasskey } from "../security/adminPasskey";
@@ -36,7 +35,6 @@ import { ANONYMOUS_CREDIT_USERNAME } from "../../shared/credits";
 import { ANONYMOUS_ARCHIVE_OWNER } from "../../shared/contracts/archives";
 
 const MAX_WORKFLOW_BYTES = 5 * 1024 * 1024;
-const MAX_ARCHIVE_UPLOAD_BYTES = 20 * 1024 * 1024 * 1024;
 
 function isValidWorkflowFilename(filename: string): boolean {
   return filename.length <= 128
@@ -272,39 +270,67 @@ export function registerAdminRoutes(app: Hono): void {
     });
   });
 
-  app.post("/api/admin/archives/import", async (c) => {
+  app.post("/api/admin/archives/import/session", async (c) => {
     if (!(await hasAdminSession(c))) return c.json({ ok: false, error: "Forbidden" }, 403);
 
-    const contentLength = Number(c.req.header("Content-Length"));
-    if (Number.isFinite(contentLength) && contentLength > MAX_ARCHIVE_UPLOAD_BYTES) {
-      return c.json({ ok: false, error: "Archive is too large" }, 413);
+    const payload = await c.req.json().catch(() => null) as {
+      fileName?: unknown;
+      fileSize?: unknown;
+      fingerprint?: unknown;
+    } | null;
+    const fileName = typeof payload?.fileName === "string" ? payload.fileName : "";
+    const fingerprint = typeof payload?.fingerprint === "string" ? payload.fingerprint : "";
+    const fileSize = Number(payload?.fileSize);
+    if (fileName.length === 0 || fingerprint.length === 0 || !Number.isFinite(fileSize) || fileSize <= 0) {
+      return c.json({ ok: false, error: "Invalid upload request" }, 400);
     }
 
-    const body = c.req.raw.body;
-    if (!body) {
-      return c.json({ ok: false, error: "Missing archive upload" }, 400);
+    return c.json({ ok: true, ...(await createArchiveUploadSession({ fileName, fileSize, fingerprint })) });
+  });
+
+  app.post("/api/admin/archives/import/session/:uploadId/chunk", async (c) => {
+    if (!(await hasAdminSession(c))) return c.json({ ok: false, error: "Forbidden" }, 403);
+
+    const chunkIndex = Number.parseInt(c.req.query("index") ?? "", 10);
+    if (!Number.isInteger(chunkIndex) || chunkIndex < 0) {
+      return c.json({ ok: false, error: "Invalid chunk index" }, 400);
     }
 
-    const uploadDir = await mkdtemp(join(tmpdir(), "chara2img-upload-"));
-    const uploadPath = join(uploadDir, "archive.zip");
-    try {
-      let receivedBytes = 0;
-      const limitUpload = new Transform({
-        transform(chunk, _encoding, callback) {
-          receivedBytes += chunk.length;
-          callback(receivedBytes > MAX_ARCHIVE_UPLOAD_BYTES ? new Error("Archive is too large") : null, chunk);
-        }
-      });
-      await pipeline(Readable.fromWeb(body as Parameters<typeof Readable.fromWeb>[0]), limitUpload, createWriteStream(uploadPath));
-
-      const result = await importArchiveZip(uploadPath);
-      return c.json({ ok: true, ...result });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Archive import failed";
-      return c.json({ ok: false, error: message }, 400);
-    } finally {
-      await rm(uploadDir, { recursive: true, force: true }).catch(() => undefined);
+    const data = Buffer.from(await c.req.arrayBuffer());
+    const result = await appendArchiveUploadChunk(c.req.param("uploadId"), chunkIndex, data);
+    if (!result.ok) {
+      return c.json({ ok: false, error: result.error, nextChunkIndex: result.nextChunkIndex }, result.status);
     }
+
+    return c.json({ ok: true, receivedBytes: result.receivedBytes, nextChunkIndex: result.nextChunkIndex });
+  });
+
+  app.post("/api/admin/archives/import/session/:uploadId/finish", async (c) => {
+    if (!(await hasAdminSession(c))) return c.json({ ok: false, error: "Forbidden" }, 403);
+
+    if (!startArchiveUploadImport(c.req.param("uploadId"))) {
+      return c.json({ ok: false, error: "Unknown or completed upload session" }, 404);
+    }
+
+    return c.json({ ok: true, status: "importing" });
+  });
+
+  app.get("/api/admin/archives/import/session/:uploadId", async (c) => {
+    if (!(await hasAdminSession(c))) return c.json({ ok: false, error: "Forbidden" }, 403);
+
+    const progress = getArchiveUploadProgress(c.req.param("uploadId"));
+    if (!progress) {
+      return c.json({ ok: false, error: "Unknown upload session" }, 404);
+    }
+
+    return c.json({ ok: true, ...progress });
+  });
+
+  app.delete("/api/admin/archives/import/session/:uploadId", async (c) => {
+    if (!(await hasAdminSession(c))) return c.json({ ok: false, error: "Forbidden" }, 403);
+
+    await abortArchiveUpload(c.req.param("uploadId"));
+    return c.json({ ok: true });
   });
 
   app.delete("/api/admin/jobs/:jobId/images/:index", async (c) => {

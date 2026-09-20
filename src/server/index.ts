@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { HTTPException } from "hono/http-exception";
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { fileURLToPath } from "node:url";
@@ -26,6 +27,12 @@ export function createServerApp(): Hono {
   const app = new Hono();
 
   app.onError((error, c) => {
+    // Middleware rejections (e.g. CSRF 403) carry their own response; masking
+    // them as 500 hides the real reason a request was refused.
+    if (error instanceof HTTPException) {
+      return error.getResponse();
+    }
+
     logServerError("Unhandled route error", error, {
       method: c.req.method,
       path: c.req.path
