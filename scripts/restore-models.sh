@@ -70,7 +70,7 @@ mkdir -p \
   "$MODELS_ROOT/upscale_models" \
   "$MODELS_ROOT/ultralytics/segm" \
   "$MODELS_ROOT/ultralytics/bbox" \
-  "$MODELS_ROOT/sam"
+  "$MODELS_ROOT/sams"
 
 # ─── Checkpoint ───────────────────────────────────────────────────────────────
 
@@ -116,7 +116,7 @@ download \
 
 download \
   "https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth" \
-  "$MODELS_ROOT/sam/sam_vit_b_01ec64.pth"
+  "$MODELS_ROOT/sams/sam_vit_b_01ec64.pth"
 
 # ─── Summary ─────────────────────────────────────────────────────────────────
 
