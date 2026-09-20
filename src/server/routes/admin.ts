@@ -1,6 +1,8 @@
 import type { Hono } from "hono";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { Readable } from "node:stream";
+import { ZipFile } from "yazl";
 import {
   clearAdminSessionCookie,
   hasAdminSession,
@@ -9,6 +11,7 @@ import {
   requireInvitedSession
 } from "../middleware/session";
 import { deleteJobImage, listManifestImages } from "../lib/jobStore";
+import { listUserArchiveJobs, listUserArchiveSummaries, type UserArchiveJob } from "../lib/userArchiveStore";
 import { listUsernames, userExists } from "../lib/userStore";
 import { impersonateRequestSchema, verifyAdminKeyRequestSchema } from "../schemas/admin";
 import { getAdminPasskey } from "../security/adminPasskey";
@@ -22,6 +25,7 @@ import {
   type CreditAccount
 } from "../lib/creditStore";
 import { ANONYMOUS_CREDIT_USERNAME } from "../../shared/credits";
+import { ANONYMOUS_ARCHIVE_OWNER } from "../../shared/contracts/archives";
 
 const MAX_WORKFLOW_BYTES = 5 * 1024 * 1024;
 
@@ -29,6 +33,27 @@ function isValidWorkflowFilename(filename: string): boolean {
   return filename.length <= 128
     && !filename.includes("..")
     && /^[^<>:"/\\|?*\u0000-\u001f]+\.json$/i.test(filename);
+}
+
+function sanitizeArchiveNamePart(value: string): string {
+  const sanitized = value.replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/-+/g, "-").replace(/^[-.]+|[-.]+$/g, "");
+  return sanitized || "user";
+}
+
+// Job folders inside the zip use displayName; a suffix keeps hash collisions distinct.
+function buildZipFolderNames(jobs: UserArchiveJob[]): string[] {
+  const used = new Set<string>();
+  return jobs.map((entry) => {
+    const base = sanitizeArchiveNamePart(entry.job.displayName);
+    let name = base;
+    let suffix = 2;
+    while (used.has(name)) {
+      name = `${base}-${suffix}`;
+      suffix += 1;
+    }
+    used.add(name);
+    return name;
+  });
 }
 
 export function registerAdminRoutes(app: Hono): void {
@@ -176,6 +201,66 @@ export function registerAdminRoutes(app: Hono): void {
     if (!admin) return c.json({ ok: false, error: "Forbidden" }, 403);
 
     return c.json({ ok: true, jobs: await listManifestImages() });
+  });
+
+  app.get("/api/admin/archives", async (c) => {
+    if (!(await hasAdminSession(c))) return c.json({ ok: false, error: "Forbidden" }, 403);
+
+    const users = await listUserArchiveSummaries(await listUsernames());
+    return c.json({ ok: true, users });
+  });
+
+  app.get("/api/admin/archives/:username/download", async (c) => {
+    if (!(await hasAdminSession(c))) return c.json({ ok: false, error: "Forbidden" }, 403);
+
+    const username = c.req.param("username");
+    // Only a real account or the anonymous bucket may be exported; the name is
+    // never used to build a filesystem path, it is matched against job owners.
+    if (username !== ANONYMOUS_ARCHIVE_OWNER && !(await userExists(username))) {
+      return c.json({ ok: false, error: "No such user" }, 404);
+    }
+
+    const jobs = await listUserArchiveJobs(username);
+    if (jobs.length === 0) {
+      return c.json({ ok: false, error: "No stored jobs for this user" }, 404);
+    }
+
+    const zip = new ZipFile();
+    const folderNames = buildZipFolderNames(jobs);
+    const manifest = jobs.map((entry, index) => ({
+      folder: folderNames[index],
+      jobId: entry.job.jobId,
+      displayName: entry.job.displayName,
+      submittedAt: entry.job.submittedAt,
+      completedAt: entry.job.completedAt,
+      status: entry.job.status,
+      imageCount: entry.job.imageCount,
+      files: entry.files.map((file) => ({ fileName: file.fileName, sizeBytes: file.sizeBytes }))
+    }));
+
+    zip.addBuffer(
+      Buffer.from(
+        `${JSON.stringify({ username, exportedAt: new Date().toISOString(), jobs: manifest }, null, 2)}\n`,
+        "utf8"
+      ),
+      "manifest.json"
+    );
+
+    jobs.forEach((entry, index) => {
+      for (const file of entry.files) {
+        zip.addFile(file.absolutePath, `jobs/${folderNames[index]}/${file.fileName}`);
+      }
+    });
+    zip.end();
+
+    const fileName = `chara2img-archive-${sanitizeArchiveNamePart(username)}-${new Date().toISOString().slice(0, 10)}.zip`;
+    return new Response(Readable.toWeb(zip.outputStream as Readable) as ReadableStream, {
+      headers: {
+        "Content-Type": "application/zip",
+        "Content-Disposition": `attachment; filename="${fileName}"`,
+        "Cache-Control": "no-store"
+      }
+    });
   });
 
   app.delete("/api/admin/jobs/:jobId/images/:index", async (c) => {

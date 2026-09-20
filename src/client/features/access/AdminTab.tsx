@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { impersonateUser } from "../../lib/api/usersClient";
 import { ModelDownloadsPanel } from "./ModelDownloadsPanel";
+import { UserArchivesPanel } from "./UserArchivesPanel";
 import { WorkflowUploadsPanel } from "./WorkflowUploadsPanel";
 import { CreditAdminPanel } from "./CreditAdminPanel";
 
@@ -124,6 +125,10 @@ export function AdminTab({ enabled, onImpersonated }: AdminTabProps) {
 
       <CollapsibleSection title="Credit Administration">
         <CreditAdminPanel />
+      </CollapsibleSection>
+
+      <CollapsibleSection title="Archive Downloads">
+        <UserArchivesPanel />
       </CollapsibleSection>
 
       <CollapsibleSection title="Workflow Uploads">
