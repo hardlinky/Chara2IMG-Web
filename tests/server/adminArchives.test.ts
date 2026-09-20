@@ -9,6 +9,7 @@ import { ANONYMOUS_ARCHIVE_OWNER, type UserArchiveSummary } from "../../src/shar
 let tmpBase: string;
 let archiveBase: string;
 let usersDir: string;
+let importDir: string;
 let app: Hono;
 let adminCookie: string;
 
@@ -73,9 +74,11 @@ beforeAll(async () => {
   tmpBase = await mkdtemp(join(tmpdir(), "archives-tmp-"));
   archiveBase = await mkdtemp(join(tmpdir(), "archives-archive-"));
   usersDir = await mkdtemp(join(tmpdir(), "archives-users-"));
+  importDir = await mkdtemp(join(tmpdir(), "archives-import-"));
   process.env.JOBS_TMP_DIR = tmpBase;
   process.env.JOBS_ARCHIVE_DIR = archiveBase;
   process.env.USERS_DIR = usersDir;
+  process.env.ARCHIVE_IMPORT_DIR = importDir;
   process.env.INVITE_SECRET = "invite-test";
   process.env.ADMIN_ACCESS_KEY = "admin-test";
   process.env.COOKIE_SECRET = "cookie-secret-test";
@@ -85,7 +88,8 @@ beforeAll(async () => {
     JSON.stringify({
       users: [
         { username: "alice", salt: "", hash: "", createdAt: "2026-09-01T00:00:00.000Z" },
-        { username: "bob", salt: "", hash: "", createdAt: "2026-09-01T00:00:00.000Z" }
+        { username: "bob", salt: "", hash: "", createdAt: "2026-09-01T00:00:00.000Z" },
+        { username: "bob-import", salt: "", hash: "", createdAt: "2026-09-01T00:00:00.000Z" }
       ]
     }),
     "utf8"
@@ -93,6 +97,7 @@ beforeAll(async () => {
 
   await seedJob(tmpBase, makeJob("job-alice", "aaaa1111", "alice"), 1024);
   await seedJob(archiveBase, makeJob("job-anon", "bbbb2222", null), 512);
+  await seedJob(tmpBase, makeJob("job-folder", "cccc3333", "bob-import"), 256);
 
   // Imported after the storage env vars are set: jobStore resolves its dirs at module load.
   const { createServerApp } = await import("../../src/server/index");
@@ -104,12 +109,14 @@ afterAll(async () => {
   delete process.env.JOBS_TMP_DIR;
   delete process.env.JOBS_ARCHIVE_DIR;
   delete process.env.USERS_DIR;
+  delete process.env.ARCHIVE_IMPORT_DIR;
   delete process.env.INVITE_SECRET;
   delete process.env.ADMIN_ACCESS_KEY;
   delete process.env.COOKIE_SECRET;
   await rm(tmpBase, { recursive: true, force: true });
   await rm(archiveBase, { recursive: true, force: true });
   await rm(usersDir, { recursive: true, force: true });
+  await rm(importDir, { recursive: true, force: true });
 });
 
 describe("admin archive downloads", () => {
@@ -168,7 +175,7 @@ describe("admin archive downloads", () => {
     expect(session.status).toBe(401);
   });
 
-  it("imports a chunked upload, resumes from the server offset, and ignores unsafe entries", async () => {
+  it("imports a chunked upload, resumes from the received parts, and ignores unsafe entries", async () => {
     const exported = await app.request("http://localhost/api/admin/archives/alice/download", {
       headers: { Cookie: adminCookie }
     });
@@ -193,25 +200,26 @@ describe("admin archive downloads", () => {
         body: new Uint8Array(data)
       });
 
+    // Parts may land out of order because the client uploads them concurrently.
+    expect((await sendChunk(half, zipBytes.subarray(half))).status).toBe(200);
     expect((await sendChunk(0, zipBytes.subarray(0, half))).status).toBe(200);
+    // A re-sent piece overwrites instead of duplicating.
+    expect((await sendChunk(0, zipBytes.subarray(0, half))).status).toBe(200);
+    // A piece past the declared size is refused.
+    expect((await sendChunk(zipBytes.byteLength, Buffer.from("x"))).status).toBe(409);
 
-    // A resumed client asks where the server left off before sending more.
     const statusResponse = await app.request(`http://localhost/api/admin/archives/import/session/${uploadId}`, {
       headers: { Cookie: adminCookie }
     });
     expect(await statusResponse.json()).toMatchObject({
       status: "uploading",
-      receivedBytes: half,
-      fingerprint: "fp-1"
+      receivedBytes: zipBytes.byteLength,
+      fingerprint: "fp-1",
+      receivedRanges: [
+        [0, half],
+        [half, zipBytes.byteLength - half]
+      ]
     });
-
-    // A re-sent piece is acknowledged instead of being appended twice.
-    expect((await sendChunk(0, zipBytes.subarray(0, half))).status).toBe(200);
-    // Chunk sizes may differ after a resume; only the offset has to line up.
-    const quarter = half + Math.floor((zipBytes.byteLength - half) / 2);
-    expect((await sendChunk(half, zipBytes.subarray(half, quarter))).status).toBe(200);
-    expect((await sendChunk(zipBytes.byteLength + 10, Buffer.from("x"))).status).toBe(409);
-    expect((await sendChunk(quarter, zipBytes.subarray(quarter))).status).toBe(200);
 
     const finished = await app.request(`http://localhost/api/admin/archives/import/session/${uploadId}/finish`, {
       method: "POST",
@@ -228,5 +236,69 @@ describe("admin archive downloads", () => {
     expect(restored).toMatchObject({ jobId: "job-alice", createdBy: "alice", isArchived: true, expiresAt: null });
     expect(restored.pinnedImageIndices).toEqual([0]);
     await expect(stat(join(archiveBase, "jobs", "job-alice", "aaaa1111-0.png"))).resolves.toBeTruthy();
+  });
+
+  it("refuses to import when a piece of the upload is missing", async () => {
+    const created = await app.request("http://localhost/api/admin/archives/import/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: adminCookie, Origin: "http://localhost" },
+      body: JSON.stringify({ fileName: "partial.zip", fileSize: 100, fingerprint: "fp-partial" })
+    });
+    const { uploadId } = (await created.json()) as { uploadId: string };
+
+    // Leave bytes 0-49 unsent so the parts cannot be concatenated.
+    await app.request(`http://localhost/api/admin/archives/import/session/${uploadId}/chunk?offset=50`, {
+      method: "POST",
+      headers: { "Content-Type": "application/octet-stream", Cookie: adminCookie, Origin: "http://localhost" },
+      body: new Uint8Array(Buffer.alloc(50, 1))
+    });
+    await app.request(`http://localhost/api/admin/archives/import/session/${uploadId}/finish`, {
+      method: "POST",
+      headers: { Cookie: adminCookie, Origin: "http://localhost" }
+    });
+
+    await expect(waitForImport(uploadId)).rejects.toThrow(/incomplete/i);
+  });
+
+  it("imports an archive dropped into the server import folder and leaves the file in place", async () => {
+    const exported = await app.request("http://localhost/api/admin/archives/bob-import/download", {
+      headers: { Cookie: adminCookie }
+    });
+    expect(exported.status).toBe(200);
+    const droppedPath = join(importDir, "dropped.zip");
+    await writeFile(droppedPath, Buffer.from(await exported.arrayBuffer()));
+    await rm(join(tmpBase, "jobs", "job-folder"), { recursive: true, force: true });
+    await rm(join(archiveBase, "jobs", "job-folder"), { recursive: true, force: true });
+
+    const listed = await app.request("http://localhost/api/admin/archives/import/files", {
+      headers: { Cookie: adminCookie }
+    });
+    expect(await listed.json()).toMatchObject({
+      ok: true,
+      directory: importDir,
+      files: [{ fileName: "dropped.zip" }]
+    });
+
+    const started = await app.request("http://localhost/api/admin/archives/import/files", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: adminCookie, Origin: "http://localhost" },
+      body: JSON.stringify({ fileName: "dropped.zip" })
+    });
+    const { uploadId } = (await started.json()) as { uploadId: string };
+
+    expect(await waitForImport(uploadId)).toMatchObject({ importedJobs: 1, importedImages: 1 });
+    await expect(stat(join(archiveBase, "jobs", "job-folder", "cccc3333-0.png"))).resolves.toBeTruthy();
+    // The dropped file belongs to the operator, so importing must not consume it.
+    await expect(stat(droppedPath)).resolves.toBeTruthy();
+  });
+
+  it("refuses an import path that is not a file in the import folder", async () => {
+    const response = await app.request("http://localhost/api/admin/archives/import/files", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: adminCookie, Origin: "http://localhost" },
+      body: JSON.stringify({ fileName: "../../etc/passwd.zip" })
+    });
+
+    expect(response.status).toBe(404);
   });
 });

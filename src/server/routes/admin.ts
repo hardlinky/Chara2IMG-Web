@@ -16,9 +16,17 @@ import {
   appendArchiveUploadChunk,
   createArchiveUploadSession,
   getArchiveUploadProgress,
-  startArchiveUploadImport
+  startArchiveUploadImport,
+  startLocalArchiveImport
 } from "../lib/archiveUploadSessions";
-import { listUserArchiveJobs, listUserArchiveSummaries, type UserArchiveJob } from "../lib/userArchiveStore";
+import {
+  getArchiveImportDir,
+  listImportableArchives,
+  listUserArchiveJobs,
+  listUserArchiveSummaries,
+  resolveImportableArchivePath,
+  type UserArchiveJob
+} from "../lib/userArchiveStore";
 import { listUsernames, userExists } from "../lib/userStore";
 import { impersonateRequestSchema, verifyAdminKeyRequestSchema } from "../schemas/admin";
 import { getAdminPasskey } from "../security/adminPasskey";
@@ -268,6 +276,25 @@ export function registerAdminRoutes(app: Hono): void {
         "Cache-Control": "no-store"
       }
     });
+  });
+
+  app.get("/api/admin/archives/import/files", async (c) => {
+    if (!(await hasAdminSession(c))) return c.json({ ok: false, error: "Forbidden" }, 403);
+
+    return c.json({ ok: true, directory: getArchiveImportDir(), files: await listImportableArchives() });
+  });
+
+  app.post("/api/admin/archives/import/files", async (c) => {
+    if (!(await hasAdminSession(c))) return c.json({ ok: false, error: "Forbidden" }, 403);
+
+    const payload = await c.req.json().catch(() => null) as { fileName?: unknown } | null;
+    const fileName = typeof payload?.fileName === "string" ? payload.fileName : "";
+    const filePath = fileName.length > 0 ? await resolveImportableArchivePath(fileName) : null;
+    if (!filePath) {
+      return c.json({ ok: false, error: "No such archive in the import folder" }, 404);
+    }
+
+    return c.json({ ok: true, uploadId: startLocalArchiveImport(filePath, fileName) });
   });
 
   app.post("/api/admin/archives/import/session", async (c) => {

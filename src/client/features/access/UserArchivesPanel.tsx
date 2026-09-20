@@ -8,12 +8,15 @@ import {
   archiveFingerprint,
   createArchiveUploadSession,
   fetchArchiveUploadProgress,
+  fetchImportableArchives,
   fetchUserArchives,
   finishArchiveUpload,
+  startImportableArchive,
   uploadArchiveChunks,
   userArchiveDownloadUrl,
   waitForArchiveImport,
-  type ArchiveUploadSession
+  type ArchiveUploadSession,
+  type ImportableArchive
 } from "../../lib/api/archivesClient";
 import "../../styles/credits.css";
 
@@ -62,6 +65,7 @@ export function UserArchivesPanel() {
   const [uploadedBytes, setUploadedBytes] = useState(0);
   const [uploadTotalBytes, setUploadTotalBytes] = useState(0);
   const [resumable, setResumable] = useState<PendingUpload | null>(() => readPendingUpload());
+  const [importFolder, setImportFolder] = useState<{ directory: string; files: ImportableArchive[] } | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -74,7 +78,14 @@ export function UserArchivesPanel() {
       });
   }
 
+  function loadImportFolder(): void {
+    void fetchImportableArchives()
+      .then(setImportFolder)
+      .catch(() => setImportFolder(null));
+  }
+
   useEffect(load, []);
+  useEffect(loadImportFolder, []);
 
   // Drop a remembered upload whose server-side session is gone (expired or finished).
   useEffect(() => {
@@ -95,7 +106,7 @@ export function UserArchivesPanel() {
     abortRef.current = controller;
     setIsImporting(true);
     setUploadTotalBytes(file.size);
-    setUploadedBytes(Math.min(session.receivedBytes, file.size));
+    setUploadedBytes(0);
 
     const pending: PendingUpload = {
       uploadId: session.uploadId,
@@ -149,7 +160,8 @@ export function UserArchivesPanel() {
         await runImport(file, {
           uploadId: pending.uploadId,
           chunkBytes: progress.chunkBytes,
-          receivedBytes: progress.receivedBytes
+          concurrency: progress.concurrency,
+          receivedRanges: progress.receivedRanges
         });
         return;
       }
@@ -167,6 +179,25 @@ export function UserArchivesPanel() {
 
   function cancelImport(): void {
     abortRef.current?.abort();
+  }
+
+  async function importFromFolder(fileName: string): Promise<void> {
+    setIsImporting(true);
+    setUploadTotalBytes(0);
+    setImportStatus(`Importing ${fileName} from the server folder...`);
+    try {
+      const uploadId = await startImportableArchive(fileName);
+      const result = await waitForArchiveImport(uploadId);
+      const skipped = result.skippedExistingJobs > 0 ? `, ${result.skippedExistingJobs} already present` : "";
+      setImportStatus(
+        `Imported ${result.importedJobs} job${result.importedJobs === 1 ? "" : "s"} and ${result.importedImages} image${result.importedImages === 1 ? "" : "s"}${skipped}.`
+      );
+      load();
+    } catch (reason: unknown) {
+      setImportStatus(reason instanceof Error ? reason.message : "Import failed");
+    } finally {
+      setIsImporting(false);
+    }
   }
 
   async function discardResumable(): Promise<void> {
@@ -280,6 +311,50 @@ export function UserArchivesPanel() {
           </div>
         ) : null}
         {importStatus ? <p className="status-inline">{importStatus}</p> : null}
+      </div>
+      <div className="field">
+        <span>Import from the server folder</span>
+        <span className="status-inline">
+          {`Copy .zip archives onto the volume at ${importFolder?.directory ?? "the import folder"} to import them without uploading through the browser.`}
+        </span>
+        {importFolder && importFolder.files.length > 0 ? (
+          <div className="credit-table-wrap">
+            <table className="credit-table">
+              <thead>
+                <tr>
+                  <th>File</th>
+                  <th>Size</th>
+                  <th>Modified</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {importFolder.files.map((archive) => (
+                  <tr key={archive.fileName}>
+                    <td>{archive.fileName}</td>
+                    <td>{formatBytes(archive.sizeBytes)}</td>
+                    <td>{new Date(archive.modifiedAt).toLocaleString()}</td>
+                    <td>
+                      <button
+                        className="btn btn-secondary"
+                        type="button"
+                        disabled={isImporting}
+                        onClick={() => void importFromFolder(archive.fileName)}
+                      >
+                        Import
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <span className="status-inline">No .zip archives found there.</span>
+        )}
+        <button className="btn btn-secondary" type="button" onClick={loadImportFolder}>
+          Rescan folder
+        </button>
       </div>
     </div>
   );

@@ -7,6 +7,7 @@ import { open as openZip, type Entry, type ZipFile } from "yauzl";
 import { ANONYMOUS_ARCHIVE_OWNER, type UserArchiveSummary } from "../../shared/contracts/archives.js";
 import type { JobRecord } from "../../shared/contracts/jobs.js";
 import { getJobArchiveDir, getJobTmpDir, readJobAnywhere } from "./jobStore.js";
+import { resolveNetworkPath } from "./networkPaths.js";
 
 const IMAGE_EXTENSIONS = [".png", ".jpg", ".webp"];
 const MAX_IMPORT_ENTRIES = 50_000;
@@ -155,6 +156,57 @@ export async function listUserArchiveJobs(username: string): Promise<UserArchive
 }
 
 // ─── Import ───────────────────────────────────────────────────────────────────
+
+/** Drop-off folder on the network volume for archives copied in out-of-band. */
+export function getArchiveImportDir(): string {
+  return resolveNetworkPath("ARCHIVE_IMPORT_DIR", "import");
+}
+
+export type ImportableArchive = { fileName: string; sizeBytes: number; modifiedAt: string };
+
+export async function listImportableArchives(): Promise<ImportableArchive[]> {
+  const dir = getArchiveImportDir();
+
+  let entries: { name: string; isFile(): boolean }[];
+  try {
+    entries = (await readdir(dir, { withFileTypes: true })) as unknown as {
+      name: string;
+      isFile(): boolean;
+    }[];
+  } catch (err: unknown) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") return [];
+    throw err;
+  }
+
+  const archives = await Promise.all(
+    entries
+      .filter((entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".zip"))
+      .map(async (entry): Promise<ImportableArchive | null> => {
+        try {
+          const fileStat = await stat(join(dir, entry.name));
+          return {
+            fileName: entry.name,
+            sizeBytes: fileStat.size,
+            modifiedAt: fileStat.mtime.toISOString()
+          };
+        } catch {
+          return null;
+        }
+      })
+  );
+
+  return archives
+    .filter((archive): archive is ImportableArchive => archive !== null)
+    .sort((left, right) => left.fileName.localeCompare(right.fileName));
+}
+
+/** Resolve a drop-off file name against the folder listing, never by string concat. */
+export async function resolveImportableArchivePath(fileName: string): Promise<string | null> {
+  const archives = await listImportableArchives();
+  return archives.some((archive) => archive.fileName === fileName)
+    ? join(getArchiveImportDir(), fileName)
+    : null;
+}
 
 export type ArchiveImportResult = {
   importedJobs: number;

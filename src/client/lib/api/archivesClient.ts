@@ -21,15 +21,20 @@ export type ArchiveImportResult = {
   warnings: string[];
 };
 
+export type ReceivedRange = [offset: number, length: number];
+
 export type ArchiveImportProgress =
   | {
       status: "uploading";
       receivedBytes: number;
       chunkBytes: number;
+      concurrency: number;
       fileName: string;
       fileSize: number;
       fingerprint: string;
+      receivedRanges: ReceivedRange[];
     }
+  | { status: "assembling" }
   | { status: "importing" }
   | { status: "done"; result: ArchiveImportResult }
   | { status: "failed"; error: string };
@@ -37,12 +42,13 @@ export type ArchiveImportProgress =
 export type ArchiveUploadSession = {
   uploadId: string;
   chunkBytes: number;
-  receivedBytes: number;
+  concurrency: number;
+  receivedRanges: ReceivedRange[];
 };
 
 const CHUNK_RETRY_ATTEMPTS = 6;
-const CHUNK_RETRY_BASE_DELAY_MS = 750;
-const MIN_CHUNK_BYTES = 256 * 1024;
+const CHUNK_RETRY_BASE_DELAY_MS = 500;
+const MAX_RETRY_DELAY_MS = 8000;
 const IMPORT_POLL_INTERVAL_MS = 2000;
 
 /** Identifies a local file well enough to refuse resuming onto a different one. */
@@ -97,21 +103,62 @@ export async function abortArchiveUpload(uploadId: string): Promise<void> {
   }).catch(() => undefined);
 }
 
-type ChunkOutcome = { receivedBytes: number; chunkBytes: number };
+export type ImportableArchive = { fileName: string; sizeBytes: number; modifiedAt: string };
+
+export async function fetchImportableArchives(): Promise<{ directory: string; files: ImportableArchive[] }> {
+  const response = await fetch("/api/admin/archives/import/files", { credentials: "include" });
+  const body = await readJson(response);
+  if (!response.ok || body.ok !== true) {
+    throw new Error(typeof body.error === "string" ? body.error : `Failed to list import folder: ${response.status}`);
+  }
+  return { directory: String(body.directory ?? ""), files: (body.files ?? []) as ImportableArchive[] };
+}
+
+/** Import an archive already sitting in the server's import folder. */
+export async function startImportableArchive(fileName: string): Promise<string> {
+  const response = await fetch("/api/admin/archives/import/files", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ fileName })
+  });
+  const body = await readJson(response);
+  if (!response.ok || body.ok !== true) {
+    throw new Error(typeof body.error === "string" ? body.error : `Import could not start: ${response.status}`);
+  }
+  return String(body.uploadId);
+}
+
+export type UploadPiece = { offset: number; length: number };
 
 /**
- * Send one piece and report the server's new offset. A transport-level failure
- * (the proxy resetting an oversized request) halves the size and retries, so
- * the upload settles on a size the network in front of the server tolerates.
+ * Pieces are cut on a fixed grid so a resumed upload lines up exactly with the
+ * parts the server already holds.
  */
-async function sendChunk(
+export function computePendingPieces(
+  fileSize: number,
+  chunkBytes: number,
+  receivedRanges: ReceivedRange[]
+): UploadPiece[] {
+  const receivedByOffset = new Map(receivedRanges);
+  const pieces: UploadPiece[] = [];
+
+  for (let offset = 0; offset < fileSize; offset += chunkBytes) {
+    const length = Math.min(chunkBytes, fileSize - offset);
+    if (receivedByOffset.get(offset) !== length) {
+      pieces.push({ offset, length });
+    }
+  }
+
+  return pieces;
+}
+
+async function sendPiece(
   file: File,
   uploadId: string,
-  offset: number,
-  chunkBytes: number,
+  piece: UploadPiece,
   signal?: AbortSignal
-): Promise<ChunkOutcome> {
-  let size = chunkBytes;
+): Promise<void> {
   let lastError: unknown = null;
 
   for (let attempt = 0; attempt < CHUNK_RETRY_ATTEMPTS; attempt += 1) {
@@ -119,75 +166,75 @@ async function sendChunk(
       throw new DOMException("Upload cancelled", "AbortError");
     }
 
-    const blob = file.slice(offset, Math.min(offset + size, file.size));
-
     try {
       const response = await fetch(
-        `/api/admin/archives/import/session/${encodeURIComponent(uploadId)}/chunk?offset=${offset}`,
+        `/api/admin/archives/import/session/${encodeURIComponent(uploadId)}/chunk?offset=${piece.offset}`,
         {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/octet-stream" },
-          body: blob,
+          body: file.slice(piece.offset, piece.offset + piece.length),
           signal
         }
       );
       const body = await readJson(response);
 
       if (response.ok && body.ok === true) {
-        return { receivedBytes: Number(body.receivedBytes ?? offset + blob.size), chunkBytes: size };
-      }
-
-      // The server is at a different offset; realign rather than retry blindly.
-      if (response.status === 409 && typeof body.receivedBytes === "number") {
-        return { receivedBytes: body.receivedBytes, chunkBytes: size };
+        return;
       }
 
       if (response.status === 404 || response.status === 413) {
         throw new Error(typeof body.error === "string" ? body.error : "Upload session is no longer valid");
       }
 
-      lastError = new Error(typeof body.error === "string" ? body.error : `Upload failed at ${offset} bytes`);
+      lastError = new Error(
+        typeof body.error === "string" ? body.error : `Upload failed at byte ${piece.offset}`
+      );
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
         throw error;
       }
       lastError = error;
-      // TypeError means the request never completed (stream reset, connection
-      // dropped); a smaller body is the thing most likely to get through.
-      if (error instanceof TypeError && size > MIN_CHUNK_BYTES) {
-        size = Math.max(MIN_CHUNK_BYTES, Math.floor(size / 2));
-      }
     }
 
-    await delay(CHUNK_RETRY_BASE_DELAY_MS * 2 ** attempt);
+    await delay(Math.min(CHUNK_RETRY_BASE_DELAY_MS * 2 ** attempt, MAX_RETRY_DELAY_MS));
   }
 
-  throw lastError instanceof Error ? lastError : new Error(`Upload failed at ${offset} bytes`);
+  throw lastError instanceof Error ? lastError : new Error(`Upload failed at byte ${piece.offset}`);
 }
 
 /**
- * Upload from `session.receivedBytes` onward, so an interrupted upload resumes
- * where the server left off instead of restarting.
+ * Upload the pieces the server is still missing, several at a time. Each piece
+ * is addressed by offset, so an interrupted upload resumes rather than restarts.
  */
 export async function uploadArchiveChunks(
   file: File,
   session: ArchiveUploadSession,
   options: { onProgress?: (uploadedBytes: number) => void; signal?: AbortSignal } = {}
 ): Promise<void> {
-  let offset = Math.min(session.receivedBytes, file.size);
-  let chunkBytes = Math.max(MIN_CHUNK_BYTES, session.chunkBytes);
-  options.onProgress?.(offset);
+  const pieces = computePendingPieces(file.size, session.chunkBytes, session.receivedRanges);
+  const pendingBytes = pieces.reduce((total, piece) => total + piece.length, 0);
 
-  while (offset < file.size) {
-    const outcome = await sendChunk(file, session.uploadId, offset, chunkBytes, options.signal);
-    if (outcome.receivedBytes <= offset) {
-      throw new Error(`Upload stalled at ${offset} bytes`);
+  let uploadedBytes = file.size - pendingBytes;
+  let cursor = 0;
+  options.onProgress?.(uploadedBytes);
+
+  const uploadWorker = async (): Promise<void> => {
+    for (;;) {
+      const piece = pieces[cursor];
+      if (!piece) {
+        return;
+      }
+      cursor += 1;
+
+      await sendPiece(file, session.uploadId, piece, options.signal);
+      uploadedBytes += piece.length;
+      options.onProgress?.(uploadedBytes);
     }
-    offset = Math.min(outcome.receivedBytes, file.size);
-    chunkBytes = outcome.chunkBytes;
-    options.onProgress?.(offset);
-  }
+  };
+
+  const workerCount = Math.max(1, Math.min(session.concurrency, pieces.length));
+  await Promise.all(Array.from({ length: workerCount }, uploadWorker));
 }
 
 export async function finishArchiveUpload(uploadId: string): Promise<void> {
