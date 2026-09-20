@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { fileURLToPath } from "node:url";
@@ -16,7 +17,7 @@ import { registerModelRoutes } from "./routes/models";
 import { registerWorkflowsRoutes } from "./routes/stockWorkflows";
 import { applySecurityMiddleware } from "./middleware/security";
 import { logAdminPasskey } from "./security/adminPasskey";
-import { logServerError } from "./lib/logger";
+import { logServerError, logServerWarning } from "./lib/logger";
 import { ensureJobStoreDirs, purgeExpiredJobs } from "./lib/jobStore";
 import { initDownloadStore } from "./lib/modelDownloadStore";
 import { startQueueOnBoot } from "./lib/modelDownloader";
@@ -31,6 +32,16 @@ export function createServerApp(): Hono {
     // them as 500 hides the real reason a request was refused.
     if (error instanceof HTTPException) {
       return error.getResponse();
+    }
+
+    // The client (or a proxy) hung up mid-request; nothing failed server-side.
+    if (error instanceof Error && error.message === "aborted") {
+      logServerWarning("Request aborted by client", error, {
+        method: c.req.method,
+        path: c.req.path
+      });
+
+      return c.json({ ok: false, error: "Request aborted" }, 499 as ContentfulStatusCode);
     }
 
     logServerError("Unhandled route error", error, {

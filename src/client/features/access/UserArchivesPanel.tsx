@@ -149,8 +149,7 @@ export function UserArchivesPanel() {
         await runImport(file, {
           uploadId: pending.uploadId,
           chunkBytes: progress.chunkBytes,
-          receivedBytes: progress.receivedBytes,
-          nextChunkIndex: progress.nextChunkIndex
+          receivedBytes: progress.receivedBytes
         });
         return;
       }

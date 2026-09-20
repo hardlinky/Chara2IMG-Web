@@ -186,8 +186,8 @@ describe("admin archive downloads", () => {
     const { uploadId } = (await created.json()) as { uploadId: string };
 
     const half = Math.floor(zipBytes.byteLength / 2);
-    const sendChunk = (index: number, data: Buffer) =>
-      app.request(`http://localhost/api/admin/archives/import/session/${uploadId}/chunk?index=${index}`, {
+    const sendChunk = (offset: number, data: Buffer) =>
+      app.request(`http://localhost/api/admin/archives/import/session/${uploadId}/chunk?offset=${offset}`, {
         method: "POST",
         headers: { "Content-Type": "application/octet-stream", Cookie: adminCookie, Origin: "http://localhost" },
         body: new Uint8Array(data)
@@ -202,14 +202,16 @@ describe("admin archive downloads", () => {
     expect(await statusResponse.json()).toMatchObject({
       status: "uploading",
       receivedBytes: half,
-      nextChunkIndex: 1,
       fingerprint: "fp-1"
     });
 
-    // A duplicate of the last chunk is acknowledged instead of corrupting the file.
+    // A re-sent piece is acknowledged instead of being appended twice.
     expect((await sendChunk(0, zipBytes.subarray(0, half))).status).toBe(200);
-    expect((await sendChunk(1, zipBytes.subarray(half))).status).toBe(200);
-    expect((await sendChunk(5, Buffer.from("x"))).status).toBe(409);
+    // Chunk sizes may differ after a resume; only the offset has to line up.
+    const quarter = half + Math.floor((zipBytes.byteLength - half) / 2);
+    expect((await sendChunk(half, zipBytes.subarray(half, quarter))).status).toBe(200);
+    expect((await sendChunk(zipBytes.byteLength + 10, Buffer.from("x"))).status).toBe(409);
+    expect((await sendChunk(quarter, zipBytes.subarray(quarter))).status).toBe(200);
 
     const finished = await app.request(`http://localhost/api/admin/archives/import/session/${uploadId}/finish`, {
       method: "POST",

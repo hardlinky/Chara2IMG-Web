@@ -291,18 +291,18 @@ export function registerAdminRoutes(app: Hono): void {
   app.post("/api/admin/archives/import/session/:uploadId/chunk", async (c) => {
     if (!(await hasAdminSession(c))) return c.json({ ok: false, error: "Forbidden" }, 403);
 
-    const chunkIndex = Number.parseInt(c.req.query("index") ?? "", 10);
-    if (!Number.isInteger(chunkIndex) || chunkIndex < 0) {
-      return c.json({ ok: false, error: "Invalid chunk index" }, 400);
+    const offset = Number.parseInt(c.req.query("offset") ?? "", 10);
+    if (!Number.isInteger(offset) || offset < 0) {
+      return c.json({ ok: false, error: "Invalid chunk offset" }, 400);
     }
 
     const data = Buffer.from(await c.req.arrayBuffer());
-    const result = await appendArchiveUploadChunk(c.req.param("uploadId"), chunkIndex, data);
+    const result = await appendArchiveUploadChunk(c.req.param("uploadId"), offset, data);
     if (!result.ok) {
-      return c.json({ ok: false, error: result.error, nextChunkIndex: result.nextChunkIndex }, result.status);
+      return c.json({ ok: false, error: result.error, receivedBytes: result.receivedBytes }, result.status);
     }
 
-    return c.json({ ok: true, receivedBytes: result.receivedBytes, nextChunkIndex: result.nextChunkIndex });
+    return c.json({ ok: true, receivedBytes: result.receivedBytes });
   });
 
   app.post("/api/admin/archives/import/session/:uploadId/finish", async (c) => {

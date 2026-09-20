@@ -25,7 +25,6 @@ export type ArchiveImportProgress =
   | {
       status: "uploading";
       receivedBytes: number;
-      nextChunkIndex: number;
       chunkBytes: number;
       fileName: string;
       fileSize: number;
@@ -39,11 +38,11 @@ export type ArchiveUploadSession = {
   uploadId: string;
   chunkBytes: number;
   receivedBytes: number;
-  nextChunkIndex: number;
 };
 
-const CHUNK_RETRY_ATTEMPTS = 4;
-const CHUNK_RETRY_BASE_DELAY_MS = 1000;
+const CHUNK_RETRY_ATTEMPTS = 6;
+const CHUNK_RETRY_BASE_DELAY_MS = 750;
+const MIN_CHUNK_BYTES = 256 * 1024;
 const IMPORT_POLL_INTERVAL_MS = 2000;
 
 /** Identifies a local file well enough to refuse resuming onto a different one. */
@@ -98,12 +97,21 @@ export async function abortArchiveUpload(uploadId: string): Promise<void> {
   }).catch(() => undefined);
 }
 
+type ChunkOutcome = { receivedBytes: number; chunkBytes: number };
+
+/**
+ * Send one piece and report the server's new offset. A transport-level failure
+ * (the proxy resetting an oversized request) halves the size and retries, so
+ * the upload settles on a size the network in front of the server tolerates.
+ */
 async function sendChunk(
+  file: File,
   uploadId: string,
-  chunkIndex: number,
-  blob: Blob,
+  offset: number,
+  chunkBytes: number,
   signal?: AbortSignal
-): Promise<number> {
+): Promise<ChunkOutcome> {
+  let size = chunkBytes;
   let lastError: unknown = null;
 
   for (let attempt = 0; attempt < CHUNK_RETRY_ATTEMPTS; attempt += 1) {
@@ -111,9 +119,11 @@ async function sendChunk(
       throw new DOMException("Upload cancelled", "AbortError");
     }
 
+    const blob = file.slice(offset, Math.min(offset + size, file.size));
+
     try {
       const response = await fetch(
-        `/api/admin/archives/import/session/${encodeURIComponent(uploadId)}/chunk?index=${chunkIndex}`,
+        `/api/admin/archives/import/session/${encodeURIComponent(uploadId)}/chunk?offset=${offset}`,
         {
           method: "POST",
           credentials: "include",
@@ -125,34 +135,39 @@ async function sendChunk(
       const body = await readJson(response);
 
       if (response.ok && body.ok === true) {
-        return Number(body.nextChunkIndex ?? chunkIndex + 1);
+        return { receivedBytes: Number(body.receivedBytes ?? offset + blob.size), chunkBytes: size };
       }
 
       // The server is at a different offset; realign rather than retry blindly.
-      if (response.status === 409 && typeof body.nextChunkIndex === "number") {
-        return body.nextChunkIndex;
+      if (response.status === 409 && typeof body.receivedBytes === "number") {
+        return { receivedBytes: body.receivedBytes, chunkBytes: size };
       }
 
       if (response.status === 404 || response.status === 413) {
         throw new Error(typeof body.error === "string" ? body.error : "Upload session is no longer valid");
       }
 
-      lastError = new Error(typeof body.error === "string" ? body.error : `Chunk ${chunkIndex} failed`);
+      lastError = new Error(typeof body.error === "string" ? body.error : `Upload failed at ${offset} bytes`);
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
         throw error;
       }
       lastError = error;
+      // TypeError means the request never completed (stream reset, connection
+      // dropped); a smaller body is the thing most likely to get through.
+      if (error instanceof TypeError && size > MIN_CHUNK_BYTES) {
+        size = Math.max(MIN_CHUNK_BYTES, Math.floor(size / 2));
+      }
     }
 
     await delay(CHUNK_RETRY_BASE_DELAY_MS * 2 ** attempt);
   }
 
-  throw lastError instanceof Error ? lastError : new Error(`Chunk ${chunkIndex} failed`);
+  throw lastError instanceof Error ? lastError : new Error(`Upload failed at ${offset} bytes`);
 }
 
 /**
- * Upload from `session.nextChunkIndex` onward, so an interrupted upload resumes
+ * Upload from `session.receivedBytes` onward, so an interrupted upload resumes
  * where the server left off instead of restarting.
  */
 export async function uploadArchiveChunks(
@@ -160,15 +175,18 @@ export async function uploadArchiveChunks(
   session: ArchiveUploadSession,
   options: { onProgress?: (uploadedBytes: number) => void; signal?: AbortSignal } = {}
 ): Promise<void> {
-  const totalChunks = Math.max(1, Math.ceil(file.size / session.chunkBytes));
-  let chunkIndex = session.nextChunkIndex;
-  options.onProgress?.(Math.min(chunkIndex * session.chunkBytes, file.size));
+  let offset = Math.min(session.receivedBytes, file.size);
+  let chunkBytes = Math.max(MIN_CHUNK_BYTES, session.chunkBytes);
+  options.onProgress?.(offset);
 
-  while (chunkIndex < totalChunks) {
-    const start = chunkIndex * session.chunkBytes;
-    const blob = file.slice(start, Math.min(start + session.chunkBytes, file.size));
-    chunkIndex = await sendChunk(session.uploadId, chunkIndex, blob, options.signal);
-    options.onProgress?.(Math.min(chunkIndex * session.chunkBytes, file.size));
+  while (offset < file.size) {
+    const outcome = await sendChunk(file, session.uploadId, offset, chunkBytes, options.signal);
+    if (outcome.receivedBytes <= offset) {
+      throw new Error(`Upload stalled at ${offset} bytes`);
+    }
+    offset = Math.min(outcome.receivedBytes, file.size);
+    chunkBytes = outcome.chunkBytes;
+    options.onProgress?.(offset);
   }
 }
 
