@@ -43,6 +43,8 @@ restore_repo "https://github.com/BlenderNeko/ComfyUI_ADV_CLIP_emb.git" "ComfyUI_
 restore_repo "https://github.com/rgthree/rgthree-comfy.git" "rgthree-comfy"
 restore_repo "https://github.com/Miosp/ComfyUI-FBCNN.git" "ComfyUI-FBCNN"
 restore_repo "https://github.com/aimoviestudio/comfyui-promptbuilder.git" "comfyui-promptbuilder"
+# Provides "Model Input Switch" and "Text Concatenate" used by the Chara2IMG workflow.
+restore_repo "https://github.com/WASasquatch/was-node-suite-comfyui.git" "was-node-suite-comfyui"
 
 echo
 echo "Custom nodes restored to: $SHARED_ROOT"
