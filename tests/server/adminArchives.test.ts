@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import type { Hono } from "hono";
@@ -144,8 +144,54 @@ describe("admin archive downloads", () => {
   it("rejects requests without an admin session", async () => {
     const summaries = await app.request("http://localhost/api/admin/archives");
     const download = await app.request("http://localhost/api/admin/archives/alice/download");
+    const upload = await app.request("http://localhost/api/admin/archives/import", {
+      method: "POST",
+      headers: { "Content-Type": "application/zip" },
+      body: Buffer.from("PK")
+    });
 
     expect(summaries.status).toBe(401);
     expect(download.status).toBe(401);
+    expect(upload.status).toBe(401);
+  });
+
+  it("imports an exported zip into the archive dir and ignores unsafe entries", async () => {
+    const exported = await app.request("http://localhost/api/admin/archives/alice/download", {
+      headers: { Cookie: adminCookie }
+    });
+    const zipBytes = Buffer.from(await exported.arrayBuffer());
+
+    // Wipe every trace of the job so the import behaves like a fresh server.
+    await rm(join(tmpBase, "jobs", "job-alice"), { recursive: true, force: true });
+    await rm(join(archiveBase, "jobs", "job-alice"), { recursive: true, force: true });
+
+    const response = await app.request("http://localhost/api/admin/archives/import", {
+      method: "POST",
+      headers: { "Content-Type": "application/zip", Cookie: adminCookie },
+      body: zipBytes
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      ok: true,
+      importedJobs: 1,
+      importedImages: 1,
+      skippedExistingJobs: 0
+    });
+
+    const restored = JSON.parse(
+      await readFile(join(archiveBase, "jobs", "job-alice", "job.json"), "utf8")
+    ) as JobRecord;
+    expect(restored).toMatchObject({ jobId: "job-alice", createdBy: "alice", isArchived: true, expiresAt: null });
+    expect(restored.pinnedImageIndices).toEqual([0]);
+    await expect(stat(join(archiveBase, "jobs", "job-alice", "aaaa1111-0.png"))).resolves.toBeTruthy();
+
+    // manifest.json sits outside jobs/ and is counted as ignored, not extracted.
+    const repeat = await app.request("http://localhost/api/admin/archives/import", {
+      method: "POST",
+      headers: { "Content-Type": "application/zip", Cookie: adminCookie },
+      body: zipBytes
+    });
+    expect(await repeat.json()).toMatchObject({ ok: true, importedJobs: 0, skippedExistingJobs: 1, ignoredEntries: 1 });
   });
 });

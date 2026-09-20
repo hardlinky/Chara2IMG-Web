@@ -1,7 +1,10 @@
 import type { Hono } from "hono";
-import { mkdir, writeFile } from "node:fs/promises";
+import { createWriteStream } from "node:fs";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Readable } from "node:stream";
+import { Readable, Transform } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import { ZipFile } from "yazl";
 import {
   clearAdminSessionCookie,
@@ -11,7 +14,12 @@ import {
   requireInvitedSession
 } from "../middleware/session";
 import { deleteJobImage, listManifestImages } from "../lib/jobStore";
-import { listUserArchiveJobs, listUserArchiveSummaries, type UserArchiveJob } from "../lib/userArchiveStore";
+import {
+  importArchiveZip,
+  listUserArchiveJobs,
+  listUserArchiveSummaries,
+  type UserArchiveJob
+} from "../lib/userArchiveStore";
 import { listUsernames, userExists } from "../lib/userStore";
 import { impersonateRequestSchema, verifyAdminKeyRequestSchema } from "../schemas/admin";
 import { getAdminPasskey } from "../security/adminPasskey";
@@ -28,6 +36,7 @@ import { ANONYMOUS_CREDIT_USERNAME } from "../../shared/credits";
 import { ANONYMOUS_ARCHIVE_OWNER } from "../../shared/contracts/archives";
 
 const MAX_WORKFLOW_BYTES = 5 * 1024 * 1024;
+const MAX_ARCHIVE_UPLOAD_BYTES = 20 * 1024 * 1024 * 1024;
 
 function isValidWorkflowFilename(filename: string): boolean {
   return filename.length <= 128
@@ -261,6 +270,41 @@ export function registerAdminRoutes(app: Hono): void {
         "Cache-Control": "no-store"
       }
     });
+  });
+
+  app.post("/api/admin/archives/import", async (c) => {
+    if (!(await hasAdminSession(c))) return c.json({ ok: false, error: "Forbidden" }, 403);
+
+    const contentLength = Number(c.req.header("Content-Length"));
+    if (Number.isFinite(contentLength) && contentLength > MAX_ARCHIVE_UPLOAD_BYTES) {
+      return c.json({ ok: false, error: "Archive is too large" }, 413);
+    }
+
+    const body = c.req.raw.body;
+    if (!body) {
+      return c.json({ ok: false, error: "Missing archive upload" }, 400);
+    }
+
+    const uploadDir = await mkdtemp(join(tmpdir(), "chara2img-upload-"));
+    const uploadPath = join(uploadDir, "archive.zip");
+    try {
+      let receivedBytes = 0;
+      const limitUpload = new Transform({
+        transform(chunk, _encoding, callback) {
+          receivedBytes += chunk.length;
+          callback(receivedBytes > MAX_ARCHIVE_UPLOAD_BYTES ? new Error("Archive is too large") : null, chunk);
+        }
+      });
+      await pipeline(Readable.fromWeb(body as Parameters<typeof Readable.fromWeb>[0]), limitUpload, createWriteStream(uploadPath));
+
+      const result = await importArchiveZip(uploadPath);
+      return c.json({ ok: true, ...result });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Archive import failed";
+      return c.json({ ok: false, error: message }, 400);
+    } finally {
+      await rm(uploadDir, { recursive: true, force: true }).catch(() => undefined);
+    }
   });
 
   app.delete("/api/admin/jobs/:jobId/images/:index", async (c) => {

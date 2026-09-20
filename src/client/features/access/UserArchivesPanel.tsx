@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   archiveOwnerLabel,
   type UserArchiveSummary
 } from "../../../shared/contracts/archives";
-import { fetchUserArchives, userArchiveDownloadUrl } from "../../lib/api/archivesClient";
+import { fetchUserArchives, importArchive, userArchiveDownloadUrl } from "../../lib/api/archivesClient";
 import "../../styles/credits.css";
 
 function formatBytes(bytes: number): string {
@@ -21,6 +21,9 @@ function formatBytes(bytes: number): string {
 export function UserArchivesPanel() {
   const [users, setUsers] = useState<UserArchiveSummary[] | null>(null);
   const [error, setError] = useState("");
+  const [importStatus, setImportStatus] = useState("");
+  const [isImporting, setIsImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   function load(): void {
     setError("");
@@ -32,6 +35,26 @@ export function UserArchivesPanel() {
   }
 
   useEffect(load, []);
+
+  async function handleImport(file: File): Promise<void> {
+    setIsImporting(true);
+    setImportStatus(`Importing ${file.name}...`);
+    try {
+      const result = await importArchive(file);
+      const skipped = result.skippedExistingJobs > 0 ? `, ${result.skippedExistingJobs} already present` : "";
+      setImportStatus(
+        `Imported ${result.importedJobs} job${result.importedJobs === 1 ? "" : "s"} and ${result.importedImages} image${result.importedImages === 1 ? "" : "s"}${skipped}.`
+      );
+      load();
+    } catch (reason: unknown) {
+      setImportStatus(reason instanceof Error ? reason.message : "Import failed");
+    } finally {
+      setIsImporting(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  }
 
   const totalBytes = (users ?? []).reduce((sum, user) => sum + user.totalBytes, 0);
 
@@ -85,6 +108,27 @@ export function UserArchivesPanel() {
         </button>
       </div>
       {error ? <p className="status-inline">{error}</p> : null}
+      <div className="field">
+        <label htmlFor="archive-import-file">Import archive (.zip exported from another server)</label>
+        <input
+          id="archive-import-file"
+          ref={fileInputRef}
+          className="input"
+          type="file"
+          accept=".zip,application/zip"
+          disabled={isImporting}
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (file) {
+              void handleImport(file);
+            }
+          }}
+        />
+        <span className="status-inline">
+          Imported jobs keep their original owner and never expire. Jobs this server already knows are skipped.
+        </span>
+        {importStatus ? <p className="status-inline">{importStatus}</p> : null}
+      </div>
     </div>
   );
 }
