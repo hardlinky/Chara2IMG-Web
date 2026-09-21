@@ -8,6 +8,7 @@ import { createJob, readJob, updateJob } from "../lib/jobStore";
 import { redactSecrets } from "../lib/redaction";
 import { isTerminalRunpodStatus, normalizeRunpodStatus, toTerminalReason, type JobStatus } from "../../shared/contracts/jobs";
 import { formatJobDisplayName } from "../../shared/jobDisplay";
+import { stripEmbeddedImageData } from "../../shared/logSafeText";
 import { logServerError, logServerWarning } from "../lib/logger";
 import { ANONYMOUS_CREDIT_USERNAME } from "../../shared/credits";
 import { getCreditBalance, getManagedWalletGroupId } from "../lib/creditStore";
@@ -22,6 +23,27 @@ function resolveRunpodApiKey(endpointId: string, requestApiKey: string): string 
   }
 
   return requestApiKey;
+}
+
+const MAX_LOGGED_UPSTREAM_BODY_CHARS = 2000;
+
+// The client only shows a short summary, so the full upstream failure has to
+// land in the server log to stay diagnosable.
+function logUpstreamFailure(operation: string, response: Response, body: string, metadata: Record<string, unknown>): void {
+  if (response.ok) {
+    return;
+  }
+
+  const scrubbed = stripEmbeddedImageData(body);
+  const trimmed = scrubbed.length > MAX_LOGGED_UPSTREAM_BODY_CHARS
+    ? `${scrubbed.slice(0, MAX_LOGGED_UPSTREAM_BODY_CHARS)}...[truncated]`
+    : scrubbed;
+
+  logServerWarning(`Runpod ${operation} returned ${response.status}`, null, {
+    ...metadata,
+    status: response.status,
+    body: redactSecrets(trimmed)
+  });
 }
 
 function toProxyResponse(response: Response, body: string): Response {
@@ -39,7 +61,9 @@ function toSafeProxyError(error: unknown, context: string, metadata?: Record<str
   return {
     ok: false,
     error: "Runpod request failed",
-    details: redactSecrets({ message: error instanceof Error ? error.message : String(error) })
+    details: redactSecrets({
+      message: stripEmbeddedImageData(error instanceof Error ? error.message : String(error))
+    })
   };
 }
 
@@ -83,6 +107,7 @@ export function registerRunpodProxyRoutes(app: Hono): void {
       });
 
       const body = await response.text();
+      logUpstreamFailure("run", response, body, { endpointId: parsed.data.endpointId, username });
       let reservationHandedOff = false;
       if (response.ok) {
         try {

@@ -1,3 +1,5 @@
+import { stripEmbeddedImageData } from "../../../shared/logSafeText";
+
 export type RunpodRunPayload = {
   endpointId: string;
   apiKey: string;
@@ -229,6 +231,34 @@ export class ProxyRequestError extends Error {
   }
 }
 
+const MAX_PROXY_ERROR_DETAIL_CHARS = 200;
+
+/**
+ * Upstream failures can echo the whole submitted workflow back, including
+ * megabytes of base64 image data, so only a short scrubbed summary is shown.
+ */
+export function describeProxyErrorBody(data: unknown): string {
+  let detail: string;
+
+  if (typeof data === "string") {
+    detail = data;
+  } else if (data && typeof data === "object") {
+    const record = data as Record<string, unknown>;
+    const nested = record.details && typeof record.details === "object"
+      ? (record.details as Record<string, unknown>).message
+      : undefined;
+    const field = [record.error, record.message, nested].find((value) => typeof value === "string" && value.length > 0);
+    detail = typeof field === "string" ? field : JSON.stringify(data);
+  } else {
+    detail = data === null || data === undefined ? "" : String(data);
+  }
+
+  detail = stripEmbeddedImageData(detail).replace(/\s+/g, " ").trim();
+  return detail.length > MAX_PROXY_ERROR_DETAIL_CHARS
+    ? `${detail.slice(0, MAX_PROXY_ERROR_DETAIL_CHARS)}\u2026`
+    : detail;
+}
+
 async function postProxy<TPayload>(path: string, payload: TPayload): Promise<unknown> {
   const response = await fetch(path, {
     method: "POST",
@@ -261,9 +291,12 @@ async function postProxy<TPayload>(path: string, payload: TPayload): Promise<unk
   }
 
   if (!response.ok) {
+    const detail = describeProxyErrorBody(data);
+    // Logged scrubbed and separately from the toast, which shows only a summary.
+    console.error(`Proxy request failed (${response.status}) ${path}`, stripEmbeddedImageData(text));
     throw new ProxyRequestError(
       response.status,
-      `Proxy request failed (${response.status}) ${typeof data === "string" ? data : JSON.stringify(data)}`,
+      `Proxy request failed (${response.status})${detail ? ` ${detail}` : ""}`,
       data
     );
   }
