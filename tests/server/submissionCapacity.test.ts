@@ -219,6 +219,63 @@ describe("submission capacity", () => {
     expect((await reserveSubmissionCapacity({ username: "artist", walletGroupId: "shared", maxWalletActiveJobs: 1, createdAt: Date.now() })).ok).toBe(true);
   });
 
+  it("frees the wallet slot once a reserved job finishes, even without an explicit release", async () => {
+    process.env.RUNPOD_GLOBAL_CONCURRENCY = "20";
+    const { attachReservationJobId, reserveSubmissionCapacity } = await import("../../src/server/lib/submissionCapacity");
+    const jobStore = await import("../../src/server/lib/jobStore");
+
+    await jobStore.createJob({
+      jobId: "finished-job",
+      displayName: "abc12345",
+      endpointId: "endpoint",
+      workflowFileName: null,
+      submittedAt: "2026-08-08T00:00:00.000Z",
+      startedAt: "2026-08-08T00:00:01.000Z",
+      completedAt: null,
+      expiresAt: null,
+      status: "IN_PROGRESS",
+      isTerminal: false,
+      imageCount: 0,
+      lastError: null,
+      createdBy: "artist",
+      billingMode: "managed",
+      walletGroupId: "shared",
+      billingUsername: "artist"
+    }, { draftValues: {}, submittedInput: {} });
+
+    const reservation = await reserveSubmissionCapacity({ username: "artist", walletGroupId: "shared", maxWalletActiveJobs: 2, createdAt: Date.now() });
+    if (!reservation.ok) throw new Error("Expected reservation");
+    attachReservationJobId(reservation.reservationId, "finished-job");
+
+    // The job completes without the tracker releasing its reservation.
+    await jobStore.updateJob("finished-job", { status: "COMPLETED", isTerminal: true });
+
+    expect((await reserveSubmissionCapacity({ username: "artist", walletGroupId: "shared", maxWalletActiveJobs: 2, createdAt: Date.now() })).ok).toBe(true);
+    expect((await reserveSubmissionCapacity({ username: "artist", walletGroupId: "shared", maxWalletActiveJobs: 2, createdAt: Date.now() })).ok).toBe(true);
+    expect(await reserveSubmissionCapacity({ username: "artist", walletGroupId: "shared", maxWalletActiveJobs: 2, createdAt: Date.now() })).toEqual({
+      ok: false,
+      reason: "wallet-capacity"
+    });
+  });
+
+  it("expires a reservation whose submission never produced a job", async () => {
+    const { reserveSubmissionCapacity } = await import("../../src/server/lib/submissionCapacity");
+    const startedAt = Date.now();
+
+    expect((await reserveSubmissionCapacity({ username: "artist", walletGroupId: "shared", maxWalletActiveJobs: 1, createdAt: startedAt })).ok).toBe(true);
+    expect(await reserveSubmissionCapacity({ username: "artist", walletGroupId: "shared", maxWalletActiveJobs: 1, createdAt: startedAt })).toEqual({
+      ok: false,
+      reason: "wallet-capacity"
+    });
+
+    expect((await reserveSubmissionCapacity({
+      username: "artist",
+      walletGroupId: "shared",
+      maxWalletActiveJobs: 1,
+      createdAt: startedAt + 6 * 60_000
+    })).ok).toBe(true);
+  });
+
   it("does not apply wallet capacity to unknown endpoints", async () => {
     const { reserveSubmissionCapacity } = await import("../../src/server/lib/submissionCapacity");
 

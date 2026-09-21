@@ -169,12 +169,16 @@ export async function reconcileStaleActiveJob(job: JobRecord): Promise<JobRecord
     return job;
   }
 
-  const result = await pollTrackedJob({
-    endpointId: job.endpointId,
-    jobId: job.jobId,
-    apiKey: resolvedApiKey,
-    nextPollAt: Date.now(),
-  });
+  // Reuse the tracked entry when there is one so a terminal result releases its
+  // reservation instead of leaking the wallet slot.
+  const result = await pollTrackedJob(
+    trackedJobs.get(toKey(job.endpointId, job.jobId)) ?? {
+      endpointId: job.endpointId,
+      jobId: job.jobId,
+      apiKey: resolvedApiKey,
+      nextPollAt: Date.now(),
+    },
+  );
 
   if (!result.ok) {
     return job;
@@ -361,11 +365,14 @@ export async function trackJob(
 ): Promise<void> {
   const key = toKey(endpointId, jobId);
   const existing = await readJob(jobId);
+  // Re-tracking (e.g. a client status poll) must not orphan the reservation the
+  // original submission made, or its wallet slot is never given back.
+  const activeReservationId = reservationId ?? trackedJobs.get(key)?.reservationId;
 
   if (existing?.isTerminal) {
     trackedJobs.delete(key);
-    if (reservationId) {
-      releaseSubmissionCapacity(reservationId);
+    if (activeReservationId) {
+      releaseSubmissionCapacity(activeReservationId);
     }
     return;
   }
@@ -375,7 +382,7 @@ export async function trackJob(
     jobId,
     apiKey,
     nextPollAt: Date.now(),
-    reservationId,
+    reservationId: activeReservationId,
   });
 
   ensureTrackerRunning();
