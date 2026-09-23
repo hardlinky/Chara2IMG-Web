@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { buildRunWorkflowPayload } from "../../src/shared/workflow/buildRunWorkflowPayload";
+import {
+  buildRunWorkflowPayload,
+  restoreUnresolvedWorkflowValues
+} from "../../src/shared/workflow/buildRunWorkflowPayload";
 import { deriveInputControls } from "../../src/shared/workflow/deriveInputControls";
 
 const template = {
@@ -72,5 +75,45 @@ describe("workflow export round trip", () => {
     expect(restored.ok).toBe(true);
     if (!restored.ok) return;
     expect(valueOf(restored.payload, "12")).toBe("masterpiece, {Character.Eyes}");
+  });
+});
+
+describe("restoreUnresolvedWorkflowValues", () => {
+  it("turns a submitted payload back into template form", () => {
+    const controls = deriveInputControls(template).controls;
+    const submitted = buildRunWorkflowPayload({ templateRawJson: template, controls, draftValues });
+    expect(submitted.ok).toBe(true);
+    if (!submitted.ok) return;
+    expect(valueOf(submitted.payload, "12")).toBe("masterpiece, green eyes");
+
+    const stored = restoreUnresolvedWorkflowValues(submitted.payload, draftValues);
+    expect(valueOf(stored, "12")).toBe("masterpiece, {Character.Eyes}");
+  });
+
+  it("is idempotent on an already unresolved payload", () => {
+    const once = restoreUnresolvedWorkflowValues(template, draftValues);
+    const twice = restoreUnresolvedWorkflowValues(once, draftValues);
+
+    expect(valueOf(twice, "12")).toBe("masterpiece, {Character.Eyes}");
+    expect(twice).toEqual(once);
+  });
+
+  it("returns the workflow untouched when no draft values exist", () => {
+    expect(restoreUnresolvedWorkflowValues(template, {})).toBe(template);
+    expect(restoreUnresolvedWorkflowValues(template, undefined)).toBe(template);
+  });
+
+  it("leaves controls missing from the draft at their submitted value", () => {
+    const controls = deriveInputControls(template).controls;
+    const submitted = buildRunWorkflowPayload({ templateRawJson: template, controls, draftValues });
+    if (!submitted.ok) return;
+
+    // Image drafts are stripped before reaching the server, so partial drafts must not wipe values.
+    const stored = restoreUnresolvedWorkflowValues(submitted.payload, {
+      "12:multiline:value": "masterpiece, {Character.Eyes}"
+    });
+
+    expect(valueOf(stored, "11")).toBe("green eyes");
+    expect(valueOf(stored, "12")).toBe("masterpiece, {Character.Eyes}");
   });
 });

@@ -31,7 +31,7 @@ import { sanitizeWorkflowForExport } from "./lib/workflowExport";
 import type { DynamicInputDraftValues } from "../shared/contracts/inputs";
 import type { SystemStorageStats } from "./lib/api/runpodProxyClient";
 import { deriveInputControls } from "../shared/workflow/deriveInputControls";
-import { buildRunWorkflowPayload } from "../shared/workflow/buildRunWorkflowPayload";
+import { restoreUnresolvedWorkflowValues } from "../shared/workflow/buildRunWorkflowPayload";
 import { CreditBalanceDisplay, type CreditBalanceView } from "./features/access/CreditBalanceDisplay";
 import { fetchCreditBalance } from "./lib/api/creditsClient";
 import { selectRunpodApiKey } from "./lib/selectRunpodApiKey";
@@ -101,28 +101,6 @@ function toWorkflowExportPayload(submittedInput: Record<string, unknown>): Recor
   }
 
   return null;
-}
-
-/**
- * The submitted payload has variable tokens already expanded. Writing the job's draft values
- * back over it restores `{Category.Field}` so the export stays re-importable as a template.
- */
-function restoreUnresolvedWorkflowValues(
-  workflow: Record<string, unknown>,
-  draftValues: DynamicInputDraftValues | undefined
-): Record<string, unknown> {
-  if (!draftValues || Object.keys(draftValues).length === 0) {
-    return workflow;
-  }
-
-  const restored = buildRunWorkflowPayload({
-    templateRawJson: workflow,
-    controls: deriveInputControls(workflow).controls,
-    draftValues,
-    resolveTokens: false
-  });
-
-  return restored.ok ? restored.payload : workflow;
 }
 
 function sanitizeFileNamePart(value: string): string {
@@ -677,7 +655,10 @@ export function App() {
           templateFingerprint: snapshot.templateFingerprint,
           workflowFileName: activeTemplate.displayName,
           draftValues: snapshot.draftValues,
-          submittedInput: toRunpodWorkflowInput(snapshot.payload)
+          // Persist template form; only the outbound Runpod request carries expanded prompts.
+          submittedInput: toRunpodWorkflowInput(
+            restoreUnresolvedWorkflowValues(snapshot.payload, snapshot.draftValues)
+          )
         }
       });
       await recentJobs.handleNewSubmission();

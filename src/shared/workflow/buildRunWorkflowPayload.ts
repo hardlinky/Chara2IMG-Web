@@ -4,6 +4,7 @@ import type {
   DynamicInputDraftValues,
   DynamicInputInlineError
 } from "../contracts/inputs";
+import { deriveInputControls } from "./deriveInputControls";
 import { buildTokenIndex, resolveTokensInText } from "./inputTokens";
 
 type BuildRunWorkflowPayloadArgs = {
@@ -224,4 +225,26 @@ export function buildRunWorkflowPayload(args: BuildRunWorkflowPayloadArgs): Dyna
     ok: true,
     payload
   };
+}
+
+/**
+ * Rewrites a resolved payload back into template form by replaying the draft values without
+ * token expansion, so persisted jobs stay re-importable as `{Category.Field}` variables.
+ */
+export function restoreUnresolvedWorkflowValues(
+  workflow: Record<string, unknown>,
+  draftValues: DynamicInputDraftValues | undefined
+): Record<string, unknown> {
+  if (!draftValues || Object.keys(draftValues).length === 0) {
+    return workflow;
+  }
+
+  const restored = buildRunWorkflowPayload({
+    templateRawJson: workflow,
+    controls: deriveInputControls(workflow).controls,
+    draftValues,
+    resolveTokens: false
+  });
+
+  return restored.ok ? restored.payload : workflow;
 }

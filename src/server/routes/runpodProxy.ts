@@ -15,6 +15,8 @@ import { getCreditBalance, getManagedWalletGroupId } from "../lib/creditStore";
 import { attachReservationJobId, releaseSubmissionCapacity, reserveSubmissionCapacity } from "../lib/submissionCapacity";
 import { buildJobWebhookUrl, getRunpodJobSettings, matchesWebhookSecret } from "../lib/runpodSettingsStore";
 import { settleTerminalJobBilling } from "../lib/jobBilling";
+import { restoreUnresolvedWorkflowValues } from "../../shared/workflow/buildRunWorkflowPayload";
+import type { DynamicInputDraftValues } from "../../shared/contracts/inputs";
 
 function resolveRunpodApiKey(endpointId: string, requestApiKey: string): string {
   // Dedicated name avoids RunPod's auto-injected pod-scoped RUNPOD_API_KEY.
@@ -87,6 +89,24 @@ async function buildRunBody(input: Record<string, unknown>): Promise<Record<stri
   }
 
   return body;
+}
+
+/** Persist the submission with `{Category.Field}` tokens intact so exports stay re-importable. */
+function toTemplateSubmittedInput(
+  input: Record<string, unknown>,
+  draftValues: unknown
+): Record<string, unknown> {
+  const drafts = (draftValues ?? {}) as DynamicInputDraftValues;
+  const workflow = input.workflow;
+
+  if (workflow && typeof workflow === "object" && !Array.isArray(workflow)) {
+    return {
+      ...input,
+      workflow: restoreUnresolvedWorkflowValues(workflow as Record<string, unknown>, drafts)
+    };
+  }
+
+  return restoreUnresolvedWorkflowValues(input, drafts);
 }
 
 export function registerRunpodProxyRoutes(app: Hono): void {
@@ -183,7 +203,7 @@ export function registerRunpodProxyRoutes(app: Hono): void {
               },
               {
                 draftValues: (meta?.draftValues ?? {}) as import("../../shared/contracts/inputs").DynamicInputDraftValues,
-                submittedInput: parsed.data.input,
+                submittedInput: toTemplateSubmittedInput(parsed.data.input, meta?.draftValues),
               },
             ).then(() => trackJob(parsed.data.endpointId, jobId, resolvedApiKey, capacity.reservationId)).catch((err: unknown) => {
               logServerWarning("Failed to persist initial job record", err, { jobId });
