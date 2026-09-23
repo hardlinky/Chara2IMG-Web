@@ -244,14 +244,18 @@ export function CheckpointSelect({ value, onChange }: { value: string; onChange:
   );
 }
 
-export function findLoraDownloadUrl(loraName: string, downloadUrls: Record<string, string>): string | undefined {
+/** Catalog maps are keyed by both the relative path and the bare filename. */
+function findLoraValue<T>(loraName: string, index: Record<string, T>): T | undefined {
   const normalizedName = loraName.replaceAll("\\", "/").toLowerCase();
-  const matchingEntry = Object.entries(downloadUrls).find(([name]) => (
+  return Object.entries(index).find(([name]) => (
     name.replaceAll("\\", "/").toLowerCase() === normalizedName
-  ));
-  const matchedUrl = matchingEntry?.[1] ?? Object.entries(downloadUrls).find(([name]) => (
+  ))?.[1] ?? Object.entries(index).find(([name]) => (
     name.toLowerCase() === normalizedName.split("/").at(-1)
   ))?.[1];
+}
+
+export function findLoraDownloadUrl(loraName: string, downloadUrls: Record<string, string>): string | undefined {
+  const matchedUrl = findLoraValue(loraName, downloadUrls);
   if (!matchedUrl) return undefined;
 
   try {
@@ -263,12 +267,7 @@ export function findLoraDownloadUrl(loraName: string, downloadUrls: Record<strin
 }
 
 export function findLoraTriggerWords(loraName: string, triggerWords: Record<string, string[]>): string[] {
-  const normalizedName = loraName.replaceAll("\\", "/").toLowerCase();
-  return Object.entries(triggerWords).find(([name]) => (
-    name.replaceAll("\\", "/").toLowerCase() === normalizedName
-  ))?.[1] ?? Object.entries(triggerWords).find(([name]) => (
-    name.toLowerCase() === normalizedName.split("/").at(-1)
-  ))?.[1] ?? [];
+  return findLoraValue(loraName, triggerWords) ?? [];
 }
 
 export function LoraTriggerTags({ words }: { words: string[] }) {
@@ -310,6 +309,8 @@ function LoraListInput({
   const [downloadUrls, setDownloadUrls] = useState<Record<string, string>>({});
   const [triggerWords, setTriggerWords] = useState<Record<string, string[]>>({});
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
+  const [previewFullUrls, setPreviewFullUrls] = useState<Record<string, string>>({});
+  const [preview, setPreview] = useState<{ src: string; name: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const sliderStep = 0.05;
 
@@ -322,6 +323,7 @@ function LoraListInput({
         setDownloadUrls(catalog.downloadUrls);
         setTriggerWords(catalog.triggerWords);
         setPreviewUrls(catalog.previewUrls);
+        setPreviewFullUrls(catalog.previewFullUrls);
       }
     }
     void refreshCatalog();
@@ -337,10 +339,20 @@ function LoraListInput({
         setDownloadUrls(catalog.downloadUrls);
         setTriggerWords(catalog.triggerWords);
         setPreviewUrls(catalog.previewUrls);
+        setPreviewFullUrls(catalog.previewFullUrls);
       });
     });
     return unsubscribe;
   }, []);
+
+  useEffect(() => {
+    if (!preview) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setPreview(null);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [preview]);
 
   function updateStrength(index: number, strength: number) {
     const next = [...currentLoras];
@@ -374,19 +386,21 @@ function LoraListInput({
         const missing = available !== null && !available.includes(lora.loraName);
         const displayName = stripModelExtension(lora.loraName);
         const downloadUrl = findLoraDownloadUrl(lora.loraName, downloadUrls);
-        const previewUrl = findLoraDownloadUrl(lora.loraName, previewUrls);
+        const previewUrl = findLoraValue(lora.loraName, previewUrls);
+        const fullPreviewUrl = findLoraDownloadUrl(lora.loraName, previewFullUrls) ?? previewUrl;
         const loraTriggerWords = findLoraTriggerWords(lora.loraName, triggerWords);
         return (
           <div key={`${controlId}-${lora.loraName}-${index}`} className="input-lora-list-item">
             <div className="input-lora-list-item-header">
               {previewUrl ? (
-                <img
-                  className="input-lora-list-item-preview"
-                  src={previewUrl}
-                  alt=""
-                  loading="lazy"
-                  referrerPolicy="no-referrer"
-                />
+                <button
+                  type="button"
+                  className="input-lora-list-item-preview-button"
+                  aria-label={`Preview ${displayName}`}
+                  onClick={() => setPreview({ src: fullPreviewUrl!, name: displayName })}
+                >
+                  <img className="input-lora-list-item-preview" src={previewUrl} alt="" loading="lazy" />
+                </button>
               ) : null}
               {downloadUrl ? <a
                 className={`input-lora-list-item-name${missing ? " input-lora-list-item-name--missing" : ""}`}
@@ -474,6 +488,31 @@ function LoraListInput({
           </select>
         </div>
       )}
+      {preview ? (
+        <div
+          className="input-lora-preview-lightbox"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${preview.name} preview`}
+          onClick={() => setPreview(null)}
+        >
+          <button
+            type="button"
+            className="input-lora-preview-lightbox-close"
+            aria-label="Close preview"
+            onClick={() => setPreview(null)}
+          >
+            ✕
+          </button>
+          <img
+            className="input-lora-preview-lightbox-image"
+            src={preview.src}
+            alt={`${preview.name} preview`}
+            referrerPolicy="no-referrer"
+            onClick={(event) => event.stopPropagation()}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

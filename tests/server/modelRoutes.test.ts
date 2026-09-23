@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DownloadEntry } from "../../src/shared/contracts/modelDownloads";
-import { buildLoraDownloadUrls, buildLoraPreviewUrls, buildLoraTriggerWords } from "../../src/server/routes/models";
+import { buildLoraDownloadUrls, buildLoraPreviewFullUrls, buildLoraPreviewUrls, buildLoraTriggerWords } from "../../src/server/routes/models";
 
 function download(overrides: Partial<DownloadEntry>): DownloadEntry {
   return {
@@ -45,12 +45,23 @@ describe("model routes", () => {
 
   it("maps stored preview images by relative path and filename", () => {
     expect(buildLoraPreviewUrls([
-      download({ destPath: "loras/styles", filename: "ink.safetensors", previewUrl: "https://image.civitai.com/ink.jpeg" }),
+      download({ destPath: "loras/styles", filename: "ink.safetensors", previewFile: "ink.safetensors.preview.jpeg" }),
       download({ id: "none", filename: "none.safetensors" }),
-      download({ id: "checkpoint", destPath: "checkpoints", previewUrl: "https://image.civitai.com/ignore.jpeg" })
+      download({ id: "checkpoint", destPath: "checkpoints", previewFile: "other.preview.jpeg" })
     ])).toEqual({
-      "styles/ink.safetensors": "https://image.civitai.com/ink.jpeg",
-      "ink.safetensors": "https://image.civitai.com/ink.jpeg"
+      "styles/ink.safetensors": "/api/models/previews/download-1",
+      "ink.safetensors": "/api/models/previews/download-1"
+    });
+  });
+
+  it("points full-size previews at the original CivitAI rendition", () => {
+    expect(buildLoraPreviewFullUrls([
+      download({
+        filename: "ink.safetensors",
+        previewUrl: "https://image.civitai.com/abc/uuid/width=450/ink.jpeg"
+      })
+    ])).toEqual({
+      "ink.safetensors": "https://image.civitai.com/abc/uuid/original=true/ink.jpeg"
     });
   });
 });

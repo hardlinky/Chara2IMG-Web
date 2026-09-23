@@ -3,9 +3,10 @@ export type LoraCatalog = {
   downloadUrls: Record<string, string>;
   triggerWords: Record<string, string[]>;
   previewUrls: Record<string, string>;
+  previewFullUrls: Record<string, string>;
 };
 
-const EMPTY_CATALOG: LoraCatalog = { loras: [], downloadUrls: {}, triggerWords: {}, previewUrls: {} };
+const EMPTY_CATALOG: LoraCatalog = { loras: [], downloadUrls: {}, triggerWords: {}, previewUrls: {}, previewFullUrls: {} };
 
 const MODEL_CATALOG_REFRESH_EVENT = "model-catalog-refresh";
 
@@ -48,7 +49,8 @@ export async function fetchLoraCatalog(): Promise<LoraCatalog> {
           loras: Array.isArray(result.loras) ? result.loras : [],
           downloadUrls: result.downloadUrls && typeof result.downloadUrls === "object" ? result.downloadUrls : {},
           triggerWords: result.triggerWords && typeof result.triggerWords === "object" ? result.triggerWords : {},
-          previewUrls: result.previewUrls && typeof result.previewUrls === "object" ? result.previewUrls : {}
+          previewUrls: result.previewUrls && typeof result.previewUrls === "object" ? result.previewUrls : {},
+          previewFullUrls: result.previewFullUrls && typeof result.previewFullUrls === "object" ? result.previewFullUrls : {}
         };
         return cache;
       })

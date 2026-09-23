@@ -151,13 +151,12 @@ export function DownloadCard({
   return (
     <li className="model-dl-card">
       <div className="model-dl-card-header">
-        {entry.previewUrl ? (
+        {entry.previewFile ? (
           <img
             className="model-dl-preview"
-            src={entry.previewUrl}
+            src={`/api/models/previews/${entry.id}`}
             alt=""
             loading="lazy"
-            referrerPolicy="no-referrer"
           />
         ) : null}
         <span className="model-dl-filename" title={entry.filename}>{entry.filename}</span>

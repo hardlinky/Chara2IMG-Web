@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -9,11 +9,13 @@ describe("model download metadata refresh", () => {
   beforeEach(async () => {
     downloadsDir = await mkdtemp(join(tmpdir(), "model-metadata-"));
     process.env.DOWNLOADS_LOG_DIR = downloadsDir;
+    process.env.NETWORK_MODELS_ROOT = join(downloadsDir, "models");
     vi.resetModules();
   });
 
   afterEach(async () => {
     delete process.env.DOWNLOADS_LOG_DIR;
+    delete process.env.NETWORK_MODELS_ROOT;
     vi.unstubAllGlobals();
     await rm(downloadsDir, { recursive: true, force: true });
   });
@@ -33,7 +35,10 @@ describe("model download metadata refresh", () => {
             id: 456,
             modelId: 123,
             trainedWords: ["ink style", "bold lines"],
-            images: [{ url: "https://image.civitai.com/first.jpeg" }, { url: "https://image.civitai.com/second.jpeg" }]
+            images: [
+              { url: "https://image.civitai.com/abc/uuid/width=450/first.jpeg" },
+              { url: "https://image.civitai.com/abc/uuid/width=450/second.jpeg" }
+            ]
           }
         : { modelVersions: [{ id: 789 }, { id: 456 }] }
     ), { status: 200, headers: { "Content-Type": "application/json" } })));
@@ -45,13 +50,18 @@ describe("model download metadata refresh", () => {
       ok: true,
       entry: {
         triggerWords: ["ink style", "bold lines"],
-        previewUrl: "https://image.civitai.com/first.jpeg",
+        previewUrl: "https://image.civitai.com/abc/uuid/width=450/first.jpeg",
+        previewFile: "ink.safetensors.preview.jpeg",
         civitaiModelId: 123,
         civitaiModelVersionId: 456,
         civitaiLatestModelVersionId: 789
       }
     });
     expect(result.ok && result.entry.metadataUpdatedAt).toBeTruthy();
+
+    const thumbnailRequest = vi.mocked(fetch).mock.calls.map(([url]) => String(url)).find((url) => url.includes("image.civitai.com"));
+    expect(thumbnailRequest).toBe("https://image.civitai.com/abc/uuid/width=320/first.jpeg");
+    await expect(stat(join(downloadsDir, "models", "loras", "ink.safetensors.preview.jpeg"))).resolves.toBeTruthy();
   });
 
   it("falls back to the latest version preview when the URL has no version", async () => {
@@ -66,6 +76,7 @@ describe("model download metadata refresh", () => {
     const result = await refreshDownloadMetadata(entry.id, "secret");
 
     expect(result.ok && result.entry.previewUrl).toBe("https://image.civitai.com/latest.jpeg");
+    expect(result.ok && result.entry.previewFile).toBe("ink.safetensors.preview.jpeg");
   });
 
   it("ignores preview entries that are not http URLs", async () => {
@@ -87,5 +98,6 @@ describe("model download metadata refresh", () => {
     const result = await refreshDownloadMetadata(entry.id, "secret");
 
     expect(result.ok && result.entry.previewUrl).toBeUndefined();
+    expect(result.ok && result.entry.previewFile).toBeUndefined();
   });
 });

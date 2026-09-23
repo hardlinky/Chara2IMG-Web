@@ -79,10 +79,39 @@ export type CivitaiMetadata = {
 
 type CivitaiVersion = { id?: number; modelId?: number; trainedWords?: unknown; images?: unknown };
 
+const PREVIEW_EXTENSIONS = new Set([".jpeg", ".jpg", ".png", ".webp", ".gif"]);
+const PREVIEW_THUMBNAIL_WIDTH = 320;
+
 function firstImageUrl(images: unknown): string | undefined {
   if (!Array.isArray(images)) return undefined;
   const url = (images[0] as { url?: unknown } | undefined)?.url;
   return typeof url === "string" && /^https?:\/\//.test(url) ? url : undefined;
+}
+
+/** CivitAI encodes the rendition as a path segment, e.g. `.../width=450/image.jpeg`. */
+export function civitaiImageVariant(url: string, variant: string): string {
+  try {
+    const parsed = new URL(url);
+    const segments = parsed.pathname.split("/");
+    const sizeIndex = segments.findIndex((segment) => /^(width|height|original)=/.test(segment));
+    if (sizeIndex === -1) return url;
+
+    segments[sizeIndex] = variant;
+    parsed.pathname = segments.join("/");
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+}
+
+function previewExtension(url: string): string {
+  try {
+    const name = new URL(url).pathname.split("/").pop() ?? "";
+    const ext = name.slice(name.lastIndexOf(".")).toLowerCase();
+    return PREVIEW_EXTENSIONS.has(ext) ? ext : ".jpeg";
+  } catch {
+    return ".jpeg";
+  }
 }
 
 async function fetchCivitaiJson<T>(url: string, apiKey: string, signal?: AbortSignal): Promise<T | null> {
@@ -162,6 +191,42 @@ export function getModelMetadataPath(entry: Pick<DownloadEntry, "destPath" | "fi
   return `${getModelFilePath(entry)}.json`;
 }
 
+export function getModelPreviewPath(entry: Pick<DownloadEntry, "destPath" | "filename" | "previewFile">): string | null {
+  if (!entry.previewFile || entry.previewFile.includes("/") || entry.previewFile.includes("\\")) return null;
+  return join(getNetworkModelsRoot(), entry.destPath, entry.previewFile);
+}
+
+/** Copies the small rendition next to the model so the picker never hits the CDN. */
+async function storePreviewThumbnail(
+  entry: Pick<DownloadEntry, "destPath" | "filename">,
+  imageUrl: string,
+  signal?: AbortSignal
+): Promise<string | null> {
+  const thumbnailUrl = civitaiImageVariant(imageUrl, `width=${PREVIEW_THUMBNAIL_WIDTH}`);
+  const response = await fetch(thumbnailUrl, { signal });
+  if (!response.ok || !response.body) return null;
+
+  const previewFile = `${entry.filename}.preview${previewExtension(imageUrl)}`;
+  const targetPath = join(getNetworkModelsRoot(), entry.destPath, previewFile);
+  await mkdir(dirname(targetPath), { recursive: true });
+  await writeFile(targetPath, Buffer.from(await response.arrayBuffer()));
+  return previewFile;
+}
+
+async function refreshPreviewThumbnail(
+  entry: Pick<DownloadEntry, "id" | "destPath" | "filename">,
+  imageUrl: string | undefined,
+  signal?: AbortSignal
+): Promise<string | undefined> {
+  if (!imageUrl) return undefined;
+  try {
+    return (await storePreviewThumbnail(entry, imageUrl, signal)) ?? undefined;
+  } catch (err) {
+    logServerError("Preview thumbnail download failed", err, { id: entry.id, imageUrl });
+    return undefined;
+  }
+}
+
 export async function writeDownloadMetadata(entry: DownloadEntry, modelPath?: string): Promise<void> {
   const filePath = modelPath ?? getModelFilePath(entry);
   const metadataPath = `${filePath}.json`;
@@ -173,6 +238,7 @@ export async function writeDownloadMetadata(entry: DownloadEntry, modelPath?: st
     filename: entry.filename,
     triggerWords: entry.triggerWords ?? [],
     previewUrl: entry.previewUrl ?? null,
+    previewFile: entry.previewFile ?? null,
     civitaiModelId: entry.civitaiModelId,
     civitaiModelVersionId: entry.civitaiModelVersionId,
     civitaiLatestModelVersionId: entry.civitaiLatestModelVersionId,
@@ -200,18 +266,16 @@ export async function readDownloadMetadata(entry: Pick<DownloadEntry, "destPath"
   }
 }
 
-export async function removeDownloadFiles(entry: Pick<DownloadEntry, "destPath" | "filename">): Promise<void> {
+export async function removeDownloadFiles(entry: Pick<DownloadEntry, "destPath" | "filename" | "previewFile">): Promise<void> {
   const filePath = getModelFilePath(entry);
   const metadataPath = getModelMetadataPath(entry);
+  const previewPath = getModelPreviewPath(entry);
 
-  await Promise.all([
-    unlink(filePath).catch((err) => {
+  await Promise.all([filePath, metadataPath, ...(previewPath ? [previewPath] : [])].map((path) =>
+    unlink(path).catch((err) => {
       if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
-    }),
-    unlink(metadataPath).catch((err) => {
-      if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
-    }),
-  ]);
+    })
+  ));
 }
 // ─── Queue processor ─────────────────────────────────────────────────────────
 
@@ -263,6 +327,7 @@ async function runDownload(entry: DownloadEntry, signal: AbortSignal): Promise<v
     await updateEntry(entry.id, {
       triggerWords: civitaiMetadata.triggerWords,
       previewUrl: civitaiMetadata.previewUrl,
+      previewFile: await refreshPreviewThumbnail(entry, civitaiMetadata.previewUrl, signal),
       civitaiModelId: civitaiMetadata.modelId,
       civitaiModelVersionId: civitaiMetadata.selectedVersionId,
       civitaiLatestModelVersionId: civitaiMetadata.latestVersionId,
@@ -414,6 +479,7 @@ export async function refreshDownloadMetadata(
   await updateEntry(id, {
     triggerWords: metadata.triggerWords,
     previewUrl: metadata.previewUrl,
+    previewFile: await refreshPreviewThumbnail(entry, metadata.previewUrl),
     civitaiModelId: metadata.modelId,
     civitaiModelVersionId: entry.civitaiModelVersionId ?? (sourceHasExplicitVersion ? metadata.selectedVersionId : undefined),
     civitaiLatestModelVersionId: metadata.latestVersionId,

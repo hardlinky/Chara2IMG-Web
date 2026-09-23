@@ -9,7 +9,10 @@ export type DownloadEntry = {
   destPath: string;
   filename: string;
   triggerWords?: string[];
+  /** Full-size preview on the source CDN. */
   previewUrl?: string;
+  /** Thumbnail copied next to the model file, served by this server. */
+  previewFile?: string;
   civitaiModelId?: number;
   civitaiModelVersionId?: number;
   civitaiLatestModelVersionId?: number;

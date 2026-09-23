@@ -535,6 +535,15 @@
   min-width: 0;
 }
 
+.input-lora-list-item-preview-button {
+  flex: 0 0 auto;
+  padding: 0;
+  border: none;
+  background: none;
+  line-height: 0;
+  cursor: zoom-in;
+}
+
 .input-lora-list-item-preview {
   width: 2.25rem;
   height: 2.25rem;
@@ -542,6 +551,40 @@
   object-fit: cover;
   border-radius: var(--radius-sm);
   background: var(--color-surface-elevated);
+}
+
+.input-lora-preview-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: rgba(10, 12, 15, 0.82);
+  backdrop-filter: blur(6px);
+  cursor: zoom-out;
+}
+
+.input-lora-preview-lightbox-image {
+  max-width: min(92vw, 1400px);
+  max-height: 90dvh;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+  cursor: default;
+}
+
+.input-lora-preview-lightbox-close {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  background: rgba(18, 23, 28, 0.85);
+  color: var(--color-text-primary);
+  font-size: 1rem;
+  cursor: pointer;
 }
 
 .input-lora-list-item-name {
