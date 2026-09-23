@@ -1,12 +1,5 @@
 import type { DynamicInputControl, DynamicInputDraftValues } from "../contracts/inputs";
 
-// Legacy spellings kept resolvable for templates authored before the {Category.Field} convention.
-export const CATEGORY_ALIASES: Record<string, string> = {
-  Character: "Character",
-  Costume: "Costume",
-  "Character Pose": "CharaPose"
-};
-
 // Braces containing "|" are left alone so ComfyUI {a|b|c} wildcards survive resolution.
 const TOKEN_PATTERN = /\{([^{}|\r\n]{1,120})\}/g;
 
@@ -18,10 +11,6 @@ export function toVariableSegment(value: string): string {
     .replace(/^_+|_+$/g, "");
 
   return cleaned || "Unnamed";
-}
-
-export function getCategoryAlias(category: string): string {
-  return CATEGORY_ALIASES[category] || toVariableSegment(category);
 }
 
 /**
@@ -62,7 +51,7 @@ export function deriveSectionNamesByCategory(
 
 /**
  * Maps every accepted spelling of a variable to its current raw value. Each control is
- * reachable through its category alias, its literal category, and its section Name value.
+ * reachable through its category and through its section Name value.
  */
 export function buildTokenIndex(
   controls: DynamicInputControl[],
@@ -77,7 +66,7 @@ export function buildTokenIndex(
       continue;
     }
 
-    const prefixes = [getCategoryAlias(control.category), control.category];
+    const prefixes = [control.category];
     const sectionName = namesByCategory[control.category];
     if (sectionName) {
       prefixes.push(sectionName);

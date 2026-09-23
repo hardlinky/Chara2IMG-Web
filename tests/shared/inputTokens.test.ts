@@ -33,10 +33,16 @@ describe("resolveTokensInText", () => {
     expect(resolve("{Character_Eyes}", controls)).toBe("yellow eyes");
   });
 
-  it("resolves the aliased Character Pose category", () => {
+  it("resolves a multi-word category through its literal name", () => {
     const controls = [createControl("Character Pose", "Arms", "skirt tug")];
 
-    expect(resolve("{CharaPose_Arms}", controls)).toBe("skirt tug");
+    expect(resolve("{Character_Pose.Arms}", controls)).toBe("skirt tug");
+  });
+
+  it("no longer resolves the retired CharaPose alias", () => {
+    const controls = [createControl("Character Pose", "Arms", "skirt tug")];
+
+    expect(resolve("{CharaPose_Arms}", controls)).toBe("{CharaPose_Arms}");
   });
 
   it("matches multi-word field names regardless of separator spelling", () => {
