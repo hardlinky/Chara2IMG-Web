@@ -107,8 +107,24 @@ function applyControlValue(
         ? (nextValue as { loras: Array<{ loraName: string; strength: number }> })
         : { loras: [] };
 
-    for (let i = 0; i < slotKeys.length; i++) {
-      const slotKey = slotKeys[i]!;
+    const rowTemplate = slotKeys
+      .map((key) => inputs[key])
+      .find((row): row is Record<string, unknown> => !!row && typeof row === "object" && !Array.isArray(row));
+    let highestSlotIndex = Object.keys(inputs)
+      .filter((key) => /^lora_\d+$/.test(key))
+      .reduce((highest, key) => Math.max(highest, Number(key.slice(5))), 0);
+
+    // The template ships a fixed number of slots; the loader reads every lora_N
+    // key, so extra selections get their own slot instead of being dropped.
+    const slotCount = Math.max(slotKeys.length, listValue.loras.length);
+    for (let i = 0; i < slotCount; i++) {
+      let slotKey = slotKeys[i];
+      if (!slotKey) {
+        highestSlotIndex += 1;
+        slotKey = `lora_${highestSlotIndex}`;
+        inputs[slotKey] = { ...(rowTemplate ?? { on: false, lora: "", strength: 1 }) };
+      }
+
       const currentRow = inputs[slotKey];
       if (!currentRow || typeof currentRow !== "object" || Array.isArray(currentRow)) continue;
 

@@ -248,6 +248,59 @@ describe("buildRunWorkflowPayload", () => {
     expect(node.inputs.lora_2.on).toBe(false);
   });
 
+  it("adds slots when more loras are selected than the template provides", () => {
+    const template = {
+      "534": {
+        class_type: "Power Lora Loader (rgthree)",
+        inputs: {
+          PowerLoraLoaderHeaderWidget: { type: "PowerLoraLoaderHeaderWidget" },
+          lora_1: { on: true, lora: "one.safetensors", strength: 1 },
+          lora_2: { on: false, lora: "two.safetensors", strength: 1 },
+          model: ["24", 0]
+        }
+      }
+    };
+
+    const result = buildRunWorkflowPayload({
+      templateRawJson: template,
+      controls: [
+        createControl({
+          id: "534:lora-list",
+          kind: "lora-list",
+          name: "Loras",
+          source: {
+            nodeId: "534",
+            titlePath: "534._meta.title",
+            valuePath: ["lora_1", "lora_2"]
+          },
+          constraints: { min: 0, max: 2, precision: 2 },
+          defaultValue: { loras: [] }
+        })
+      ],
+      draftValues: {
+        "534:lora-list": {
+          loras: [
+            { loraName: "a.safetensors", strength: 1 },
+            { loraName: "b.safetensors", strength: 0.8 },
+            { loraName: "c.safetensors", strength: 0.6 }
+          ]
+        }
+      }
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    type LoraSlot = { on: boolean; lora: string; strength: number };
+    const inputs = (result.payload["534"] as { inputs: Record<string, unknown> }).inputs;
+    expect(inputs.lora_1).toMatchObject({ on: true, lora: "a.safetensors", strength: 1 });
+    expect(inputs.lora_2).toMatchObject({ on: true, lora: "b.safetensors", strength: 0.8 });
+    expect(inputs.lora_3).toMatchObject({ on: true, lora: "c.safetensors", strength: 0.6 });
+    // The added slot keeps the shape of the template rows and nothing else moves.
+    expect(Object.keys(inputs.lora_3 as LoraSlot)).toEqual(["on", "lora", "strength"]);
+    expect(inputs.model).toEqual(["24", 0]);
+  });
+
   it("strips data URL prefix and normalizes base64 padding for easy loadImageBase64 inputs", () => {
     const template = {
       "863": {
