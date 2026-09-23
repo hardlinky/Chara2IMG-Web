@@ -28,6 +28,7 @@ import {
   type UserArchiveJob
 } from "../lib/userArchiveStore";
 import { listUsernames, userExists } from "../lib/userStore";
+import { getPublicBaseUrl, getRunpodJobSettings, setRunpodJobSettings } from "../lib/runpodSettingsStore";
 import { impersonateRequestSchema, verifyAdminKeyRequestSchema } from "../schemas/admin";
 import { getAdminPasskey } from "../security/adminPasskey";
 import { validateWorkflowShape, validateWorkflowTemplateRules } from "../../shared/workflow/workflowSchemas";
@@ -216,6 +217,28 @@ export function registerAdminRoutes(app: Hono): void {
     if (!admin) return c.json({ ok: false, error: "Forbidden" }, 403);
 
     return c.json({ ok: true, jobs: await listManifestImages() });
+  });
+
+  app.get("/api/admin/runpod-settings", async (c) => {
+    if (!(await hasAdminSession(c))) return c.json({ ok: false, error: "Forbidden" }, 403);
+
+    return c.json({
+      ok: true,
+      settings: await getRunpodJobSettings(),
+      webhookBaseUrl: getPublicBaseUrl()
+    });
+  });
+
+  app.put("/api/admin/runpod-settings", async (c) => {
+    if (!(await hasAdminSession(c))) return c.json({ ok: false, error: "Forbidden" }, 403);
+
+    const payload = await c.req.json().catch(() => null);
+    if (!payload || typeof payload !== "object") {
+      return c.json({ ok: false, error: "Invalid settings" }, 400);
+    }
+
+    const settings = await setRunpodJobSettings(payload);
+    return c.json({ ok: true, settings, webhookBaseUrl: getPublicBaseUrl() });
   });
 
   app.get("/api/admin/archives", async (c) => {

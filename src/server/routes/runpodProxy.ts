@@ -2,7 +2,7 @@ import type { Hono } from "hono";
 import { getSessionUser, requireInvitedSession } from "../middleware/session";
 import { cancelRequestSchema, purgeQueueRequestSchema, retryRequestSchema, runRequestSchema, statusBatchRequestSchema, statusRequestSchema } from "../schemas/runpodProxy";
 import { forwardRunpodRequest } from "../lib/runpodClient";
-import { trackJob, pollJobNow, stopTrackingJob } from "../lib/jobTracker";
+import { trackJob, pollJobNow, pollJobFromWebhook, stopTrackingJob } from "../lib/jobTracker";
 import { refreshJobWalletCreditEstimates } from "../lib/jobCreditEstimates";
 import { createJob, readJob, updateJob } from "../lib/jobStore";
 import { redactSecrets } from "../lib/redaction";
@@ -13,6 +13,7 @@ import { logServerError, logServerWarning } from "../lib/logger";
 import { ANONYMOUS_CREDIT_USERNAME } from "../../shared/credits";
 import { getCreditBalance, getManagedWalletGroupId } from "../lib/creditStore";
 import { attachReservationJobId, releaseSubmissionCapacity, reserveSubmissionCapacity } from "../lib/submissionCapacity";
+import { buildJobWebhookUrl, getRunpodJobSettings, matchesWebhookSecret } from "../lib/runpodSettingsStore";
 import { settleTerminalJobBilling } from "../lib/jobBilling";
 
 function resolveRunpodApiKey(endpointId: string, requestApiKey: string): string {
@@ -67,7 +68,49 @@ function toSafeProxyError(error: unknown, context: string, metadata?: Record<str
   };
 }
 
+/** Layer the admin-configured job policy and completion webhook onto a submission. */
+async function buildRunBody(input: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const settings = await getRunpodJobSettings();
+  const body: Record<string, unknown> = { input };
+
+  if (settings.executionTimeoutSeconds > 0) {
+    body.policy = { executionTimeout: settings.executionTimeoutSeconds * 1000 };
+  }
+
+  if (settings.useWebhook) {
+    const webhookUrl = await buildJobWebhookUrl();
+    if (webhookUrl) {
+      body.webhook = webhookUrl;
+    } else {
+      logServerWarning("Webhook enabled but no public base URL is configured", null, {});
+    }
+  }
+
+  return body;
+}
+
 export function registerRunpodProxyRoutes(app: Hono): void {
+  // Called by RunPod, so it cannot require a session; the secret in the path is
+  // what authenticates it.
+  app.post("/api/webhooks/runpod/:secret", async (c) => {
+    if (!(await matchesWebhookSecret(c.req.param("secret")))) {
+      return c.json({ ok: false, error: "Not found" }, 404);
+    }
+
+    const payload = await c.req.json().catch(() => null) as { id?: unknown } | null;
+    const jobId = typeof payload?.id === "string" ? payload.id : "";
+
+    // Always 200 past this point: a non-2xx makes RunPod retry a delivery that
+    // cannot succeed, and the poller remains the fallback either way.
+    if (jobId) {
+      void pollJobFromWebhook(jobId).catch((error: unknown) => {
+        logServerWarning("Webhook-triggered poll failed", error, { jobId });
+      });
+    }
+
+    return c.json({ ok: true });
+  });
+
   app.use("/api/runpod/*", requireInvitedSession);
 
   app.post("/api/runpod/run", async (c) => {
@@ -103,7 +146,7 @@ export function registerRunpodProxyRoutes(app: Hono): void {
         endpointId: parsed.data.endpointId,
         apiKey: resolvedApiKey,
         operation: "run",
-        body: { input: parsed.data.input }
+        body: await buildRunBody(parsed.data.input)
       });
 
       const body = await response.text();

@@ -153,18 +153,23 @@ export function shouldRefreshStaleActiveJob(job: Pick<JobRecord, "status" | "isT
   return Date.now() - referenceTime >= STALE_ACTIVE_JOB_REFRESH_MS;
 }
 
+/** The server key only applies to endpoints this server bills for. */
+function resolveServerApiKey(endpointId: string): string | null {
+  const serverApiKey = process.env.SERVER_RUNPOD_API_KEY?.trim();
+  const managedEndpoint = getManagedWalletGroupId(endpointId);
+  const defaultEndpoint = process.env.RUNPOD_ENDPOINT_ID?.trim();
+
+  return serverApiKey && ((defaultEndpoint && endpointId === defaultEndpoint) || managedEndpoint)
+    ? serverApiKey
+    : null;
+}
+
 export async function reconcileStaleActiveJob(job: JobRecord): Promise<JobRecord> {
   if (!shouldRefreshStaleActiveJob(job)) {
     return job;
   }
 
-  const serverApiKey = process.env.SERVER_RUNPOD_API_KEY?.trim();
-  const managedEndpoint = getManagedWalletGroupId(job.endpointId);
-  const defaultEndpoint = process.env.RUNPOD_ENDPOINT_ID?.trim();
-  const resolvedApiKey = serverApiKey && ((defaultEndpoint && job.endpointId === defaultEndpoint) || managedEndpoint)
-    ? serverApiKey
-    : null;
-
+  const resolvedApiKey = resolveServerApiKey(job.endpointId);
   if (!resolvedApiKey) {
     return job;
   }
@@ -186,6 +191,33 @@ export async function reconcileStaleActiveJob(job: JobRecord): Promise<JobRecord
 
   const refreshed = await readJob(job.jobId);
   return refreshed ?? job;
+}
+
+/**
+ * Poll a job right away in response to a completion webhook. The webhook body is
+ * only used as a signal; RunPod remains the source of truth for the result.
+ */
+export async function pollJobFromWebhook(jobId: string): Promise<boolean> {
+  const job = await readJob(jobId);
+  if (!job || job.isTerminal) {
+    return false;
+  }
+
+  const resolvedApiKey = resolveServerApiKey(job.endpointId);
+  if (!resolvedApiKey) {
+    return false;
+  }
+
+  const result = await pollTrackedJob(
+    trackedJobs.get(toKey(job.endpointId, jobId)) ?? {
+      endpointId: job.endpointId,
+      jobId,
+      apiKey: resolvedApiKey,
+      nextPollAt: Date.now(),
+    },
+  );
+
+  return result.ok;
 }
 
 // ─── Poll ─────────────────────────────────────────────────────────────────────

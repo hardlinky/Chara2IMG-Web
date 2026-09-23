@@ -4,6 +4,7 @@ import { ModelDownloadsPanel } from "./ModelDownloadsPanel";
 import { UserArchivesPanel } from "./UserArchivesPanel";
 import { WorkflowUploadsPanel } from "./WorkflowUploadsPanel";
 import { CreditAdminPanel } from "./CreditAdminPanel";
+import { RunpodJobSettingsPanel } from "./RunpodJobSettingsPanel";
 
 const JOB_COMPLETION_NOTIFICATION_STORAGE_KEY = "chara2imgJobCompletionNotifications";
 
@@ -125,6 +126,10 @@ export function AdminTab({ enabled, onImpersonated }: AdminTabProps) {
 
       <CollapsibleSection title="Credit Administration">
         <CreditAdminPanel />
+      </CollapsibleSection>
+
+      <CollapsibleSection title="Job Submission">
+        <RunpodJobSettingsPanel />
       </CollapsibleSection>
 
       <CollapsibleSection title="Archive Downloads">
