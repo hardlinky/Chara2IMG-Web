@@ -1,31 +1,15 @@
 import type { DynamicInputControl, DynamicInputDraftValues } from "../../../shared/contracts/inputs";
+import {
+  deriveSectionNamesByCategory,
+  getCategoryAlias,
+  isNameControl,
+  toVariableSegment
+} from "../../../shared/workflow/inputTokens";
 
-const CATEGORY_ALIASES: Record<string, string> = {
-  Character: "Character",
-  Costume: "Costume",
-  "Character Pose": "CharaPose"
-};
-
-function toVariableSegment(value: string): string {
-  const cleaned = value
-    .trim()
-    .replace(/[^\p{L}\p{N}]+/gu, "_")
-    .replace(/_+/g, "_")
-    .replace(/^_+|_+$/g, "");
-
-  return cleaned || "Unnamed";
-}
-
-function isNameControl(control: DynamicInputControl): boolean {
-  return control.name.trim().toLowerCase() === "name";
-}
+export { deriveSectionNamesByCategory };
 
 function toDraftText(value: unknown): string {
   return typeof value === "string" ? value.trim() : String(value ?? "").trim();
-}
-
-function getCategoryAlias(category: string): string {
-  return CATEGORY_ALIASES[category] || toVariableSegment(category);
 }
 
 export function buildVariableTokenParts(control: DynamicInputControl, sectionName?: string): {
@@ -41,23 +25,6 @@ export function buildVariableTokenParts(control: DynamicInputControl, sectionNam
     named,
     generic
   };
-}
-
-export function deriveSectionNamesByCategory(controls: DynamicInputControl[], draftValues: DynamicInputDraftValues): Record<string, string> {
-  const next: Record<string, string> = {};
-
-  for (const control of controls) {
-    if (!isNameControl(control)) {
-      continue;
-    }
-
-    const candidate = toDraftText(draftValues[control.id] ?? control.defaultValue);
-    if (candidate) {
-      next[control.category] = candidate;
-    }
-  }
-
-  return next;
 }
 
 export function getCategoriesWithName(controls: DynamicInputControl[]): Set<string> {

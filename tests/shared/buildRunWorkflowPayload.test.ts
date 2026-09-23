@@ -341,4 +341,44 @@ describe("buildRunWorkflowPayload", () => {
     const base64Data = (result.payload["863"] as { inputs: { base64_data: string } }).inputs.base64_data;
     expect(base64Data).toBe("YWJjZA==");
   });
+
+  it("resolves variable tokens into a fully formed prompt", () => {
+    const template = {
+      "10": {
+        class_type: "PrimitiveString",
+        inputs: { value: "Ellie" },
+        _meta: { title: "[Input0] Character.Name" }
+      },
+      "11": {
+        class_type: "PrimitiveStringMultiline",
+        inputs: { value: "green eyes" },
+        _meta: { title: "[Input2] Character.Eyes" }
+      },
+      "12": {
+        class_type: "PrimitiveStringMultiline",
+        inputs: { value: "" },
+        _meta: { title: "[Input0] Prompt.Positive" }
+      }
+    };
+    const controls = deriveInputControls(template).controls;
+
+    const result = buildRunWorkflowPayload({
+      templateRawJson: template,
+      controls,
+      draftValues: {
+        "11:multiline:value": "glowing yellow eyes",
+        "12:multiline:value": "masterpiece, {Character_Eyes}, {Ellie_Eyes}, {unknown_token}, {a|b}"
+      }
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+
+    expect((result.payload["12"] as { inputs: { value: string } }).inputs.value).toBe(
+      "masterpiece, glowing yellow eyes, glowing yellow eyes, {unknown_token}, {a|b}"
+    );
+    expect((result.payload["11"] as { inputs: { value: string } }).inputs.value).toBe("glowing yellow eyes");
+  });
 });

@@ -4,6 +4,7 @@ import type {
   DynamicInputDraftValues,
   DynamicInputInlineError
 } from "../contracts/inputs";
+import { buildTokenIndex, resolveTokensInText } from "./inputTokens";
 
 type BuildRunWorkflowPayloadArgs = {
   templateRawJson: unknown;
@@ -54,7 +55,8 @@ function normalizeBase64Input(value: string): string {
 function applyControlValue(
   inputs: Record<string, unknown>,
   control: DynamicInputControl,
-  draftValues: DynamicInputDraftValues
+  draftValues: DynamicInputDraftValues,
+  tokenIndex: Map<string, string>
 ): DynamicInputInlineError | null {
   const nextValue = draftValues[control.id] ?? control.defaultValue;
 
@@ -163,6 +165,11 @@ function applyControlValue(
     return null;
   }
 
+  if (control.kind === "text" || control.kind === "multiline") {
+    inputs[field] = typeof nextValue === "string" ? resolveTokensInText(nextValue, tokenIndex) : nextValue;
+    return null;
+  }
+
   inputs[field] = nextValue;
   return null;
 }
@@ -183,6 +190,8 @@ export function buildRunWorkflowPayload(args: BuildRunWorkflowPayloadArgs): Dyna
   }
 
   const errors: DynamicInputInlineError[] = [];
+  // Built from the untouched draft so resolution stays single-pass.
+  const tokenIndex = buildTokenIndex(args.controls, args.draftValues);
 
   for (const control of args.controls) {
     const inputs = getNodeInputs(payload, control.source.nodeId);
@@ -194,7 +203,7 @@ export function buildRunWorkflowPayload(args: BuildRunWorkflowPayloadArgs): Dyna
       continue;
     }
 
-    const maybeError = applyControlValue(inputs, control, args.draftValues);
+    const maybeError = applyControlValue(inputs, control, args.draftValues, tokenIndex);
     if (maybeError) {
       errors.push(maybeError);
     }
