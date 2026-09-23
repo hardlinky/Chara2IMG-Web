@@ -10,6 +10,8 @@ type BuildRunWorkflowPayloadArgs = {
   templateRawJson: unknown;
   controls: DynamicInputControl[];
   draftValues: DynamicInputDraftValues;
+  /** Set false to keep `{Category.Field}` tokens literal, e.g. when exporting a re-importable workflow. */
+  resolveTokens?: boolean;
 };
 
 function cloneWorkflow(templateRawJson: unknown): Record<string, unknown> | null {
@@ -56,7 +58,7 @@ function applyControlValue(
   inputs: Record<string, unknown>,
   control: DynamicInputControl,
   draftValues: DynamicInputDraftValues,
-  tokenIndex: Map<string, string>
+  tokenIndex: Map<string, string> | null
 ): DynamicInputInlineError | null {
   const nextValue = draftValues[control.id] ?? control.defaultValue;
 
@@ -166,7 +168,8 @@ function applyControlValue(
   }
 
   if (control.kind === "text" || control.kind === "multiline") {
-    inputs[field] = typeof nextValue === "string" ? resolveTokensInText(nextValue, tokenIndex) : nextValue;
+    inputs[field] =
+      tokenIndex && typeof nextValue === "string" ? resolveTokensInText(nextValue, tokenIndex) : nextValue;
     return null;
   }
 
@@ -191,7 +194,8 @@ export function buildRunWorkflowPayload(args: BuildRunWorkflowPayloadArgs): Dyna
 
   const errors: DynamicInputInlineError[] = [];
   // Built from the untouched draft so resolution stays single-pass.
-  const tokenIndex = buildTokenIndex(args.controls, args.draftValues);
+  const tokenIndex =
+    args.resolveTokens === false ? null : buildTokenIndex(args.controls, args.draftValues);
 
   for (const control of args.controls) {
     const inputs = getNodeInputs(payload, control.source.nodeId);
