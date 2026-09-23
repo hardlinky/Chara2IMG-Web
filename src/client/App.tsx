@@ -894,14 +894,12 @@ export function App() {
       activeTab={activeTab}
       onTabChange={setActiveTab}
       headerRowOne={
-        <>
+        <div className="app-header-title-row">
           <h1>{`Chara2IMG Web ${APP_VERSION_LABEL}`}</h1>
-          <div className="app-header-right">
-            <button className="btn btn-secondary" type="button" onClick={() => setActiveTab("admin")}>
-              Admin
-            </button>
-          </div>
-        </>
+          <button className="btn btn-secondary" type="button" onClick={() => setActiveTab("admin")}>
+            Admin
+          </button>
+        </div>
       }
       headerRowTwo={
         <>
