@@ -1,5 +1,6 @@
 import type { DynamicInputControl, DynamicInputDraftValues } from "../contracts/inputs";
 
+// Legacy spellings kept resolvable for templates authored before the {Category.Field} convention.
 export const CATEGORY_ALIASES: Record<string, string> = {
   Character: "Character",
   Costume: "Costume",

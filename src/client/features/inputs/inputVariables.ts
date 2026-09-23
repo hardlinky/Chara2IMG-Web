@@ -1,7 +1,6 @@
 import type { DynamicInputControl, DynamicInputDraftValues } from "../../../shared/contracts/inputs";
 import {
   deriveSectionNamesByCategory,
-  getCategoryAlias,
   isNameControl,
   toVariableSegment
 } from "../../../shared/workflow/inputTokens";
@@ -17,9 +16,8 @@ export function buildVariableTokenParts(control: DynamicInputControl, sectionNam
   generic: string;
 } {
   const fieldSegment = toVariableSegment(control.name);
-  const categoryAlias = getCategoryAlias(control.category);
-  const generic = `{${categoryAlias}_${fieldSegment}}`;
-  const named = sectionName ? `{${toVariableSegment(sectionName)}_${fieldSegment}}` : null;
+  const generic = `{${toVariableSegment(control.category)}.${fieldSegment}}`;
+  const named = sectionName ? `{${toVariableSegment(sectionName)}.${fieldSegment}}` : null;
 
   return {
     named,
