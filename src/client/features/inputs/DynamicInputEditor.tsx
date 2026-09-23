@@ -309,6 +309,7 @@ function LoraListInput({
   const [available, setAvailable] = useState<string[] | null>(null);
   const [downloadUrls, setDownloadUrls] = useState<Record<string, string>>({});
   const [triggerWords, setTriggerWords] = useState<Record<string, string[]>>({});
+  const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
   const [searchQuery, setSearchQuery] = useState("");
   const sliderStep = 0.05;
 
@@ -320,6 +321,7 @@ function LoraListInput({
         setAvailable(catalog.loras);
         setDownloadUrls(catalog.downloadUrls);
         setTriggerWords(catalog.triggerWords);
+        setPreviewUrls(catalog.previewUrls);
       }
     }
     void refreshCatalog();
@@ -334,6 +336,7 @@ function LoraListInput({
         setAvailable(catalog.loras);
         setDownloadUrls(catalog.downloadUrls);
         setTriggerWords(catalog.triggerWords);
+        setPreviewUrls(catalog.previewUrls);
       });
     });
     return unsubscribe;
@@ -371,10 +374,20 @@ function LoraListInput({
         const missing = available !== null && !available.includes(lora.loraName);
         const displayName = stripModelExtension(lora.loraName);
         const downloadUrl = findLoraDownloadUrl(lora.loraName, downloadUrls);
+        const previewUrl = findLoraDownloadUrl(lora.loraName, previewUrls);
         const loraTriggerWords = findLoraTriggerWords(lora.loraName, triggerWords);
         return (
           <div key={`${controlId}-${lora.loraName}-${index}`} className="input-lora-list-item">
             <div className="input-lora-list-item-header">
+              {previewUrl ? (
+                <img
+                  className="input-lora-list-item-preview"
+                  src={previewUrl}
+                  alt=""
+                  loading="lazy"
+                  referrerPolicy="no-referrer"
+                />
+              ) : null}
               {downloadUrl ? <a
                 className={`input-lora-list-item-name${missing ? " input-lora-list-item-name--missing" : ""}`}
                 href={downloadUrl}

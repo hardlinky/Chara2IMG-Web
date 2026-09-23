@@ -151,6 +151,15 @@ export function DownloadCard({
   return (
     <li className="model-dl-card">
       <div className="model-dl-card-header">
+        {entry.previewUrl ? (
+          <img
+            className="model-dl-preview"
+            src={entry.previewUrl}
+            alt=""
+            loading="lazy"
+            referrerPolicy="no-referrer"
+          />
+        ) : null}
         <span className="model-dl-filename" title={entry.filename}>{entry.filename}</span>
         <span className="model-dl-source-tag">
           {entry.source === "civitai" ? "CivitAI" : "HuggingFace"}

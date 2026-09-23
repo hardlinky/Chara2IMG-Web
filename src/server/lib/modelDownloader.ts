@@ -71,10 +71,19 @@ function normalizeTriggerWords(value: unknown): string[] {
 
 export type CivitaiMetadata = {
   triggerWords: string[];
+  previewUrl?: string;
   modelId?: number;
   selectedVersionId?: number;
   latestVersionId?: number;
 };
+
+type CivitaiVersion = { id?: number; modelId?: number; trainedWords?: unknown; images?: unknown };
+
+function firstImageUrl(images: unknown): string | undefined {
+  if (!Array.isArray(images)) return undefined;
+  const url = (images[0] as { url?: unknown } | undefined)?.url;
+  return typeof url === "string" && /^https?:\/\//.test(url) ? url : undefined;
+}
 
 async function fetchCivitaiJson<T>(url: string, apiKey: string, signal?: AbortSignal): Promise<T | null> {
   const response = await fetch(url, { headers: { Authorization: `Bearer ${apiKey}` }, signal });
@@ -94,19 +103,21 @@ export async function fetchCivitaiMetadata(
   let modelId = pageModelIdText ? Number(pageModelIdText) : undefined;
   let selectedVersionId = explicitVersionId;
   let triggerWords: string[] = [];
+  let previewUrl: string | undefined;
 
   if (explicitVersionId) {
-    const version = await fetchCivitaiJson<{ id?: number; modelId?: number; trainedWords?: unknown }>(
+    const version = await fetchCivitaiJson<CivitaiVersion>(
       `https://civitai.com/api/v1/model-versions/${explicitVersionId}`,
       apiKey,
       signal
     );
     modelId = version?.modelId ?? modelId;
     triggerWords = normalizeTriggerWords(version?.trainedWords);
+    previewUrl = firstImageUrl(version?.images);
   }
 
-  if (!modelId) return { triggerWords, selectedVersionId };
-  const model = await fetchCivitaiJson<{ modelVersions?: Array<{ id?: number; trainedWords?: unknown }> }>(
+  if (!modelId) return { triggerWords, previewUrl, selectedVersionId };
+  const model = await fetchCivitaiJson<{ modelVersions?: CivitaiVersion[] }>(
     `https://civitai.com/api/v1/models/${modelId}`,
     apiKey,
     signal
@@ -115,8 +126,9 @@ export async function fetchCivitaiMetadata(
   if (!selectedVersionId) {
     selectedVersionId = latestVersion?.id;
     triggerWords = normalizeTriggerWords(latestVersion?.trainedWords);
+    previewUrl = firstImageUrl(latestVersion?.images);
   }
-  return { triggerWords, modelId, selectedVersionId, latestVersionId: latestVersion?.id };
+  return { triggerWords, previewUrl, modelId, selectedVersionId, latestVersionId: latestVersion?.id };
 }
 
 function guessFilenameFromUrl(url: string): string {
@@ -160,6 +172,7 @@ export async function writeDownloadMetadata(entry: DownloadEntry, modelPath?: st
     destPath: entry.destPath,
     filename: entry.filename,
     triggerWords: entry.triggerWords ?? [],
+    previewUrl: entry.previewUrl ?? null,
     civitaiModelId: entry.civitaiModelId,
     civitaiModelVersionId: entry.civitaiModelVersionId,
     civitaiLatestModelVersionId: entry.civitaiLatestModelVersionId,
@@ -249,6 +262,7 @@ async function runDownload(entry: DownloadEntry, signal: AbortSignal): Promise<v
   if (civitaiMetadata) {
     await updateEntry(entry.id, {
       triggerWords: civitaiMetadata.triggerWords,
+      previewUrl: civitaiMetadata.previewUrl,
       civitaiModelId: civitaiMetadata.modelId,
       civitaiModelVersionId: civitaiMetadata.selectedVersionId,
       civitaiLatestModelVersionId: civitaiMetadata.latestVersionId,
@@ -399,6 +413,7 @@ export async function refreshDownloadMetadata(
   );
   await updateEntry(id, {
     triggerWords: metadata.triggerWords,
+    previewUrl: metadata.previewUrl,
     civitaiModelId: metadata.modelId,
     civitaiModelVersionId: entry.civitaiModelVersionId ?? (sourceHasExplicitVersion ? metadata.selectedVersionId : undefined),
     civitaiLatestModelVersionId: metadata.latestVersionId,

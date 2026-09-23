@@ -2,7 +2,10 @@ export type LoraCatalog = {
   loras: string[];
   downloadUrls: Record<string, string>;
   triggerWords: Record<string, string[]>;
+  previewUrls: Record<string, string>;
 };
+
+const EMPTY_CATALOG: LoraCatalog = { loras: [], downloadUrls: {}, triggerWords: {}, previewUrls: {} };
 
 const MODEL_CATALOG_REFRESH_EVENT = "model-catalog-refresh";
 
@@ -38,19 +41,20 @@ export async function fetchLoraCatalog(): Promise<LoraCatalog> {
   if (cache !== null) return cache;
   if (!pending) {
     pending = fetch("/api/models/loras", { credentials: "include" })
-      .then((res) => (res.ok ? res.json() : { loras: [], downloadUrls: {}, triggerWords: {} }))
+      .then((res) => (res.ok ? res.json() : EMPTY_CATALOG))
       .then((data: unknown) => {
-        const result = data as { loras?: string[]; downloadUrls?: Record<string, string>; triggerWords?: Record<string, string[]> };
+        const result = data as Partial<LoraCatalog>;
         cache = {
           loras: Array.isArray(result.loras) ? result.loras : [],
           downloadUrls: result.downloadUrls && typeof result.downloadUrls === "object" ? result.downloadUrls : {},
-          triggerWords: result.triggerWords && typeof result.triggerWords === "object" ? result.triggerWords : {}
+          triggerWords: result.triggerWords && typeof result.triggerWords === "object" ? result.triggerWords : {},
+          previewUrls: result.previewUrls && typeof result.previewUrls === "object" ? result.previewUrls : {}
         };
         return cache;
       })
       .catch(() => {
         pending = null;
-        return { loras: [], downloadUrls: {}, triggerWords: {} };
+        return EMPTY_CATALOG;
       });
   }
   return pending;

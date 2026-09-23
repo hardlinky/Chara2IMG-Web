@@ -535,6 +535,15 @@
   min-width: 0;
 }
 
+.input-lora-list-item-preview {
+  width: 2.25rem;
+  height: 2.25rem;
+  flex: 0 0 auto;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-elevated);
+}
+
 .input-lora-list-item-name {
   font-size: var(--font-size-sm);
   overflow: hidden;

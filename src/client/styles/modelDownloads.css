@@ -50,6 +50,15 @@
   min-width: 0;
 }
 
+.model-dl-preview {
+  width: 2.25rem;
+  height: 2.25rem;
+  flex: 0 0 auto;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-elevated);
+}
+
 .model-dl-filename {
   font-weight: 600;
   font-size: var(--font-size-sm);

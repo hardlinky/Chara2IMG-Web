@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DownloadEntry } from "../../src/shared/contracts/modelDownloads";
-import { buildLoraDownloadUrls, buildLoraTriggerWords } from "../../src/server/routes/models";
+import { buildLoraDownloadUrls, buildLoraPreviewUrls, buildLoraTriggerWords } from "../../src/server/routes/models";
 
 function download(overrides: Partial<DownloadEntry>): DownloadEntry {
   return {
@@ -40,6 +40,17 @@ describe("model routes", () => {
     ])).toEqual({
       "styles/ink.safetensors": ["ink style", "bold lines"],
       "ink.safetensors": ["ink style", "bold lines"]
+    });
+  });
+
+  it("maps stored preview images by relative path and filename", () => {
+    expect(buildLoraPreviewUrls([
+      download({ destPath: "loras/styles", filename: "ink.safetensors", previewUrl: "https://image.civitai.com/ink.jpeg" }),
+      download({ id: "none", filename: "none.safetensors" }),
+      download({ id: "checkpoint", destPath: "checkpoints", previewUrl: "https://image.civitai.com/ignore.jpeg" })
+    ])).toEqual({
+      "styles/ink.safetensors": "https://image.civitai.com/ink.jpeg",
+      "ink.safetensors": "https://image.civitai.com/ink.jpeg"
     });
   });
 });
