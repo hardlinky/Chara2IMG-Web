@@ -232,12 +232,13 @@ export function useRecentJobs(options: UseRecentJobsOptions = {}) {
       try {
         const fetched = await listJobs();
         if (!cancelled) {
+          // Stamped on every poll, not just changed ones, so the countdown keeps running.
+          setLastFetchedAt(Date.now());
           const revision = buildRecentJobsRevision(fetched);
           if (!hasFetchedRef.current || revision !== jobsRevisionRef.current) {
             hasFetchedRef.current = true;
             jobsRevisionRef.current = revision;
             setJobs(fetched);
-            setLastFetchedAt(Date.now());
             setStorageRefreshToken((current) => current + 1);
           }
         }

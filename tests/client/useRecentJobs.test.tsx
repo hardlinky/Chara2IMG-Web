@@ -284,14 +284,30 @@ describe("useRecentJobs hook", () => {
       await vi.advanceTimersByTimeAsync(100);
     });
     const refreshToken = result.current.storageRefreshToken;
-    const lastFetchedAt = result.current.lastFetchedAt;
+    const visibleJobs = result.current.visibleJobs;
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(10_000);
     });
 
     expect(result.current.storageRefreshToken).toBe(refreshToken);
-    expect(result.current.lastFetchedAt).toBe(lastFetchedAt);
+    expect(result.current.visibleJobs).toBe(visibleJobs);
+  });
+
+  it("stamps the fetch time on every poll so the countdown keeps running", async () => {
+    vi.mocked(listJobs).mockResolvedValue([makeJob("job-stable", "COMPLETED")]);
+
+    const { result } = renderHook(() => useRecentJobs());
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100);
+    });
+    const lastFetchedAt = result.current.lastFetchedAt;
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+
+    expect(result.current.lastFetchedAt).toBeGreaterThan(lastFetchedAt!);
   });
 
   it("delete calls deleteJob and removes job from list", async () => {
