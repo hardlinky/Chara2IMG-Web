@@ -27,4 +27,14 @@ describe("ui theme foundation", () => {
     expect(componentSource).toContain("prefers-reduced-motion");
     expect(componentSource).toContain(".input-invalid");
   });
+
+  it("keeps long lora names from widening the input column", () => {
+    const inputSource = readClientFile("styles/setupInput.css");
+
+    // The name ellipsizes only while every ancestor is allowed to shrink.
+    expect(inputSource).toMatch(/\.input-lora-list-item-name \{[^}]*text-overflow: ellipsis;/);
+    expect(inputSource).toMatch(/\.input-lora-list-item-header \{[^}]*min-width: 0;/);
+    expect(inputSource).toMatch(/\.input-lora-list-item \{[^}]*min-width: 0;/);
+    expect(inputSource).toMatch(/\.input-lora-add-row \.input,\s*\n\s*\.input-lora-add-row \.select \{[^}]*min-width: 0;/);
+  });
 });

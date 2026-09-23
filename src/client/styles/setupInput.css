@@ -323,6 +323,7 @@
 .input-row {
   display: grid;
   gap: var(--space-2);
+  min-width: 0;
 }
 
 /* Halo via box-shadow spread keeps the highlight from reflowing the layout. */
@@ -501,6 +502,7 @@
 .input-lora-list {
   display: grid;
   gap: var(--space-2);
+  min-width: 0;
 }
 
 .input-lora-list-title {
@@ -518,6 +520,11 @@
   padding: var(--space-2) var(--space-3);
   display: grid;
   gap: var(--space-2);
+  min-width: 0;
+}
+
+.input-lora-list-item > * {
+  min-width: 0;
 }
 
 .input-lora-list-item-header {
@@ -525,6 +532,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
+  min-width: 0;
 }
 
 .input-lora-list-item-name {
@@ -533,6 +541,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   min-width: 0;
+  max-width: 100%;
   flex: 1 1 0;
 }
 
@@ -620,8 +629,16 @@ a.input-lora-list-item-name:hover {
   padding-top: var(--space-1);
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
+  min-width: 0;
 }
 
+.input-lora-add-row > span {
+  flex-shrink: 0;
+}
+
+/* Form controls default to an intrinsic minimum width that would otherwise
+   push the card wider than the screen. */
+.input-lora-add-row .input,
 .input-lora-add-row .select {
   flex: 1 1 0;
   min-width: 0;
